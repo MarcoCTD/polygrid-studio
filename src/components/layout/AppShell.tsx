@@ -1,13 +1,61 @@
 import { useState } from "react";
 import { Sidebar } from "./Sidebar";
-import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ProductsPage } from "@/features/products/components/ProductsPage";
 import de from "@/i18n/de.json";
 
-// Route → page title / subtitle mapping
-const routeMeta: Record<string, { title: string; subtitle: string }> = {
+// ── Route → page component mapping ───────────────────────────────────────────
+
+function renderPage(route: string) {
+  switch (route) {
+    case "/products":
+      return <ProductsPage />;
+    default:
+      return <PlaceholderPage route={route} />;
+  }
+}
+
+// ── AppShell ──────────────────────────────────────────────────────────────────
+
+export function AppShell() {
+  const [activeRoute, setActiveRoute] = useState("/products");
+
+  return (
+    <TooltipProvider>
+      <div className="flex h-screen w-screen overflow-hidden bg-[--background] text-[--foreground]">
+        <Sidebar activeRoute={activeRoute} onNavigate={setActiveRoute} />
+
+        {/* Main content — no padding for pages that manage their own layout */}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex-1 overflow-hidden">
+            {renderPage(activeRoute)}
+          </main>
+        </div>
+      </div>
+    </TooltipProvider>
+  );
+}
+
+// ── Top bar ───────────────────────────────────────────────────────────────────
+
+function TopBar() {
+  return (
+    <header
+      className="flex h-10 shrink-0 items-center justify-end border-b border-[--border] bg-[--background] px-6"
+      data-tauri-drag-region
+    >
+      <kbd className="rounded border border-[--border] bg-[--muted] px-1.5 py-0.5 font-mono text-[10px] text-[--muted-foreground]">
+        {de.shortcuts.commandPalette}
+      </kbd>
+    </header>
+  );
+}
+
+// ── Placeholder for unbuilt modules ──────────────────────────────────────────
+
+const MODULE_META: Record<string, { title: string; subtitle: string }> = {
   "/": { title: de.dashboard.title, subtitle: de.dashboard.subtitle },
-  "/products": { title: de.products.title, subtitle: de.products.subtitle },
   "/expenses": { title: de.expenses.title, subtitle: de.expenses.subtitle },
   "/orders": { title: de.orders.title, subtitle: de.orders.subtitle },
   "/listings": { title: de.listings.title, subtitle: de.listings.subtitle },
@@ -19,77 +67,11 @@ const routeMeta: Record<string, { title: string; subtitle: string }> = {
   "/settings": { title: de.settings.title, subtitle: de.settings.subtitle },
 };
 
-interface AppShellProps {
-  children?: React.ReactNode;
-}
-
-export function AppShell({ children }: AppShellProps) {
-  const [activeRoute, setActiveRoute] = useState("/");
-  const meta = routeMeta[activeRoute] ?? { title: "", subtitle: "" };
-
-  return (
-    <TooltipProvider>
-      <div className="flex h-screen w-screen overflow-hidden bg-[--background] text-[--foreground]">
-        {/* Sidebar */}
-        <Sidebar activeRoute={activeRoute} onNavigate={setActiveRoute} />
-
-        {/* Main content */}
-        <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Top bar */}
-          <header
-            className={cn(
-              "flex h-12 shrink-0 items-center justify-between border-b border-[--border] px-6",
-              "bg-[--background]"
-            )}
-            data-tauri-drag-region
-          >
-            <div className="flex flex-col justify-center" data-tauri-drag-region>
-              <h1 className="text-sm font-semibold leading-none text-[--foreground]">
-                {meta.title}
-              </h1>
-              {meta.subtitle && (
-                <p className="mt-0.5 text-xs text-[--muted-foreground]">
-                  {meta.subtitle}
-                </p>
-              )}
-            </div>
-
-            {/* Right side actions placeholder */}
-            <div className="flex items-center gap-2">
-              <kbd className="hidden rounded border border-[--border] bg-[--muted] px-1.5 py-0.5 font-mono text-[10px] text-[--muted-foreground] sm:inline-block">
-                {de.shortcuts.commandPalette}
-              </kbd>
-            </div>
-          </header>
-
-          {/* Page content */}
-          <main className="flex-1 overflow-y-auto p-6">
-            {children ?? (
-              <PagePlaceholder route={activeRoute} meta={meta} />
-            )}
-          </main>
-        </div>
-      </div>
-    </TooltipProvider>
-  );
-}
-
-// Temporary placeholder until real feature modules exist
-function PagePlaceholder({
-  route,
-  meta,
-}: {
-  route: string;
-  meta: { title: string; subtitle: string };
-}) {
+function PlaceholderPage({ route }: { route: string }) {
+  const meta = MODULE_META[route] ?? { title: route, subtitle: "" };
   return (
     <div className="flex h-full items-center justify-center">
       <div className="text-center">
-        <div className="mb-4 inline-flex size-12 items-center justify-center rounded-xl border border-[--border] bg-[--card]">
-          <span className="font-mono text-xs text-[--muted-foreground]">
-            {route}
-          </span>
-        </div>
         <h2 className="text-base font-semibold text-[--foreground]">{meta.title}</h2>
         <p className="mt-1 text-sm text-[--muted-foreground]">{meta.subtitle}</p>
         <p className="mt-4 rounded-md border border-[--border] bg-[--card] px-4 py-2 font-mono text-xs text-[--muted-foreground]">

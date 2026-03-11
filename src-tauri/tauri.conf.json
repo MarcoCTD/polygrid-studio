@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "polygrid-studio",
+  "productName": "PolyGrid Studio",
   "version": "0.1.0",
   "identifier": "com.marcokromer.polygrid-studio",
   "build": {
@@ -12,9 +12,11 @@
   "app": {
     "windows": [
       {
-        "title": "polygrid-studio",
-        "width": 800,
-        "height": 600
+        "title": "PolyGrid Studio",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 960,
+        "minHeight": 600
       }
     ],
     "security": {

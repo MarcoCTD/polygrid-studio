@@ -4,46 +4,14 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* Font families */
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
-
-  /* Custom design tokens — light mode */
-  --color-background: hsl(0 0% 98%);
-  --color-background-secondary: hsl(240 5% 96%);
-  --color-background-elevated: hsl(0 0% 100%);
-  --color-foreground: hsl(240 10% 4%);
-  --color-foreground-muted: hsl(240 4% 46%);
-  --color-border: hsl(240 6% 90%);
-  --color-border-subtle: hsl(240 6% 94%);
-  --color-accent: hsl(217 91% 60%);
-  --color-accent-hover: hsl(217 91% 55%);
-  --color-success: hsl(142 76% 36%);
-  --color-warning: hsl(38 92% 50%);
-  --color-danger: hsl(0 84% 60%);
-
-  /* shadcn/ui CSS variable bridge */
-  --color-background-card: var(--color-background-elevated);
-  --color-background-popover: var(--color-background-elevated);
-  --color-primary: hsl(240 10% 4%);
-  --color-primary-foreground: hsl(0 0% 98%);
-  --color-secondary: hsl(240 5% 96%);
-  --color-secondary-foreground: hsl(240 10% 4%);
-  --color-muted: hsl(240 5% 96%);
-  --color-muted-foreground: hsl(240 4% 46%);
-  --color-accent-foreground: hsl(240 10% 4%);
-  --color-destructive: hsl(0 84% 60%);
-  --color-destructive-foreground: hsl(0 0% 98%);
-  --color-input: hsl(240 6% 90%);
-  --color-ring: hsl(217 91% 60%);
   --radius: 0.5rem;
-
-  /* Sidebar */
-  --sidebar-width: 240px;
-  --sidebar-width-collapsed: 64px;
 }
 
+/* ─── Light mode ─────────────────────────────────────────────────────────── */
 :root {
+  /* Content area */
   --background: hsl(0 0% 98%);
   --foreground: hsl(240 10% 4%);
   --card: hsl(0 0% 100%);
@@ -56,18 +24,37 @@
   --secondary-foreground: hsl(240 10% 4%);
   --muted: hsl(240 5% 96%);
   --muted-foreground: hsl(240 4% 46%);
-  --accent: hsl(240 5% 96%);
-  --accent-foreground: hsl(240 10% 4%);
-  --destructive: hsl(0 84% 60%);
-  --destructive-foreground: hsl(0 0% 98%);
   --border: hsl(240 6% 90%);
   --input: hsl(240 6% 90%);
   --ring: hsl(217 91% 60%);
-  --sidebar-background: hsl(240 5% 96%);
-  --sidebar-foreground: hsl(240 10% 4%);
-  --sidebar-border: hsl(240 6% 90%);
+  --destructive: hsl(0 84% 60%);
+  --destructive-foreground: hsl(0 0% 98%);
+
+  /* Semantic accent colors */
+  --accent-primary: hsl(217 91% 60%);
+  --accent-primary-hover: hsl(217 91% 54%);
+  --accent-primary-subtle: hsl(217 91% 60% / 0.12);
+  --accent-success: hsl(142 76% 36%);
+  --accent-success-subtle: hsl(142 76% 36% / 0.12);
+  --accent-warning: hsl(38 92% 50%);
+  --accent-warning-subtle: hsl(38 92% 50% / 0.12);
+  --accent-danger: hsl(0 84% 60%);
+  --accent-danger-hover: hsl(0 84% 54%);
+  --accent-danger-subtle: hsl(0 84% 60% / 0.12);
+
+  /* Sidebar — dark in light mode (Linear / Raycast style) */
+  --sidebar-bg: hsl(240 16% 11%);
+  --sidebar-fg: hsl(0 0% 84%);
+  --sidebar-fg-muted: hsl(240 5% 42%);
+  --sidebar-border: hsl(240 12% 18%);
+  --sidebar-hover-bg: hsl(240 12% 17%);
+  --sidebar-active-bg: hsl(217 91% 60% / 0.14);
+  --sidebar-active-fg: hsl(217 91% 72%);
+  --sidebar-logo-fg: hsl(0 0% 92%);
+  --sidebar-scrollbar: hsl(240 12% 22%);
 }
 
+/* ─── Dark mode ──────────────────────────────────────────────────────────── */
 .dark {
   --background: hsl(240 20% 4%);
   --foreground: hsl(0 0% 95%);
@@ -80,21 +67,41 @@
   --secondary: hsl(240 15% 7%);
   --secondary-foreground: hsl(0 0% 95%);
   --muted: hsl(240 15% 7%);
-  --muted-foreground: hsl(240 5% 55%);
-  --accent: hsl(240 15% 7%);
-  --accent-foreground: hsl(0 0% 95%);
-  --destructive: hsl(0 84% 60%);
-  --destructive-foreground: hsl(0 0% 98%);
+  --muted-foreground: hsl(240 5% 52%);
   --border: hsl(240 12% 16%);
   --input: hsl(240 12% 16%);
   --ring: hsl(217 91% 65%);
-  --sidebar-background: hsl(240 15% 7%);
-  --sidebar-foreground: hsl(0 0% 90%);
-  --sidebar-border: hsl(240 12% 16%);
+  --destructive: hsl(0 84% 60%);
+  --destructive-foreground: hsl(0 0% 98%);
+
+  /* Semantic accent colors (slightly brighter in dark) */
+  --accent-primary: hsl(217 91% 65%);
+  --accent-primary-hover: hsl(217 91% 58%);
+  --accent-primary-subtle: hsl(217 91% 65% / 0.14);
+  --accent-success: hsl(142 70% 42%);
+  --accent-success-subtle: hsl(142 70% 42% / 0.14);
+  --accent-warning: hsl(38 92% 52%);
+  --accent-warning-subtle: hsl(38 92% 52% / 0.14);
+  --accent-danger: hsl(0 84% 62%);
+  --accent-danger-hover: hsl(0 84% 55%);
+  --accent-danger-subtle: hsl(0 84% 62% / 0.14);
+
+  /* Sidebar — slightly elevated from background in dark mode */
+  --sidebar-bg: hsl(240 15% 7%);
+  --sidebar-fg: hsl(0 0% 88%);
+  --sidebar-fg-muted: hsl(240 5% 40%);
+  --sidebar-border: hsl(240 12% 14%);
+  --sidebar-hover-bg: hsl(240 12% 11%);
+  --sidebar-active-bg: hsl(217 91% 65% / 0.14);
+  --sidebar-active-fg: hsl(217 91% 74%);
+  --sidebar-logo-fg: hsl(0 0% 90%);
+  --sidebar-scrollbar: hsl(240 12% 18%);
 }
 
+/* ─── Base styles ─────────────────────────────────────────────────────────── */
 * {
   border-color: var(--border);
+  box-sizing: border-box;
 }
 
 body {
@@ -107,28 +114,20 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Prevent text selection on UI chrome */
 .no-select {
   user-select: none;
 }
 
-/* Tauri: disable default context menu on drag handle areas */
 [data-tauri-drag-region] {
   cursor: default;
 }
 
-/* Thin scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-foreground);
-}
+/* ─── Scrollbar — global (content area) ──────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+
+/* ─── Scrollbar — sidebar ─────────────────────────────────────────────────── */
+.sidebar-scroll::-webkit-scrollbar-thumb { background: var(--sidebar-scrollbar); }
+.sidebar-scroll::-webkit-scrollbar-thumb:hover { background: var(--sidebar-fg-muted); }

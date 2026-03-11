@@ -31,6 +31,12 @@
     "export": "Exportieren",
     "import": "Importieren"
   },
+  "theme": {
+    "label": "Erscheinungsbild",
+    "light": "Hell",
+    "dark": "Dunkel",
+    "system": "System"
+  },
   "shortcuts": {
     "commandPalette": "Cmd+K",
     "newItem": "Cmd+N",
