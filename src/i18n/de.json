@@ -1,0 +1,85 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "products": "Produkte",
+    "expenses": "Ausgaben",
+    "orders": "Aufträge",
+    "listings": "Listings",
+    "templates": "Vorlagen",
+    "files": "Dateien",
+    "tasks": "Aufgaben",
+    "analytics": "Analysen",
+    "aiAssistant": "KI-Assistent",
+    "settings": "Einstellungen"
+  },
+  "common": {
+    "new": "Neu",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "search": "Suchen",
+    "loading": "Laden...",
+    "error": "Fehler",
+    "success": "Erfolgreich",
+    "confirm": "Bestätigen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "close": "Schließen",
+    "actions": "Aktionen",
+    "filter": "Filter",
+    "export": "Exportieren",
+    "import": "Importieren"
+  },
+  "shortcuts": {
+    "commandPalette": "Cmd+K",
+    "newItem": "Cmd+N",
+    "save": "Cmd+S",
+    "aiAssistant": "Cmd+/",
+    "sidebarToggle": "Cmd+B"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Übersicht deines Betriebs"
+  },
+  "products": {
+    "title": "Produkte",
+    "subtitle": "Produktverwaltung und Druckdaten"
+  },
+  "expenses": {
+    "title": "Ausgaben",
+    "subtitle": "Betriebsausgaben und Belege"
+  },
+  "orders": {
+    "title": "Aufträge",
+    "subtitle": "Kundenaufträge verwalten"
+  },
+  "listings": {
+    "title": "Listings",
+    "subtitle": "Plattform-Listings und Texte"
+  },
+  "templates": {
+    "title": "Vorlagen",
+    "subtitle": "Texte, Rechtsdokumente und Antworten"
+  },
+  "files": {
+    "title": "Dateien",
+    "subtitle": "OneDrive-Dateiablage"
+  },
+  "tasks": {
+    "title": "Aufgaben",
+    "subtitle": "To-dos und Erinnerungen"
+  },
+  "analytics": {
+    "title": "Analysen",
+    "subtitle": "Umsatz, Margen und Trends"
+  },
+  "aiAssistant": {
+    "title": "KI-Assistent",
+    "subtitle": "Textgenerierung und Analysen"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "subtitle": "App-Konfiguration und Integrationen"
+  }
+}

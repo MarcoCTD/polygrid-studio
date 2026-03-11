@@ -1,0 +1,134 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Font families */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Custom design tokens — light mode */
+  --color-background: hsl(0 0% 98%);
+  --color-background-secondary: hsl(240 5% 96%);
+  --color-background-elevated: hsl(0 0% 100%);
+  --color-foreground: hsl(240 10% 4%);
+  --color-foreground-muted: hsl(240 4% 46%);
+  --color-border: hsl(240 6% 90%);
+  --color-border-subtle: hsl(240 6% 94%);
+  --color-accent: hsl(217 91% 60%);
+  --color-accent-hover: hsl(217 91% 55%);
+  --color-success: hsl(142 76% 36%);
+  --color-warning: hsl(38 92% 50%);
+  --color-danger: hsl(0 84% 60%);
+
+  /* shadcn/ui CSS variable bridge */
+  --color-background-card: var(--color-background-elevated);
+  --color-background-popover: var(--color-background-elevated);
+  --color-primary: hsl(240 10% 4%);
+  --color-primary-foreground: hsl(0 0% 98%);
+  --color-secondary: hsl(240 5% 96%);
+  --color-secondary-foreground: hsl(240 10% 4%);
+  --color-muted: hsl(240 5% 96%);
+  --color-muted-foreground: hsl(240 4% 46%);
+  --color-accent-foreground: hsl(240 10% 4%);
+  --color-destructive: hsl(0 84% 60%);
+  --color-destructive-foreground: hsl(0 0% 98%);
+  --color-input: hsl(240 6% 90%);
+  --color-ring: hsl(217 91% 60%);
+  --radius: 0.5rem;
+
+  /* Sidebar */
+  --sidebar-width: 240px;
+  --sidebar-width-collapsed: 64px;
+}
+
+:root {
+  --background: hsl(0 0% 98%);
+  --foreground: hsl(240 10% 4%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(240 10% 4%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(240 10% 4%);
+  --primary: hsl(240 10% 4%);
+  --primary-foreground: hsl(0 0% 98%);
+  --secondary: hsl(240 5% 96%);
+  --secondary-foreground: hsl(240 10% 4%);
+  --muted: hsl(240 5% 96%);
+  --muted-foreground: hsl(240 4% 46%);
+  --accent: hsl(240 5% 96%);
+  --accent-foreground: hsl(240 10% 4%);
+  --destructive: hsl(0 84% 60%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --border: hsl(240 6% 90%);
+  --input: hsl(240 6% 90%);
+  --ring: hsl(217 91% 60%);
+  --sidebar-background: hsl(240 5% 96%);
+  --sidebar-foreground: hsl(240 10% 4%);
+  --sidebar-border: hsl(240 6% 90%);
+}
+
+.dark {
+  --background: hsl(240 20% 4%);
+  --foreground: hsl(0 0% 95%);
+  --card: hsl(240 12% 10%);
+  --card-foreground: hsl(0 0% 95%);
+  --popover: hsl(240 12% 10%);
+  --popover-foreground: hsl(0 0% 95%);
+  --primary: hsl(0 0% 95%);
+  --primary-foreground: hsl(240 10% 4%);
+  --secondary: hsl(240 15% 7%);
+  --secondary-foreground: hsl(0 0% 95%);
+  --muted: hsl(240 15% 7%);
+  --muted-foreground: hsl(240 5% 55%);
+  --accent: hsl(240 15% 7%);
+  --accent-foreground: hsl(0 0% 95%);
+  --destructive: hsl(0 84% 60%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --border: hsl(240 12% 16%);
+  --input: hsl(240 12% 16%);
+  --ring: hsl(217 91% 65%);
+  --sidebar-background: hsl(240 15% 7%);
+  --sidebar-foreground: hsl(0 0% 90%);
+  --sidebar-border: hsl(240 12% 16%);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans, "Inter", ui-sans-serif, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Prevent text selection on UI chrome */
+.no-select {
+  user-select: none;
+}
+
+/* Tauri: disable default context menu on drag handle areas */
+[data-tauri-drag-region] {
+  cursor: default;
+}
+
+/* Thin scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
