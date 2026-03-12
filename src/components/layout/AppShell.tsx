@@ -2,6 +2,11 @@ import { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ProductsPage } from "@/features/products/components/ProductsPage";
+import { ExpensesPage } from "@/features/expenses/components/ExpensesPage";
+import { OrdersPage } from "@/features/orders/components/OrdersPage";
+import { TasksPage } from "@/features/tasks/components/TasksPage";
+import { ListingsPage } from "@/features/listings/components/ListingsPage";
+import { TemplatesPage } from "@/features/templates/components/TemplatesPage";
 import de from "@/i18n/de.json";
 
 // ── Route → page component mapping ───────────────────────────────────────────
@@ -10,6 +15,16 @@ function renderPage(route: string) {
   switch (route) {
     case "/products":
       return <ProductsPage />;
+    case "/expenses":
+      return <ExpensesPage />;
+    case "/orders":
+      return <OrdersPage />;
+    case "/tasks":
+      return <TasksPage />;
+    case "/listings":
+      return <ListingsPage />;
+    case "/templates":
+      return <TemplatesPage />;
     default:
       return <PlaceholderPage route={route} />;
   }
@@ -56,12 +71,7 @@ function TopBar() {
 
 const MODULE_META: Record<string, { title: string; subtitle: string }> = {
   "/": { title: de.dashboard.title, subtitle: de.dashboard.subtitle },
-  "/expenses": { title: de.expenses.title, subtitle: de.expenses.subtitle },
-  "/orders": { title: de.orders.title, subtitle: de.orders.subtitle },
-  "/listings": { title: de.listings.title, subtitle: de.listings.subtitle },
-  "/templates": { title: de.templates.title, subtitle: de.templates.subtitle },
   "/files": { title: de.files.title, subtitle: de.files.subtitle },
-  "/tasks": { title: de.tasks.title, subtitle: de.tasks.subtitle },
   "/analytics": { title: de.analytics.title, subtitle: de.analytics.subtitle },
   "/ai-assistant": { title: de.aiAssistant.title, subtitle: de.aiAssistant.subtitle },
   "/settings": { title: de.settings.title, subtitle: de.settings.subtitle },
