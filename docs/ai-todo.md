@@ -17,48 +17,49 @@
 - [x] **Tasks Module** — Full CRUD: types (priority/status), Zustand store, SQL queries, TasksPage (list view with status tabs, toggle done, overdue indicators), CreateTaskDialog
 - [x] **Listings Module** — Full CRUD: types, Zustand store, SQL queries (with JSON array parsing for bullet_points/tags/variants), ListingsPage (card layout with filters), CreateListingDialog (with product picker)
 - [x] **Templates Module** — Full CRUD: types (9 categories), Zustand store, SQL queries (auto-increment version on content change), TemplatesPage (card layout, legal disclaimer), CreateTemplateDialog
-- [x] **AppShell Routing** — All 6 built modules wired into route switch (Products, Expenses, Orders, Tasks, Listings, Templates)
+- [x] **Dashboard** — KPI cards (revenue, orders, products, tasks), RevenueChart (Recharts BarChart), RecentOrdersCard, ProductStatusCard with progress bars, QuickActions panel
+- [x] **Analytics** — Revenue+Profit LineChart (12 months), Orders BarChart, Expense PieChart (donut), Platform comparison horizontal BarChart
+- [x] **Settings Page** — Theme selection, calculation defaults, AI provider config (Claude/OpenAI/Ollama), data management, app info
+- [x] **Command Palette** — Cmd+K dialog with fuzzy search, 11 navigation + 5 quick action commands, keyboard navigation
+- [x] **Keyboard Shortcuts** — Cmd+K (palette), Cmd+/ (AI assistant), Cmd+1-9 (module nav), global event handler
+- [x] **AI Service Layer** — AIProvider interface, AIService singleton with provider registry and job logging, ListingAssistant agent
+- [x] **AI Jobs Queries** — createAiJob, updateAiJob, listAiJobs, getAiJobStats
+- [x] **AI Assistant UI** — Chat interface with agent selection, message bubbles, prompt suggestions, copy-to-clipboard, job history sidebar, token/duration stats
+- [x] **Files Module** — FileLink types (entity types + file types), Zustand store, SQL queries (CRUD + by-entity + counts), FilesPage with entity-type filter tabs
+- [x] **File Links Queries** — listFileLinks, listFileLinksByEntity, createFileLink, deleteFileLink, getFileLinkCounts
+- [x] **AppShell Routing** — All 11 modules wired: Dashboard, Products, Expenses, Orders, Tasks, Listings, Templates, Files, Analytics, AI Assistant, Settings
+- [x] **DialogContent hideCloseButton** — Added prop to shadcn dialog for CommandPalette usage
+- [x] **Build Verification** — Clean build, all TypeScript errors resolved
 
 ## Remaining
 
-### Phase 2: Routing & Infrastructure
-- [ ] **TanStack Router** — Replace manual route state in AppShell with proper file-based routing
-- [ ] **Command Palette** — Cmd+K dialog with fuzzy search across modules
-- [ ] **Keyboard Shortcuts** — Cmd+N, Cmd+S, Cmd+/, Cmd+1-9 module navigation
+### Phase: TanStack Router
+- [ ] **TanStack Router** — Replace manual route state in AppShell with proper file-based routing (low priority, current routing works)
 
-### Phase 3: Remaining Feature Modules
-- [ ] **Files Module** — file_links management, OneDrive path browsing, entity linking
-- [ ] **Dashboard** — KPI cards (revenue, orders, margin), recent orders, product status overview, quick actions
-- [ ] **Analytics** — Revenue charts (Recharts), expense breakdown, margin trends, platform comparison
-
-### Phase 4: Remaining Database Queries
-- [ ] **File Links queries** — listFileLinks, createFileLink, deleteFileLink
-- [ ] **AI Jobs queries** — createAiJob, updateAiJob, listAiJobs
-
-### Phase 5: AI Integration
-- [ ] **AI Provider Interface** — AIProvider abstract class, AIOptions, AIResponse types
-- [ ] **ClaudeProvider** — Anthropic API integration
+### Phase: AI Providers
+- [ ] **ClaudeProvider** — Anthropic API integration via Tauri HTTP commands
 - [ ] **OpenAIProvider** — OpenAI API integration
-- [ ] **OllamaProvider** — Local Ollama integration
-- [ ] **AI Service** — Provider registry, fallback logic, job logging
-- [ ] **ListingAssistant Agent** — Generate listing titles, descriptions, bullet points, tags
-- [ ] **AI Assistant UI** — Chat/prompt interface, provider selection, history
+- [ ] **OllamaProvider** — Local Ollama HTTP integration
+- [ ] **API Key Storage** — Secure keychain integration via Tauri plugin
 
-### Phase 6: Services & Integrations
+### Phase: Services & Integrations
 - [ ] **Filesystem Service** — OneDrive folder browsing via Tauri commands
 - [ ] **Export Service** — CSV/JSON export for products, expenses, orders
-- [ ] **Tauri Commands** — Rust commands for file operations
+- [ ] **Tauri Commands** — Rust commands for file operations, keychain access
 
-### Phase 7: Settings & Polish
-- [ ] **Settings Page** — AI provider config (API keys via OS keychain), default values, data management
+### Phase: Polish & Quality
 - [ ] **English translations** — en.json
 - [ ] **Error boundaries** — Global error handling
 - [ ] **Loading states** — Skeleton screens for all modules
+- [ ] **Detail panels for remaining modules** — Expense, Listing, Template detail panels enhancements
+- [ ] **Code splitting** — Dynamic imports to reduce bundle size (currently 1MB+)
 
 ## Architecture Notes
 
 - Each feature module follows: `types.ts` (Zod) → `store.ts` (Zustand) → `queries.ts` (SQL) → `components/`
 - Products module is the reference implementation for all other CRUD modules
-- Manual route state in AppShell.tsx — to be replaced with TanStack Router
+- Manual route state in AppShell.tsx — functional, TanStack Router upgrade optional
 - No Tauri custom commands yet — only tauri-plugin-sql capabilities configured
-- All modules connected in AppShell with route switch pattern
+- All 11 modules connected in AppShell with route switch pattern
+- AI Service uses singleton pattern with provider registry; jobs logged to ai_jobs table
+- Dashboard defaults to "/" route; all modules accessible via sidebar, Cmd+K, and Cmd+1-9
