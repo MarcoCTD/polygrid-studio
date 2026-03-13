@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -60,8 +61,16 @@ interface CreateTemplateDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const DEFAULTS: FormInputs = {
+  name: "",
+  category: "sonstiges",
+  content: "",
+  is_legal: false,
+};
+
 export function CreateTemplateDialog({ open, onOpenChange }: CreateTemplateDialogProps) {
   const { createTemplate } = useTemplateStore();
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -71,31 +80,41 @@ export function CreateTemplateDialog({ open, onOpenChange }: CreateTemplateDialo
     formState: { errors, isSubmitting },
   } = useForm<FormInputs, unknown, FormOutputs>({
     resolver: zodResolver(CreateTemplateSchema),
-    defaultValues: {
-      category: "sonstiges",
-      is_legal: false,
-    },
+    defaultValues: DEFAULTS,
   });
 
+  // Reset form state when dialog opens
+  useEffect(() => {
+    if (open) {
+      reset(DEFAULTS);
+      setSubmitError(null);
+    }
+  }, [open, reset]);
+
   async function onSubmit(data: FormOutputs) {
+    setSubmitError(null);
     try {
       await createTemplate(data);
-      reset();
+      reset(DEFAULTS);
       onOpenChange(false);
     } catch (err) {
       console.error("Failed to create template:", err);
+      setSubmitError(
+        err instanceof Error ? err.message : "Vorlage konnte nicht erstellt werden."
+      );
     }
   }
 
   function handleClose() {
     if (!isSubmitting) {
-      reset();
+      reset(DEFAULTS);
+      setSubmitError(null);
       onOpenChange(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
       <DialogContent className="max-w-[560px]">
         <DialogHeader>
           <DialogTitle>Neue Vorlage</DialogTitle>
@@ -106,6 +125,12 @@ export function CreateTemplateDialog({ open, onOpenChange }: CreateTemplateDialo
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4 px-6 py-4">
+            {submitError && (
+              <div className="rounded-md border border-[--accent-danger]/20 bg-[--accent-danger-subtle] px-3 py-2 text-xs text-[--accent-danger]">
+                {submitError}
+              </div>
+            )}
+
             {/* Name */}
             <FieldWrap label="Name" required error={errors.name?.message}>
               <Input

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -62,8 +63,21 @@ interface CreateExpenseDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+function getDefaults(): FormInputs {
+  return {
+    date: new Date().toISOString().slice(0, 10),
+    amount_gross: "",
+    vendor: "",
+    category: "material",
+    tax_relevant: true,
+    receipt_attached: false,
+    recurring: false,
+  };
+}
+
 export function CreateExpenseDialog({ open, onOpenChange }: CreateExpenseDialogProps) {
   const { createExpense } = useExpenseStore();
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -73,34 +87,41 @@ export function CreateExpenseDialog({ open, onOpenChange }: CreateExpenseDialogP
     formState: { errors, isSubmitting },
   } = useForm<FormInputs, unknown, FormOutputs>({
     resolver: zodResolver(CreateExpenseSchema),
-    defaultValues: {
-      date: new Date().toISOString().slice(0, 10),
-      category: "material",
-      tax_relevant: true,
-      receipt_attached: false,
-      recurring: false,
-    },
+    defaultValues: getDefaults(),
   });
 
+  // Reset form state when dialog opens
+  useEffect(() => {
+    if (open) {
+      reset(getDefaults());
+      setSubmitError(null);
+    }
+  }, [open, reset]);
+
   async function onSubmit(data: FormOutputs) {
+    setSubmitError(null);
     try {
       await createExpense(data);
-      reset();
+      reset(getDefaults());
       onOpenChange(false);
     } catch (err) {
       console.error("Failed to create expense:", err);
+      setSubmitError(
+        err instanceof Error ? err.message : "Ausgabe konnte nicht erstellt werden."
+      );
     }
   }
 
   function handleClose() {
     if (!isSubmitting) {
-      reset();
+      reset(getDefaults());
+      setSubmitError(null);
       onOpenChange(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
       <DialogContent className="max-w-[560px]">
         <DialogHeader>
           <DialogTitle>Neue Ausgabe</DialogTitle>
@@ -111,6 +132,12 @@ export function CreateExpenseDialog({ open, onOpenChange }: CreateExpenseDialogP
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4 px-6 py-4">
+            {submitError && (
+              <div className="rounded-md border border-[--accent-danger]/20 bg-[--accent-danger-subtle] px-3 py-2 text-xs text-[--accent-danger]">
+                {submitError}
+              </div>
+            )}
+
             {/* Datum + Betrag */}
             <div className="grid grid-cols-2 gap-3">
               <FieldWrap label="Datum" required error={errors.date?.message}>

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -25,21 +26,25 @@ import {
   PRODUCT_STATUSES,
   MATERIAL_TYPES,
 } from "../types";
-
-type FormInputs = z.input<typeof CreateProductSchema>;
-type FormOutputs = z.output<typeof CreateProductSchema>;
 import { STATUS_LABELS } from "./StatusBadge";
 import { cn } from "@/lib/utils";
 
-interface FieldWrapProps {
+type FormInputs = z.input<typeof CreateProductSchema>;
+type FormOutputs = z.output<typeof CreateProductSchema>;
+
+function FieldWrap({
+  label,
+  required,
+  error,
+  children,
+  className,
+}: {
   label: string;
   required?: boolean;
   error?: string;
   children: React.ReactNode;
   className?: string;
-}
-
-function FieldWrap({ label, required, error, children, className }: FieldWrapProps) {
+}) {
   return (
     <div className={cn("space-y-1.5", className)}>
       <Label>
@@ -57,8 +62,16 @@ interface CreateProductDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const DEFAULTS: FormInputs = {
+  name: "",
+  category: "",
+  status: "idea",
+  material_type: "PLA",
+};
+
 export function CreateProductDialog({ open, onOpenChange }: CreateProductDialogProps) {
   const { createProduct } = useProductStore();
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -68,31 +81,41 @@ export function CreateProductDialog({ open, onOpenChange }: CreateProductDialogP
     formState: { errors, isSubmitting },
   } = useForm<FormInputs, unknown, FormOutputs>({
     resolver: zodResolver(CreateProductSchema),
-    defaultValues: {
-      status: "idea",
-      material_type: "PLA",
-    },
+    defaultValues: DEFAULTS,
   });
 
+  // Reset form state when dialog opens
+  useEffect(() => {
+    if (open) {
+      reset(DEFAULTS);
+      setSubmitError(null);
+    }
+  }, [open, reset]);
+
   async function onSubmit(data: FormOutputs) {
+    setSubmitError(null);
     try {
       await createProduct(data);
-      reset();
+      reset(DEFAULTS);
       onOpenChange(false);
     } catch (err) {
       console.error("Failed to create product:", err);
+      setSubmitError(
+        err instanceof Error ? err.message : "Produkt konnte nicht erstellt werden."
+      );
     }
   }
 
   function handleClose() {
     if (!isSubmitting) {
-      reset();
+      reset(DEFAULTS);
+      setSubmitError(null);
       onOpenChange(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
       <DialogContent className="max-w-[560px]">
         <DialogHeader>
           <DialogTitle>Neues Produkt</DialogTitle>
@@ -103,6 +126,12 @@ export function CreateProductDialog({ open, onOpenChange }: CreateProductDialogP
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4 px-6 py-4">
+            {submitError && (
+              <div className="rounded-md border border-[--accent-danger]/20 bg-[--accent-danger-subtle] px-3 py-2 text-xs text-[--accent-danger]">
+                {submitError}
+              </div>
+            )}
+
             {/* Name + Kurzname */}
             <div className="grid grid-cols-[1fr_160px] gap-3">
               <FieldWrap label="Name" required error={errors.name?.message}>

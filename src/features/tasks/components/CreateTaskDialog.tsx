@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -60,8 +61,15 @@ interface CreateTaskDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const DEFAULTS: FormInputs = {
+  title: "",
+  priority: "medium",
+  status: "todo",
+};
+
 export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) {
   const { createTask } = useTaskStore();
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -71,31 +79,41 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
     formState: { errors, isSubmitting },
   } = useForm<FormInputs, unknown, FormOutputs>({
     resolver: zodResolver(CreateTaskSchema),
-    defaultValues: {
-      priority: "medium",
-      status: "todo",
-    },
+    defaultValues: DEFAULTS,
   });
 
+  // Reset form state when dialog opens
+  useEffect(() => {
+    if (open) {
+      reset(DEFAULTS);
+      setSubmitError(null);
+    }
+  }, [open, reset]);
+
   async function onSubmit(data: FormOutputs) {
+    setSubmitError(null);
     try {
       await createTask(data);
-      reset();
+      reset(DEFAULTS);
       onOpenChange(false);
     } catch (err) {
       console.error("Failed to create task:", err);
+      setSubmitError(
+        err instanceof Error ? err.message : "Aufgabe konnte nicht erstellt werden."
+      );
     }
   }
 
   function handleClose() {
     if (!isSubmitting) {
-      reset();
+      reset(DEFAULTS);
+      setSubmitError(null);
       onOpenChange(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
       <DialogContent className="max-w-[480px]">
         <DialogHeader>
           <DialogTitle>Neue Aufgabe</DialogTitle>
@@ -106,6 +124,12 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4 px-6 py-4">
+            {submitError && (
+              <div className="rounded-md border border-[--accent-danger]/20 bg-[--accent-danger-subtle] px-3 py-2 text-xs text-[--accent-danger]">
+                {submitError}
+              </div>
+            )}
+
             {/* Titel */}
             <FieldWrap label="Titel" required error={errors.title?.message}>
               <Input
