@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -63,8 +64,21 @@ interface CreateOrderDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+function getDefaults(): FormInputs {
+  return {
+    order_date: new Date().toISOString().slice(0, 10),
+    platform: "Etsy",
+    status: "ordered",
+    payment_status: "pending",
+    quantity: 1,
+    sale_price: "",
+    customer_name: "",
+  };
+}
+
 export function CreateOrderDialog({ open, onOpenChange }: CreateOrderDialogProps) {
   const { createOrder } = useOrderStore();
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -74,34 +88,41 @@ export function CreateOrderDialog({ open, onOpenChange }: CreateOrderDialogProps
     formState: { errors, isSubmitting },
   } = useForm<FormInputs, unknown, FormOutputs>({
     resolver: zodResolver(CreateOrderSchema),
-    defaultValues: {
-      order_date: new Date().toISOString().slice(0, 10),
-      platform: "Etsy",
-      status: "ordered",
-      payment_status: "pending",
-      quantity: 1,
-    },
+    defaultValues: getDefaults(),
   });
 
+  // Reset form state when dialog opens
+  useEffect(() => {
+    if (open) {
+      reset(getDefaults());
+      setSubmitError(null);
+    }
+  }, [open, reset]);
+
   async function onSubmit(data: FormOutputs) {
+    setSubmitError(null);
     try {
       await createOrder(data);
-      reset();
+      reset(getDefaults());
       onOpenChange(false);
     } catch (err) {
       console.error("Failed to create order:", err);
+      setSubmitError(
+        err instanceof Error ? err.message : "Auftrag konnte nicht erstellt werden."
+      );
     }
   }
 
   function handleClose() {
     if (!isSubmitting) {
-      reset();
+      reset(getDefaults());
+      setSubmitError(null);
       onOpenChange(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
       <DialogContent className="max-w-[560px]">
         <DialogHeader>
           <DialogTitle>Neuer Auftrag</DialogTitle>
@@ -112,6 +133,12 @@ export function CreateOrderDialog({ open, onOpenChange }: CreateOrderDialogProps
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4 px-6 py-4">
+            {submitError && (
+              <div className="rounded-md border border-[--accent-danger]/20 bg-[--accent-danger-subtle] px-3 py-2 text-xs text-[--accent-danger]">
+                {submitError}
+              </div>
+            )}
+
             {/* Datum + Plattform */}
             <div className="grid grid-cols-2 gap-3">
               <FieldWrap label="Bestelldatum" required error={errors.order_date?.message}>

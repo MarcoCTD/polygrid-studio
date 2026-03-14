@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -29,7 +30,6 @@ import {
   LISTING_LANGUAGES,
 } from "../types";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
 
 type FormInputs = z.input<typeof CreateListingSchema>;
 type FormOutputs = z.output<typeof CreateListingSchema>;
@@ -69,9 +69,21 @@ const LANGUAGE_LABELS: Record<string, string> = {
   en: "Englisch",
 };
 
+function getDefaults(): FormInputs {
+  return {
+    product_id: "",
+    title: "",
+    platform: "Etsy",
+    price: "",
+    status: "draft",
+    language: "de",
+  };
+}
+
 export function CreateListingDialog({ open, onOpenChange }: CreateListingDialogProps) {
   const { createListing } = useListingStore();
   const { products, fetchProducts } = useProductStore();
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && products.length === 0) {
@@ -87,32 +99,41 @@ export function CreateListingDialog({ open, onOpenChange }: CreateListingDialogP
     formState: { errors, isSubmitting },
   } = useForm<FormInputs, unknown, FormOutputs>({
     resolver: zodResolver(CreateListingSchema),
-    defaultValues: {
-      platform: "Etsy",
-      status: "draft",
-      language: "de",
-    },
+    defaultValues: getDefaults(),
   });
 
+  // Reset form state when dialog opens
+  useEffect(() => {
+    if (open) {
+      reset(getDefaults());
+      setSubmitError(null);
+    }
+  }, [open, reset]);
+
   async function onSubmit(data: FormOutputs) {
+    setSubmitError(null);
     try {
       await createListing(data);
-      reset();
+      reset(getDefaults());
       onOpenChange(false);
     } catch (err) {
       console.error("Failed to create listing:", err);
+      setSubmitError(
+        err instanceof Error ? err.message : "Listing konnte nicht erstellt werden."
+      );
     }
   }
 
   function handleClose() {
     if (!isSubmitting) {
-      reset();
+      reset(getDefaults());
+      setSubmitError(null);
       onOpenChange(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
       <DialogContent className="max-w-[560px]">
         <DialogHeader>
           <DialogTitle>Neues Listing</DialogTitle>
@@ -123,6 +144,12 @@ export function CreateListingDialog({ open, onOpenChange }: CreateListingDialogP
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4 px-6 py-4">
+            {submitError && (
+              <div className="rounded-md border border-[--accent-danger]/20 bg-[--accent-danger-subtle] px-3 py-2 text-xs text-[--accent-danger]">
+                {submitError}
+              </div>
+            )}
+
             {/* Produkt */}
             <FieldWrap label="Produkt" required error={errors.product_id?.message}>
               <Controller
