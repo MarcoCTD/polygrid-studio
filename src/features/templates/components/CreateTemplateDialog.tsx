@@ -136,7 +136,6 @@ export function CreateTemplateDialog({ open, onOpenChange }: CreateTemplateDialo
               <Input
                 {...register("name")}
                 placeholder="z.B. Versandinfo Etsy"
-                autoFocus
               />
             </FieldWrap>
 

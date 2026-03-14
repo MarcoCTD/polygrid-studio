@@ -177,7 +177,6 @@ export function CreateListingDialog({ open, onOpenChange }: CreateListingDialogP
               <Input
                 {...register("title")}
                 placeholder="z.B. Handgefertigte 3D-Druck Vase"
-                autoFocus
               />
             </FieldWrap>
 

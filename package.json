@@ -48,5 +48,8 @@
     "tailwindcss": "^4.2.1",
     "typescript": "~5.8.3",
     "vite": "^7.0.4"
+  },
+  "overrides": {
+    "@radix-ui/react-compose-refs": "1.1.1"
   }
 }

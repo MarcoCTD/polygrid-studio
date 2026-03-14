@@ -137,7 +137,6 @@ export function CreateProductDialog({ open, onOpenChange }: CreateProductDialogP
                 <Input
                   {...register("name")}
                   placeholder="z.B. Blumenvase Modell A"
-                  autoFocus
                 />
               </FieldWrap>
               <FieldWrap label="Kurzname" error={errors.short_name?.message}>

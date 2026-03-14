@@ -135,7 +135,6 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
               <Input
                 {...register("title")}
                 placeholder="z.B. Listing-Fotos aufnehmen"
-                autoFocus
               />
             </FieldWrap>
 

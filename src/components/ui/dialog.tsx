@@ -62,6 +62,11 @@ const DialogContent = React.forwardRef<
         if (isInsideRadixPortal(e.target)) e.preventDefault();
         onFocusOutside?.(e);
       }}
+      onOpenAutoFocus={(e) => {
+        // [FIX] Prevent Radix from auto-focusing elements on open.
+        // This stops the infinite focus loop bug in React 19.
+        e.preventDefault();
+      }}
       className={cn(
         "fixed left-[50%] top-[50%] z-50 w-full max-w-lg translate-x-[-50%] translate-y-[-50%]",
         "rounded-xl border border-[--border] bg-[--card] shadow-xl",

@@ -188,7 +188,6 @@ export function CreateOrderDialog({ open, onOpenChange }: CreateOrderDialogProps
                   step="0.01"
                   min="0"
                   placeholder="0,00"
-                  autoFocus
                 />
               </FieldWrap>
               <FieldWrap label="Menge" error={errors.quantity?.message}>
