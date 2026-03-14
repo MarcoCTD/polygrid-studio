@@ -6,11 +6,17 @@ let _dbPromise: Promise<Database> | null = null;
 
 export function getDb(): Promise<Database> {
   if (!_dbPromise) {
-    _dbPromise = Database.load(DB_PATH).catch((err) => {
-      // Reset so next call retries instead of returning a rejected promise forever
-      _dbPromise = null;
-      throw err;
-    });
+    _dbPromise = Database.load(DB_PATH)
+      .then(async (db) => {
+        // Set PRAGMAs after connection (cannot run inside migration transactions)
+        await db.execute("PRAGMA journal_mode=WAL;", []);
+        await db.execute("PRAGMA foreign_keys=ON;", []);
+        return db;
+      })
+      .catch((err) => {
+        _dbPromise = null;
+        throw err;
+      });
   }
   return _dbPromise;
 }

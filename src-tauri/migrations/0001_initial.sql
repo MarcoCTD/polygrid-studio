@@ -1,8 +1,7 @@
 -- PolyGrid Studio — Initial Schema
 -- All tables include: id (UUID), created_at, updated_at, deleted_at (soft delete)
-
-PRAGMA journal_mode=WAL;
-PRAGMA foreign_keys=ON;
+-- NOTE: PRAGMAs (journal_mode, foreign_keys) are set via Rust on connection init,
+-- NOT here — SQLite PRAGMAs cannot run inside the migration transaction.
 
 -- ── products ──────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS products (
