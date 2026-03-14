@@ -2,13 +2,17 @@ import Database from "@tauri-apps/plugin-sql";
 
 const DB_PATH = "sqlite:polygrid.db";
 
-let _db: Database | null = null;
+let _dbPromise: Promise<Database> | null = null;
 
-export async function getDb(): Promise<Database> {
-  if (!_db) {
-    _db = await Database.load(DB_PATH);
+export function getDb(): Promise<Database> {
+  if (!_dbPromise) {
+    _dbPromise = Database.load(DB_PATH).catch((err) => {
+      // Reset so next call retries instead of returning a rejected promise forever
+      _dbPromise = null;
+      throw err;
+    });
   }
-  return _db;
+  return _dbPromise;
 }
 
 /** Parse a JSON column that may be null/empty → typed array */

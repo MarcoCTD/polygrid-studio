@@ -28,11 +28,24 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { hideCloseButton?: boolean }
->(({ className, children, hideCloseButton, ...props }, ref) => (
+>(({ className, children, hideCloseButton, onPointerDownOutside, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
+      onPointerDownOutside={(e) => {
+        // Prevent dialog from closing when interacting with Select/Dropdown
+        // portals that render outside the Dialog DOM tree (WebKit issue)
+        const target = e.target as HTMLElement;
+        if (
+          target.closest("[data-radix-select-content]") ||
+          target.closest("[data-radix-dropdown-menu-content]") ||
+          target.closest("[data-radix-popper-content-wrapper]")
+        ) {
+          e.preventDefault();
+        }
+        onPointerDownOutside?.(e);
+      }}
       className={cn(
         "fixed left-[50%] top-[50%] z-50 w-full max-w-lg translate-x-[-50%] translate-y-[-50%]",
         "rounded-xl border border-[--border] bg-[--card] shadow-xl",
