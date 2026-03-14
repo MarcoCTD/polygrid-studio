@@ -37,9 +37,16 @@ export const useExpenseStore = create<ExpenseState>((set) => ({
   },
 
   createExpense: async (input) => {
-    const expense = await createExpense(input);
-    set((s) => ({ expenses: [expense, ...s.expenses] }));
-    return expense;
+    try {
+      console.log("[ExpenseStore] createExpense", input.vendor);
+      const expense = await createExpense(input);
+      console.log("[ExpenseStore] Erstellt:", expense.id);
+      set((s) => ({ expenses: [expense, ...s.expenses] }));
+      return expense;
+    } catch (err) {
+      console.error("[ExpenseStore] Fehler:", err);
+      throw err;
+    }
   },
 
   updateExpense: async (id, patch) => {

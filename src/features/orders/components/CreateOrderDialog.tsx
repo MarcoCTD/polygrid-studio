@@ -114,11 +114,10 @@ export function CreateOrderDialog({ open, onOpenChange }: CreateOrderDialogProps
   }
 
   function handleClose() {
-    if (!isSubmitting) {
-      reset(getDefaults());
-      setSubmitError(null);
-      onOpenChange(false);
-    }
+    // Always allow closing — prevents freeze if submission hangs
+    reset(getDefaults());
+    setSubmitError(null);
+    onOpenChange(false);
   }
 
   return (

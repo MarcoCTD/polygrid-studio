@@ -37,9 +37,16 @@ export const useProductStore = create<ProductState>((set) => ({
   },
 
   createProduct: async (input) => {
-    const product = await createProduct(input);
-    set((s) => ({ products: [product, ...s.products] }));
-    return product;
+    try {
+      console.log("[ProductStore] createProduct", input.name);
+      const product = await createProduct(input);
+      console.log("[ProductStore] Erstellt:", product.id);
+      set((s) => ({ products: [product, ...s.products] }));
+      return product;
+    } catch (err) {
+      console.error("[ProductStore] Fehler:", err);
+      throw err;
+    }
   },
 
   updateProduct: async (id, patch) => {

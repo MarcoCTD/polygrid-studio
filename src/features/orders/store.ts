@@ -37,9 +37,16 @@ export const useOrderStore = create<OrderState>((set) => ({
   },
 
   createOrder: async (input) => {
-    const order = await createOrder(input);
-    set((s) => ({ orders: [order, ...s.orders] }));
-    return order;
+    try {
+      console.log("[OrderStore] createOrder", input.platform);
+      const order = await createOrder(input);
+      console.log("[OrderStore] Erstellt:", order.id);
+      set((s) => ({ orders: [order, ...s.orders] }));
+      return order;
+    } catch (err) {
+      console.error("[OrderStore] Fehler:", err);
+      throw err;
+    }
   },
 
   updateOrder: async (id, patch) => {
