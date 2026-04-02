@@ -1,7 +1,10 @@
+import { isTauri } from "@tauri-apps/api/core";
 import Database from "@tauri-apps/plugin-sql";
 
 const DB_PATH = "sqlite:polygrid.db";
 const DB_TIMEOUT_MS = 10_000;
+const TAURI_RUNTIME_ERROR =
+  "Tauri-Runtime nicht verfügbar. Starte die App mit `npm run tauri:dev` oder verwende einen gebauten Desktop-Build.";
 
 let _dbPromise: Promise<Database> | null = null;
 
@@ -19,6 +22,10 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 }
 
 export function getDb(): Promise<Database> {
+  if (!isTauri()) {
+    return Promise.reject(new Error(TAURI_RUNTIME_ERROR));
+  }
+
   if (!_dbPromise) {
     console.log("[DB] Initialisiere Datenbankverbindung…", DB_PATH);
     _dbPromise = withTimeout(Database.load(DB_PATH), DB_TIMEOUT_MS, "Database.load")
