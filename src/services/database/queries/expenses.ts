@@ -1,4 +1,4 @@
-import { getDb, now } from "../db";
+import { dbExecute, dbSelect, now } from "../db";
 import type { Expense, CreateExpenseInput } from "@/features/expenses/types";
 
 interface ExpenseRow {
@@ -35,28 +35,28 @@ function rowToExpense(row: ExpenseRow): Expense {
 }
 
 export async function listExpenses(): Promise<Expense[]> {
-  const db = await getDb();
-  const rows = await db.select<ExpenseRow[]>(
-    "SELECT * FROM expenses WHERE deleted_at IS NULL ORDER BY date DESC, created_at DESC"
+  const rows = await dbSelect<ExpenseRow[]>(
+    "SELECT * FROM expenses WHERE deleted_at IS NULL ORDER BY date DESC, created_at DESC",
+    [],
+    "expenses.list"
   );
   return rows.map(rowToExpense);
 }
 
 export async function getExpense(id: string): Promise<Expense | null> {
-  const db = await getDb();
-  const rows = await db.select<ExpenseRow[]>(
+  const rows = await dbSelect<ExpenseRow[]>(
     "SELECT * FROM expenses WHERE id = ? AND deleted_at IS NULL",
-    [id]
+    [id],
+    "expenses.get"
   );
   return rows.length > 0 ? rowToExpense(rows[0]) : null;
 }
 
 export async function createExpense(input: CreateExpenseInput): Promise<Expense> {
-  const db = await getDb();
   const id = crypto.randomUUID();
   const ts = now();
 
-  await db.execute(
+  await dbExecute(
     `INSERT INTO expenses (
       id, created_at, updated_at,
       date, amount_gross, amount_net, tax_amount,
@@ -81,7 +81,8 @@ export async function createExpense(input: CreateExpenseInput): Promise<Expense>
       input.tax_relevant ? 1 : 0,
       input.recurring ? 1 : 0,
       input.notes ?? null,
-    ]
+    ],
+    "expenses.create"
   );
 
   const expense = await getExpense(id);
@@ -93,7 +94,6 @@ export async function updateExpense(
   id: string,
   patch: Partial<CreateExpenseInput>
 ): Promise<Expense> {
-  const db = await getDb();
   const ts = now();
 
   const fields: string[] = [];
@@ -129,9 +129,10 @@ export async function updateExpense(
   fields.push("updated_at = ?");
   values.push(ts, id);
 
-  await db.execute(
+  await dbExecute(
     `UPDATE expenses SET ${fields.join(", ")} WHERE id = ?`,
-    values
+    values,
+    "expenses.update"
   );
 
   const expense = await getExpense(id);
@@ -140,9 +141,9 @@ export async function updateExpense(
 }
 
 export async function softDeleteExpense(id: string): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await dbExecute(
     "UPDATE expenses SET deleted_at = ?, updated_at = ? WHERE id = ?",
-    [now(), now(), id]
+    [now(), now(), id],
+    "expenses.delete"
   );
 }

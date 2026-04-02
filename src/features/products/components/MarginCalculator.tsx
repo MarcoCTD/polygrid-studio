@@ -89,9 +89,10 @@ function MarginRow({ label, value, muted, bold }: MarginRowProps) {
 interface MarginCalculatorProps {
   product: Product;
   onSaveMargin?: (margin: number) => void;
+  isSaving?: boolean;
 }
 
-export function MarginCalculator({ product, onSaveMargin }: MarginCalculatorProps) {
+export function MarginCalculator({ product, onSaveMargin, isSaving = false }: MarginCalculatorProps) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [salePrice, setSalePrice] = useState<number>(product.target_price ?? 0);
   const [shipping, setShipping] = useState<number>(3.99);
@@ -240,11 +241,13 @@ export function MarginCalculator({ product, onSaveMargin }: MarginCalculatorProp
           variant="outline"
           className="w-full"
           onClick={() => onSaveMargin(result.margin_percent)}
+          disabled={isSaving}
         >
-          Marge speichern ({fmt(result.margin_percent, 1)} %)
+          {isSaving
+            ? "Speichert..."
+            : `Marge speichern (${fmt(result.margin_percent, 1)} %)`}
         </Button>
       )}
     </div>
   );
 }
-

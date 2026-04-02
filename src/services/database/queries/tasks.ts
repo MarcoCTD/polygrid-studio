@@ -1,4 +1,4 @@
-import { getDb, now } from "../db";
+import { dbExecute, dbSelect, now } from "../db";
 import type { Task, CreateTaskInput } from "@/features/tasks/types";
 
 interface TaskRow {
@@ -29,28 +29,28 @@ function rowToTask(row: TaskRow): Task {
 }
 
 export async function listTasks(): Promise<Task[]> {
-  const db = await getDb();
-  const rows = await db.select<TaskRow[]>(
-    "SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY CASE status WHEN 'in_progress' THEN 0 WHEN 'todo' THEN 1 WHEN 'done' THEN 2 WHEN 'cancelled' THEN 3 END, CASE priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END, created_at DESC"
+  const rows = await dbSelect<TaskRow[]>(
+    "SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY CASE status WHEN 'in_progress' THEN 0 WHEN 'todo' THEN 1 WHEN 'done' THEN 2 WHEN 'cancelled' THEN 3 END, CASE priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END, created_at DESC",
+    [],
+    "tasks.list"
   );
   return rows.map(rowToTask);
 }
 
 export async function getTask(id: string): Promise<Task | null> {
-  const db = await getDb();
-  const rows = await db.select<TaskRow[]>(
+  const rows = await dbSelect<TaskRow[]>(
     "SELECT * FROM tasks WHERE id = ? AND deleted_at IS NULL",
-    [id]
+    [id],
+    "tasks.get"
   );
   return rows.length > 0 ? rowToTask(rows[0]) : null;
 }
 
 export async function createTask(input: CreateTaskInput): Promise<Task> {
-  const db = await getDb();
   const id = crypto.randomUUID();
   const ts = now();
 
-  await db.execute(
+  await dbExecute(
     `INSERT INTO tasks (
       id, created_at, updated_at,
       title, description, priority, status,
@@ -66,7 +66,8 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
       input.product_id ?? null,
       input.order_id ?? null,
       input.listing_id ?? null,
-    ]
+    ],
+    "tasks.create"
   );
 
   const task = await getTask(id);
@@ -78,7 +79,6 @@ export async function updateTask(
   id: string,
   patch: Partial<CreateTaskInput> & { completed_at?: string | null }
 ): Promise<Task> {
-  const db = await getDb();
   const ts = now();
 
   const fields: string[] = [];
@@ -114,9 +114,10 @@ export async function updateTask(
   fields.push("updated_at = ?");
   values.push(ts, id);
 
-  await db.execute(
+  await dbExecute(
     `UPDATE tasks SET ${fields.join(", ")} WHERE id = ?`,
-    values
+    values,
+    "tasks.update"
   );
 
   const task = await getTask(id);
@@ -125,9 +126,9 @@ export async function updateTask(
 }
 
 export async function softDeleteTask(id: string): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await dbExecute(
     "UPDATE tasks SET deleted_at = ?, updated_at = ? WHERE id = ?",
-    [now(), now(), id]
+    [now(), now(), id],
+    "tasks.delete"
   );
 }

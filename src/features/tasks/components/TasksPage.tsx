@@ -41,11 +41,12 @@ function formatDueDate(iso: string): { text: string; overdue: boolean } {
 interface TaskItemProps {
   task: Task;
   selected: boolean;
+  disabled?: boolean;
   onSelect: () => void;
   onToggle: () => void;
 }
 
-function TaskItem({ task, selected, onSelect, onToggle }: TaskItemProps) {
+function TaskItem({ task, selected, disabled = false, onSelect, onToggle }: TaskItemProps) {
   const dueInfo = task.due_date ? formatDueDate(task.due_date) : null;
   const isDone = task.status === "done" || task.status === "cancelled";
 
@@ -60,6 +61,7 @@ function TaskItem({ task, selected, onSelect, onToggle }: TaskItemProps) {
     >
       <button
         className="mt-0.5 shrink-0"
+        disabled={disabled}
         onClick={(e) => {
           e.stopPropagation();
           onToggle();
@@ -98,6 +100,8 @@ export function TasksPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
   const [tab, setTab] = useState<FilterTab>("all");
+  const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTasks();
@@ -114,11 +118,25 @@ export function TasksPage() {
     return t.title.toLowerCase().includes(q) || (t.description?.toLowerCase().includes(q) ?? false);
   });
 
-  function handleToggle(task: Task) {
-    if (task.status === "done") {
-      updateTask(task.id, { status: "todo", completed_at: null });
-    } else {
-      updateTask(task.id, { status: "done" });
+  async function handleToggle(task: Task) {
+    if (pendingTaskId === task.id) return;
+
+    setActionError(null);
+    setPendingTaskId(task.id);
+
+    try {
+      if (task.status === "done") {
+        await updateTask(task.id, { status: "todo", completed_at: null });
+      } else {
+        await updateTask(task.id, { status: "done" });
+      }
+    } catch (err) {
+      console.error("Failed to toggle task:", err);
+      setActionError(
+        err instanceof Error ? err.message : "Aufgabenstatus konnte nicht aktualisiert werden."
+      );
+    } finally {
+      setPendingTaskId(null);
     }
   }
 
@@ -212,6 +230,13 @@ export function TasksPage() {
         </div>
       ) : (
         <ScrollArea className="flex-1">
+          {actionError && (
+            <div className="px-6 pt-4">
+              <p className="rounded-lg border border-[--accent-danger-subtle] bg-[--accent-danger-subtle] px-4 py-2 text-sm text-[--accent-danger]">
+                Fehler: {actionError}
+              </p>
+            </div>
+          )}
           {filtered.length === 0 ? (
             <div className="flex h-48 items-center justify-center">
               <p className="text-sm text-[--muted-foreground]">
@@ -224,6 +249,7 @@ export function TasksPage() {
                 key={task.id}
                 task={task}
                 selected={selectedTaskId === task.id}
+                disabled={pendingTaskId === task.id}
                 onSelect={() => selectTask(selectedTaskId === task.id ? null : task.id)}
                 onToggle={() => handleToggle(task)}
               />

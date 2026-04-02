@@ -1,4 +1,4 @@
-import { getDb, parseJsonArray, toJsonString, now } from "../db";
+import { dbExecute, dbSelect, parseJsonArray, toJsonString, now } from "../db";
 import type { Product, CreateProductInput } from "@/features/products/types";
 
 // ── Row type from SQLite (all values are primitives) ─────────────────────────
@@ -50,28 +50,28 @@ function rowToProduct(row: ProductRow): Product {
 }
 
 export async function listProducts(): Promise<Product[]> {
-  const db = await getDb();
-  const rows = await db.select<ProductRow[]>(
-    "SELECT * FROM products WHERE deleted_at IS NULL ORDER BY created_at DESC"
+  const rows = await dbSelect<ProductRow[]>(
+    "SELECT * FROM products WHERE deleted_at IS NULL ORDER BY created_at DESC",
+    [],
+    "products.list"
   );
   return rows.map(rowToProduct);
 }
 
 export async function getProduct(id: string): Promise<Product | null> {
-  const db = await getDb();
-  const rows = await db.select<ProductRow[]>(
+  const rows = await dbSelect<ProductRow[]>(
     "SELECT * FROM products WHERE id = ? AND deleted_at IS NULL",
-    [id]
+    [id],
+    "products.get"
   );
   return rows.length > 0 ? rowToProduct(rows[0]) : null;
 }
 
 export async function createProduct(input: CreateProductInput): Promise<Product> {
-  const db = await getDb();
   const id = crypto.randomUUID();
   const ts = now();
 
-  await db.execute(
+  await dbExecute(
     `INSERT INTO products (
       id, created_at, updated_at,
       name, short_name, category, material_type, status,
@@ -95,7 +95,8 @@ export async function createProduct(input: CreateProductInput): Promise<Product>
       input.shipping_class ?? null,
       input.license_risk ?? null,
       input.notes ?? null,
-    ]
+    ],
+    "products.create"
   );
 
   const product = await getProduct(id);
@@ -107,7 +108,6 @@ export async function updateProduct(
   id: string,
   patch: Partial<CreateProductInput> & { estimated_margin?: number | null; platforms?: string[] }
 ): Promise<Product> {
-  const db = await getDb();
   const ts = now();
 
   const fields: string[] = [];
@@ -144,9 +144,10 @@ export async function updateProduct(
   fields.push("updated_at = ?");
   values.push(ts, id);
 
-  await db.execute(
+  await dbExecute(
     `UPDATE products SET ${fields.join(", ")} WHERE id = ?`,
-    values
+    values,
+    "products.update"
   );
 
   const product = await getProduct(id);
@@ -155,9 +156,9 @@ export async function updateProduct(
 }
 
 export async function softDeleteProduct(id: string): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await dbExecute(
     "UPDATE products SET deleted_at = ?, updated_at = ? WHERE id = ?",
-    [now(), now(), id]
+    [now(), now(), id],
+    "products.delete"
   );
 }

@@ -50,10 +50,26 @@ interface OrderDetailPanelProps {
 export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
   const { selectOrder, deleteOrder } = useOrderStore();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   async function handleDelete() {
-    await deleteOrder(order.id);
-    setConfirmDelete(false);
+    if (isDeleting) return;
+
+    setActionError(null);
+    setIsDeleting(true);
+
+    try {
+      await deleteOrder(order.id);
+      setConfirmDelete(false);
+    } catch (err) {
+      console.error("Failed to delete order:", err);
+      setActionError(
+        err instanceof Error ? err.message : "Auftrag konnte nicht gelöscht werden."
+      );
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   const paymentVariant =
@@ -96,6 +112,11 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
       {/* Content */}
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-5">
+          {actionError && (
+            <div className="rounded-md border border-[--accent-danger]/20 bg-[--accent-danger-subtle] px-3 py-2 text-xs text-[--accent-danger]">
+              {actionError}
+            </div>
+          )}
           <Section title="Bestellung">
             <Field label="Bestell-Nr." value={order.external_order_id} />
             <Field label="Plattform" value={order.platform} />
@@ -168,8 +189,9 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
               size="sm"
               className="gap-1 bg-[--accent-danger] text-white hover:bg-[--accent-danger-hover]"
               onClick={handleDelete}
+              disabled={isDeleting}
             >
-              Löschen
+              {isDeleting ? "Löschen..." : "Löschen"}
             </Button>
           </div>
         ) : (
@@ -178,6 +200,7 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
             size="icon"
             className="text-[--muted-foreground] hover:text-[--accent-danger]"
             onClick={() => setConfirmDelete(true)}
+            disabled={isDeleting}
           >
             <Trash2 className="size-4" />
           </Button>

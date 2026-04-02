@@ -1,4 +1,4 @@
-import { getDb, parseJsonArray, toJsonString, now } from "../db";
+import { dbExecute, dbSelect, parseJsonArray, toJsonString, now } from "../db";
 import type { Listing, CreateListingInput } from "@/features/listings/types";
 
 interface ListingRow {
@@ -35,28 +35,28 @@ function rowToListing(row: ListingRow): Listing {
 }
 
 export async function listListings(): Promise<Listing[]> {
-  const db = await getDb();
-  const rows = await db.select<ListingRow[]>(
-    "SELECT * FROM listings WHERE deleted_at IS NULL ORDER BY created_at DESC"
+  const rows = await dbSelect<ListingRow[]>(
+    "SELECT * FROM listings WHERE deleted_at IS NULL ORDER BY created_at DESC",
+    [],
+    "listings.list"
   );
   return rows.map(rowToListing);
 }
 
 export async function getListing(id: string): Promise<Listing | null> {
-  const db = await getDb();
-  const rows = await db.select<ListingRow[]>(
+  const rows = await dbSelect<ListingRow[]>(
     "SELECT * FROM listings WHERE id = ? AND deleted_at IS NULL",
-    [id]
+    [id],
+    "listings.get"
   );
   return rows.length > 0 ? rowToListing(rows[0]) : null;
 }
 
 export async function createListing(input: CreateListingInput): Promise<Listing> {
-  const db = await getDb();
   const id = crypto.randomUUID();
   const ts = now();
 
-  await db.execute(
+  await dbExecute(
     `INSERT INTO listings (
       id, created_at, updated_at,
       product_id, platform, title, short_description, long_description,
@@ -77,7 +77,8 @@ export async function createListing(input: CreateListingInput): Promise<Listing>
       input.shipping_info ?? null,
       input.seo_notes ?? null,
       input.platform_specific_notes ?? null,
-    ]
+    ],
+    "listings.create"
   );
 
   const listing = await getListing(id);
@@ -93,7 +94,6 @@ export async function updateListing(
     variants?: string[];
   }
 ): Promise<Listing> {
-  const db = await getDb();
   const ts = now();
 
   const fields: string[] = [];
@@ -129,9 +129,10 @@ export async function updateListing(
   fields.push("updated_at = ?");
   values.push(ts, id);
 
-  await db.execute(
+  await dbExecute(
     `UPDATE listings SET ${fields.join(", ")} WHERE id = ?`,
-    values
+    values,
+    "listings.update"
   );
 
   const listing = await getListing(id);
@@ -140,9 +141,9 @@ export async function updateListing(
 }
 
 export async function softDeleteListing(id: string): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await dbExecute(
     "UPDATE listings SET deleted_at = ?, updated_at = ? WHERE id = ?",
-    [now(), now(), id]
+    [now(), now(), id],
+    "listings.delete"
   );
 }

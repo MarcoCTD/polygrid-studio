@@ -106,11 +106,10 @@ export function CreateTemplateDialog({ open, onOpenChange }: CreateTemplateDialo
   }
 
   function handleClose() {
-    if (!isSubmitting) {
-      reset(DEFAULTS);
-      setSubmitError(null);
-      onOpenChange(false);
-    }
+    // Always allow closing — prevents freeze if submission hangs
+    reset(DEFAULTS);
+    setSubmitError(null);
+    onOpenChange(false);
   }
 
   return (
