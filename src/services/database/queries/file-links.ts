@@ -1,4 +1,4 @@
-import { getDb, now } from "../db";
+import { dbExecute, dbSelect, now } from "../db";
 import type { FileLink, CreateFileLink, EntityType } from "@/features/files/types";
 
 // ── Row shape from SQLite ────────────────────────────────────────────────────
@@ -36,9 +36,10 @@ function rowToFileLink(row: FileLinkRow): FileLink {
 // ── Queries ──────────────────────────────────────────────────────────────────
 
 export async function listFileLinks(): Promise<FileLink[]> {
-  const db = await getDb();
-  const rows = await db.select<FileLinkRow[]>(
-    `SELECT * FROM file_links WHERE deleted_at IS NULL ORDER BY created_at DESC`
+  const rows = await dbSelect<FileLinkRow[]>(
+    `SELECT * FROM file_links WHERE deleted_at IS NULL ORDER BY created_at DESC`,
+    [],
+    "fileLinks.list"
   );
   return rows.map(rowToFileLink);
 }
@@ -47,31 +48,30 @@ export async function listFileLinksByEntity(
   entityType: EntityType,
   entityId: string
 ): Promise<FileLink[]> {
-  const db = await getDb();
-  const rows = await db.select<FileLinkRow[]>(
+  const rows = await dbSelect<FileLinkRow[]>(
     `SELECT * FROM file_links
      WHERE deleted_at IS NULL AND entity_type = ? AND entity_id = ?
      ORDER BY file_type, file_name`,
-    [entityType, entityId]
+    [entityType, entityId],
+    "fileLinks.listByEntity"
   );
   return rows.map(rowToFileLink);
 }
 
 export async function getFileLink(id: string): Promise<FileLink | null> {
-  const db = await getDb();
-  const rows = await db.select<FileLinkRow[]>(
+  const rows = await dbSelect<FileLinkRow[]>(
     `SELECT * FROM file_links WHERE id = ? AND deleted_at IS NULL`,
-    [id]
+    [id],
+    "fileLinks.get"
   );
   return rows.length > 0 ? rowToFileLink(rows[0]) : null;
 }
 
 export async function createFileLink(data: CreateFileLink): Promise<FileLink> {
-  const db = await getDb();
   const id = crypto.randomUUID();
   const ts = now();
 
-  await db.execute(
+  await dbExecute(
     `INSERT INTO file_links (id, entity_type, entity_id, file_type, file_path, file_name, file_size_bytes, notes, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
@@ -85,7 +85,8 @@ export async function createFileLink(data: CreateFileLink): Promise<FileLink> {
       data.notes ?? null,
       ts,
       ts,
-    ]
+    ],
+    "fileLinks.create"
   );
 
   const created = await getFileLink(id);
@@ -94,18 +95,19 @@ export async function createFileLink(data: CreateFileLink): Promise<FileLink> {
 }
 
 export async function deleteFileLink(id: string): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await dbExecute(
     `UPDATE file_links SET deleted_at = ?, updated_at = ? WHERE id = ?`,
-    [now(), now(), id]
+    [now(), now(), id],
+    "fileLinks.delete"
   );
 }
 
 export async function getFileLinkCounts(): Promise<Record<string, number>> {
-  const db = await getDb();
-  const rows = await db.select<{ entity_type: string; count: number }[]>(
+  const rows = await dbSelect<{ entity_type: string; count: number }[]>(
     `SELECT entity_type, COUNT(*) as count FROM file_links
-     WHERE deleted_at IS NULL GROUP BY entity_type`
+     WHERE deleted_at IS NULL GROUP BY entity_type`,
+    [],
+    "fileLinks.counts"
   );
   const counts: Record<string, number> = {};
   for (const row of rows) {

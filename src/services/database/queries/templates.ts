@@ -1,4 +1,4 @@
-import { getDb, parseJsonArray, toJsonString, now } from "../db";
+import { dbExecute, dbSelect, parseJsonArray, toJsonString, now } from "../db";
 import type { Template, CreateTemplateInput } from "@/features/templates/types";
 
 interface TemplateRow {
@@ -28,28 +28,28 @@ function rowToTemplate(row: TemplateRow): Template {
 }
 
 export async function listTemplates(): Promise<Template[]> {
-  const db = await getDb();
-  const rows = await db.select<TemplateRow[]>(
-    "SELECT * FROM templates WHERE deleted_at IS NULL ORDER BY category, name"
+  const rows = await dbSelect<TemplateRow[]>(
+    "SELECT * FROM templates WHERE deleted_at IS NULL ORDER BY category, name",
+    [],
+    "templates.list"
   );
   return rows.map(rowToTemplate);
 }
 
 export async function getTemplate(id: string): Promise<Template | null> {
-  const db = await getDb();
-  const rows = await db.select<TemplateRow[]>(
+  const rows = await dbSelect<TemplateRow[]>(
     "SELECT * FROM templates WHERE id = ? AND deleted_at IS NULL",
-    [id]
+    [id],
+    "templates.get"
   );
   return rows.length > 0 ? rowToTemplate(rows[0]) : null;
 }
 
 export async function createTemplate(input: CreateTemplateInput): Promise<Template> {
-  const db = await getDb();
   const id = crypto.randomUUID();
   const ts = now();
 
-  await db.execute(
+  await dbExecute(
     `INSERT INTO templates (
       id, created_at, updated_at,
       name, category, content, is_legal, notes, version
@@ -61,7 +61,8 @@ export async function createTemplate(input: CreateTemplateInput): Promise<Templa
       input.content,
       input.is_legal ? 1 : 0,
       input.notes ?? null,
-    ]
+    ],
+    "templates.create"
   );
 
   const template = await getTemplate(id);
@@ -76,7 +77,6 @@ export async function updateTemplate(
     variables?: string[];
   }
 ): Promise<Template> {
-  const db = await getDb();
   const ts = now();
 
   const fields: string[] = [];
@@ -108,9 +108,10 @@ export async function updateTemplate(
   fields.push("updated_at = ?");
   values.push(ts, id);
 
-  await db.execute(
+  await dbExecute(
     `UPDATE templates SET ${fields.join(", ")} WHERE id = ?`,
-    values
+    values,
+    "templates.update"
   );
 
   const template = await getTemplate(id);
@@ -119,9 +120,9 @@ export async function updateTemplate(
 }
 
 export async function softDeleteTemplate(id: string): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await dbExecute(
     "UPDATE templates SET deleted_at = ?, updated_at = ? WHERE id = ?",
-    [now(), now(), id]
+    [now(), now(), id],
+    "templates.delete"
   );
 }

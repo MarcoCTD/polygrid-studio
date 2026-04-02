@@ -24,8 +24,8 @@ export function getDb(): Promise<Database> {
     _dbPromise = withTimeout(Database.load(DB_PATH), DB_TIMEOUT_MS, "Database.load")
       .then(async (db) => {
         console.log("[DB] Verbindung hergestellt, setze PRAGMAs…");
-        await db.execute("PRAGMA journal_mode=WAL;", []);
-        await db.execute("PRAGMA foreign_keys=ON;", []);
+        await withTimeout(db.execute("PRAGMA journal_mode=WAL;", []), DB_TIMEOUT_MS, "PRAGMA journal_mode");
+        await withTimeout(db.execute("PRAGMA foreign_keys=ON;", []), DB_TIMEOUT_MS, "PRAGMA foreign_keys");
         console.log("[DB] Datenbank bereit.");
         return db;
       })
@@ -36,6 +36,24 @@ export function getDb(): Promise<Database> {
       });
   }
   return _dbPromise;
+}
+
+export async function dbSelect<T>(
+  query: string,
+  bindValues: unknown[] = [],
+  label = "db.select"
+): Promise<T> {
+  const db = await getDb();
+  return withTimeout(db.select<T>(query, bindValues), DB_TIMEOUT_MS, label);
+}
+
+export async function dbExecute(
+  query: string,
+  bindValues: unknown[] = [],
+  label = "db.execute"
+) {
+  const db = await getDb();
+  return withTimeout(db.execute(query, bindValues), DB_TIMEOUT_MS, label);
 }
 
 /** Parse a JSON column that may be null/empty → typed array */

@@ -1,4 +1,4 @@
-import { getDb, now } from "../db";
+import { dbExecute, dbSelect, now } from "../db";
 import type { Order, CreateOrderInput } from "@/features/orders/types";
 
 interface OrderRow {
@@ -35,28 +35,28 @@ function rowToOrder(row: OrderRow): Order {
 }
 
 export async function listOrders(): Promise<Order[]> {
-  const db = await getDb();
-  const rows = await db.select<OrderRow[]>(
-    "SELECT * FROM orders WHERE deleted_at IS NULL ORDER BY order_date DESC, created_at DESC"
+  const rows = await dbSelect<OrderRow[]>(
+    "SELECT * FROM orders WHERE deleted_at IS NULL ORDER BY order_date DESC, created_at DESC",
+    [],
+    "orders.list"
   );
   return rows.map(rowToOrder);
 }
 
 export async function getOrder(id: string): Promise<Order | null> {
-  const db = await getDb();
-  const rows = await db.select<OrderRow[]>(
+  const rows = await dbSelect<OrderRow[]>(
     "SELECT * FROM orders WHERE id = ? AND deleted_at IS NULL",
-    [id]
+    [id],
+    "orders.get"
   );
   return rows.length > 0 ? rowToOrder(rows[0]) : null;
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<Order> {
-  const db = await getDb();
   const id = crypto.randomUUID();
   const ts = now();
 
-  await db.execute(
+  await dbExecute(
     `INSERT INTO orders (
       id, created_at, updated_at,
       external_order_id, customer_name, platform, product_id, variant,
@@ -82,7 +82,8 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
       input.tracking_number ?? null,
       input.order_date,
       input.notes ?? null,
-    ]
+    ],
+    "orders.create"
   );
 
   const order = await getOrder(id);
@@ -94,7 +95,6 @@ export async function updateOrder(
   id: string,
   patch: Partial<CreateOrderInput>
 ): Promise<Order> {
-  const db = await getDb();
   const ts = now();
 
   const fields: string[] = [];
@@ -131,9 +131,10 @@ export async function updateOrder(
   fields.push("updated_at = ?");
   values.push(ts, id);
 
-  await db.execute(
+  await dbExecute(
     `UPDATE orders SET ${fields.join(", ")} WHERE id = ?`,
-    values
+    values,
+    "orders.update"
   );
 
   const order = await getOrder(id);
@@ -142,9 +143,9 @@ export async function updateOrder(
 }
 
 export async function softDeleteOrder(id: string): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await dbExecute(
     "UPDATE orders SET deleted_at = ?, updated_at = ? WHERE id = ?",
-    [now(), now(), id]
+    [now(), now(), id],
+    "orders.delete"
   );
 }
