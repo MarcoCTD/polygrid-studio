@@ -1,5 +1,5 @@
-import { Package } from "lucide-react";
-import { PlaceholderPage } from "@/components/shared";
+import { Package } from 'lucide-react';
+import { PlaceholderPage } from '@/components/shared';
 
 export function ProductsPage() {
   return (

@@ -1,33 +1,28 @@
-import { useEffect } from "react";
-import { RouterProvider } from "@tanstack/react-router";
-import { useUIStore } from "@/stores";
-import { initDatabase } from "@/services/database";
-import { router } from "@/router";
-import "@/styles/globals.css";
+import { useEffect } from 'react';
+import { RouterProvider } from '@tanstack/react-router';
+import { useUIStore } from '@/stores';
+import { initDatabase } from '@/services/database';
+import { router } from '@/router';
+import '@/styles/globals.css';
 
 function DatabaseError({ error }: { error: string }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-primary p-8">
       <div className="max-w-lg rounded-xl border border-danger bg-bg-elevated p-8 shadow-lg">
-        <h1 className="mb-4 text-xl font-semibold text-danger">
-          Datenbank-Fehler
-        </h1>
+        <h1 className="mb-4 text-xl font-semibold text-danger">Datenbank-Fehler</h1>
         <p className="mb-4 text-sm text-text-secondary">
-          Die Datenbank konnte nicht initialisiert werden. Die App kann ohne
-          funktionierende Datenbank nicht starten.
+          Die Datenbank konnte nicht initialisiert werden. Die App kann ohne funktionierende
+          Datenbank nicht starten.
         </p>
         <pre className="mb-4 overflow-auto rounded-lg bg-bg-primary p-4 font-mono text-xs text-text-primary">
           {error}
         </pre>
         <div className="space-y-2 text-xs text-text-muted">
           <p>
-            <span className="font-medium text-text-secondary">DB-Pfad:</span>{" "}
-            <code className="font-mono">polygrid.db</code> (Tauri
-            App-Datenverzeichnis)
+            <span className="font-medium text-text-secondary">DB-Pfad:</span>{' '}
+            <code className="font-mono">polygrid.db</code> (Tauri App-Datenverzeichnis)
           </p>
-          <p>
-            Bitte Screenshot machen und im Repository als Issue melden.
-          </p>
+          <p>Bitte Screenshot machen und im Repository als Issue melden.</p>
         </div>
       </div>
     </div>

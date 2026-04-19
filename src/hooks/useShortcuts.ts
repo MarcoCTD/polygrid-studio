@@ -1,21 +1,21 @@
-import { useEffect } from "react";
-import { useUIStore } from "@/stores";
-import { useRouter } from "@tanstack/react-router";
+import { useEffect } from 'react';
+import { useUIStore } from '@/stores';
+import { useRouter } from '@tanstack/react-router';
 
 /**
  * Routen-Map fuer Cmd+1-9 Navigation.
  * Reihenfolge entspricht der Sidebar (Abschnitt 3.2 der Spec).
  */
 const ROUTE_MAP: Record<string, string> = {
-  "1": "/",
-  "2": "/products",
-  "3": "/expenses",
-  "4": "/orders",
-  "5": "/listings",
-  "6": "/templates",
-  "7": "/files",
-  "8": "/tasks",
-  "9": "/analytics",
+  '1': '/',
+  '2': '/products',
+  '3': '/expenses',
+  '4': '/orders',
+  '5': '/listings',
+  '6': '/templates',
+  '7': '/files',
+  '8': '/tasks',
+  '9': '/analytics',
 };
 
 /**
@@ -43,23 +43,23 @@ export function useShortcuts() {
       const isMod = e.metaKey || e.ctrlKey;
 
       // Cmd/Ctrl+K: Command Palette
-      if (isMod && e.key === "k") {
+      if (isMod && e.key === 'k') {
         e.preventDefault();
         setCommandPaletteOpen(!commandPaletteOpen);
         return;
       }
 
       // Cmd/Ctrl+B: Sidebar toggle
-      if (isMod && e.key === "b") {
+      if (isMod && e.key === 'b') {
         e.preventDefault();
         toggleSidebar();
         return;
       }
 
       // Cmd/Ctrl+/: KI-Assistent (Platzhalter – navigiert zu /ai)
-      if (isMod && e.key === "/") {
+      if (isMod && e.key === '/') {
         e.preventDefault();
-        void router.navigate({ to: "/ai" });
+        void router.navigate({ to: '/ai' });
         return;
       }
 
@@ -72,7 +72,7 @@ export function useShortcuts() {
       }
 
       // Escape: Panel/Modal schliessen
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         if (commandPaletteOpen) {
           setCommandPaletteOpen(false);
           return;
@@ -85,8 +85,8 @@ export function useShortcuts() {
 
       // Custom-Shortcuts aus Registry
       for (const shortcut of shortcuts) {
-        const parts = shortcut.keys.toLowerCase().split("+");
-        const requiresMod = parts.includes("mod");
+        const parts = shortcut.keys.toLowerCase().split('+');
+        const requiresMod = parts.includes('mod');
         const key = parts[parts.length - 1];
 
         if (requiresMod && isMod && e.key.toLowerCase() === key) {
@@ -102,8 +102,8 @@ export function useShortcuts() {
       }
     }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
     toggleSidebar,
     setCommandPaletteOpen,

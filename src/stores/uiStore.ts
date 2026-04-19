@@ -1,5 +1,6 @@
-import { create } from "zustand";
-import type { Theme, AccentColor } from "@/types";
+import { create } from 'zustand';
+import type { ComponentType } from 'react';
+import type { Theme, AccentColor } from '@/types';
 
 // ============================================================
 // Command Registry (erweiterbar durch spaetere Module)
@@ -7,8 +8,8 @@ import type { Theme, AccentColor } from "@/types";
 export interface Command {
   id: string;
   label: string;
-  icon?: string;
-  category: "navigation" | "system" | "action" | "ai";
+  icon?: ComponentType<{ size?: number; className?: string }>;
+  category: 'navigation' | 'system' | 'action' | 'ai';
   shortcut?: string;
   action: () => void;
 }
@@ -34,9 +35,9 @@ interface UIState {
 
   // Theme (Default: system, bis DB geladen)
   theme: Theme;
-  resolvedTheme: "light" | "dark";
+  resolvedTheme: 'light' | 'dark';
   setTheme: (theme: Theme) => void;
-  setResolvedTheme: (resolved: "light" | "dark") => void;
+  setResolvedTheme: (resolved: 'light' | 'dark') => void;
 
   // Akzentfarbe (Default: sap_blue, bis DB geladen)
   accentColor: AccentColor;
@@ -71,26 +72,23 @@ export const useUIStore = create<UIState>((set) => ({
   // Sidebar
   sidebarCollapsed: false,
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
-  toggleSidebar: () =>
-    set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
   // Theme
-  theme: "system",
-  resolvedTheme: "light",
+  theme: 'system',
+  resolvedTheme: 'light',
   setTheme: (theme) => set({ theme }),
   setResolvedTheme: (resolved) => set({ resolvedTheme: resolved }),
 
   // Akzentfarbe
-  accentColor: "sap_blue",
+  accentColor: 'sap_blue',
   setAccentColor: (color) => set({ accentColor: color }),
 
   // Detail Panel
   detailPanelOpen: false,
   detailPanelContent: null,
-  openDetailPanel: (content) =>
-    set({ detailPanelOpen: true, detailPanelContent: content }),
-  closeDetailPanel: () =>
-    set({ detailPanelOpen: false, detailPanelContent: null }),
+  openDetailPanel: (content) => set({ detailPanelOpen: true, detailPanelContent: content }),
+  closeDetailPanel: () => set({ detailPanelOpen: false, detailPanelContent: null }),
 
   // Command Palette
   commandPaletteOpen: false,

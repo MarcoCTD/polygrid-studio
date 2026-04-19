@@ -1,5 +1,5 @@
-import { Sparkles } from "lucide-react";
-import { PlaceholderPage } from "@/components/shared";
+import { Sparkles } from 'lucide-react';
+import { PlaceholderPage } from '@/components/shared';
 
 export function AIAssistantPage() {
   return (

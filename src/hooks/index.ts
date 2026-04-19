@@ -1,2 +1,2 @@
-export { useTheme } from "./useTheme";
-export { useShortcuts } from "./useShortcuts";
+export { useTheme } from './useTheme';
+export { useShortcuts } from './useShortcuts';

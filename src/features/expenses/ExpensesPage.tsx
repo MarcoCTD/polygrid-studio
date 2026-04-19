@@ -1,5 +1,5 @@
-import { Receipt } from "lucide-react";
-import { PlaceholderPage } from "@/components/shared";
+import { Receipt } from 'lucide-react';
+import { PlaceholderPage } from '@/components/shared';
 
 export function ExpensesPage() {
   return (

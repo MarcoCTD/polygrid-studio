@@ -1,5 +1,5 @@
-import { BarChart3 } from "lucide-react";
-import { PlaceholderPage } from "@/components/shared";
+import { BarChart3 } from 'lucide-react';
+import { PlaceholderPage } from '@/components/shared';
 
 export function AnalyticsPage() {
   return (

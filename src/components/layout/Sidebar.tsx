@@ -1,6 +1,6 @@
-import { useRouter, useMatches } from "@tanstack/react-router";
-import { useUIStore } from "@/stores";
-import { cn } from "@/lib/utils";
+import { useRouter, useMatches } from '@tanstack/react-router';
+import { useUIStore } from '@/stores';
+import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
   Package,
@@ -16,7 +16,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   type LucideIcon,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface NavItem {
   label: string;
@@ -26,20 +26,20 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { label: "Dashboard", icon: LayoutDashboard, route: "/" },
-  { label: "Produkte", icon: Package, route: "/products" },
-  { label: "Ausgaben", icon: Receipt, route: "/expenses" },
-  { label: "Aufträge", icon: ShoppingCart, route: "/orders" },
-  { label: "Listings", icon: FileText, route: "/listings" },
-  { label: "Vorlagen", icon: FileStack, route: "/templates" },
-  { label: "Dateien", icon: FolderOpen, route: "/files" },
-  { label: "Aufgaben", icon: CheckSquare, route: "/tasks" },
-  { label: "Analysen", icon: BarChart3, route: "/analytics" },
+  { label: 'Dashboard', icon: LayoutDashboard, route: '/' },
+  { label: 'Produkte', icon: Package, route: '/products' },
+  { label: 'Ausgaben', icon: Receipt, route: '/expenses' },
+  { label: 'Aufträge', icon: ShoppingCart, route: '/orders' },
+  { label: 'Listings', icon: FileText, route: '/listings' },
+  { label: 'Vorlagen', icon: FileStack, route: '/templates' },
+  { label: 'Dateien', icon: FolderOpen, route: '/files' },
+  { label: 'Aufgaben', icon: CheckSquare, route: '/tasks' },
+  { label: 'Analysen', icon: BarChart3, route: '/analytics' },
 ];
 
 const bottomNavItems: NavItem[] = [
-  { label: "KI-Assistent", icon: Sparkles, route: "/ai" },
-  { label: "Einstellungen", icon: Settings, route: "/settings" },
+  { label: 'KI-Assistent', icon: Sparkles, route: '/ai' },
+  { label: 'Einstellungen', icon: Settings, route: '/settings' },
 ];
 
 function NavButton({
@@ -58,11 +58,11 @@ function NavButton({
     <button
       onClick={() => void router.navigate({ to: item.route })}
       className={cn(
-        "group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-        collapsed && "justify-center px-0",
+        'group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+        collapsed && 'justify-center px-0',
         isActive
-          ? "bg-pg-accent-subtle text-text-primary font-medium"
-          : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
+          ? 'bg-pg-accent-subtle text-text-primary font-medium'
+          : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary',
       )}
     >
       {/* Aktiv-Indikator: 3px linker Strich */}
@@ -73,8 +73,8 @@ function NavButton({
       <Icon
         size={20}
         className={cn(
-          "shrink-0",
-          isActive ? "text-pg-accent" : "text-text-secondary group-hover:text-text-primary",
+          'shrink-0',
+          isActive ? 'text-pg-accent' : 'text-text-secondary group-hover:text-text-primary',
         )}
       />
 
@@ -96,30 +96,24 @@ export function Sidebar() {
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const matches = useMatches();
-  const currentPath = matches[matches.length - 1]?.fullPath ?? "/";
+  const currentPath = matches[matches.length - 1]?.fullPath ?? '/';
 
   return (
     <aside
       className={cn(
-        "flex h-screen flex-col border-r border-border-subtle bg-bg-secondary transition-all duration-200 ease-in-out",
-        collapsed ? "w-16" : "w-60",
+        'flex h-screen flex-col border-r border-border-subtle bg-bg-secondary transition-all duration-200 ease-in-out',
+        collapsed ? 'w-16' : 'w-60',
       )}
     >
       {/* Logo / App-Name */}
       <div
         className={cn(
-          "flex h-14 items-center border-b border-border-subtle px-4",
-          collapsed && "justify-center px-0",
+          'flex h-14 items-center border-b border-border-subtle px-4',
+          collapsed && 'justify-center px-0',
         )}
       >
-        {!collapsed && (
-          <span className="text-base font-semibold text-text-primary">
-            PolyGrid
-          </span>
-        )}
-        {collapsed && (
-          <span className="text-base font-semibold text-pg-accent">P</span>
-        )}
+        {!collapsed && <span className="text-base font-semibold text-text-primary">PolyGrid</span>}
+        {collapsed && <span className="text-base font-semibold text-pg-accent">P</span>}
       </div>
 
       {/* Hauptnavigation */}
@@ -149,8 +143,8 @@ export function Sidebar() {
         <button
           onClick={toggleSidebar}
           className={cn(
-            "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary",
-            collapsed && "justify-center px-0",
+            'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary',
+            collapsed && 'justify-center px-0',
           )}
         >
           {collapsed ? (

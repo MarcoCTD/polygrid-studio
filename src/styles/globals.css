@@ -1,12 +1,12 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* === Font Imports (lokal, kein CDN) === */
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/600.css";
-@import "@fontsource/jetbrains-mono/400.css";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 
 /* Dark Mode Variante: data-theme Attribut statt .dark Klasse */
 @custom-variant dark (&:is([data-theme="dark"] *));
@@ -14,8 +14,8 @@
 /* === Tailwind v4 Theme: PolyGrid Design System + shadcn Mappings === */
 @theme {
   /* Font families */
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 
   /* PolyGrid Background colors */
   --color-bg-primary: var(--bg-primary);
@@ -63,7 +63,7 @@
   --color-popover: var(--bg-elevated);
   --color-popover-foreground: var(--text-primary);
   --color-primary: var(--accent-primary);
-  --color-primary-foreground: #FFFFFF;
+  --color-primary-foreground: #ffffff;
   --color-secondary: var(--bg-secondary);
   --color-secondary-foreground: var(--text-primary);
   --color-muted: var(--bg-hover);
@@ -79,7 +79,7 @@
   --color-sidebar: var(--bg-secondary);
   --color-sidebar-foreground: var(--text-primary);
   --color-sidebar-primary: var(--accent-primary);
-  --color-sidebar-primary-foreground: #FFFFFF;
+  --color-sidebar-primary-foreground: #ffffff;
   --color-sidebar-accent: var(--accent-primary-subtle);
   --color-sidebar-accent-foreground: var(--text-primary);
   --color-sidebar-border: var(--border-subtle);
@@ -104,40 +104,40 @@
 
 /* === Hellmodus (Default) === */
 :root,
-[data-theme="light"] {
+[data-theme='light'] {
   /* Hintergruende */
-  --bg-primary: #F5F7FA;
-  --bg-secondary: #EDF1F6;
-  --bg-elevated: #FFFFFF;
-  --bg-hover: #E4EAF2;
-  --bg-active: #DCE4EE;
+  --bg-primary: #f5f7fa;
+  --bg-secondary: #edf1f6;
+  --bg-elevated: #ffffff;
+  --bg-hover: #e4eaf2;
+  --bg-active: #dce4ee;
 
   /* Text */
-  --text-primary: #1A2332;
-  --text-secondary: #5A6B7F;
-  --text-muted: #8A99AC;
-  --text-disabled: #B8C2CF;
+  --text-primary: #1a2332;
+  --text-secondary: #5a6b7f;
+  --text-muted: #8a99ac;
+  --text-disabled: #b8c2cf;
 
   /* Borders */
-  --border-subtle: #E4EAF2;
-  --border-default: #D8DEE7;
-  --border-strong: #B8C2CF;
+  --border-subtle: #e4eaf2;
+  --border-default: #d8dee7;
+  --border-strong: #b8c2cf;
 
   /* Akzent (Default: SAP-Blau, anpassbar) */
-  --accent-primary: #0070F2;
-  --accent-primary-hover: #0058C2;
-  --accent-primary-subtle: #E6F0FE;
-  --accent-primary-border: #7FB4FF;
+  --accent-primary: #0070f2;
+  --accent-primary-hover: #0058c2;
+  --accent-primary-subtle: #e6f0fe;
+  --accent-primary-border: #7fb4ff;
 
   /* Status (fix) */
-  --accent-success: #16A34A;
-  --accent-success-subtle: #DCFCE7;
-  --accent-warning: #D97706;
-  --accent-warning-subtle: #FEF3C7;
-  --accent-danger: #DC2626;
-  --accent-danger-subtle: #FEE2E2;
-  --accent-info: #0891B2;
-  --accent-info-subtle: #CFFAFE;
+  --accent-success: #16a34a;
+  --accent-success-subtle: #dcfce7;
+  --accent-warning: #d97706;
+  --accent-warning-subtle: #fef3c7;
+  --accent-danger: #dc2626;
+  --accent-danger-subtle: #fee2e2;
+  --accent-info: #0891b2;
+  --accent-info-subtle: #cffafe;
 
   /* Shadows & Overlays */
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
@@ -150,44 +150,44 @@
 }
 
 /* === Dark Mode === */
-[data-theme="dark"] {
+[data-theme='dark'] {
   /* Hintergruende (Elevation-System) */
-  --bg-base: #0B0F1A;
-  --bg-primary: #11172A;
-  --bg-secondary: #161D33;
-  --bg-elevated: #1B233D;
-  --bg-elevated-1: #1B233D;
-  --bg-elevated-2: #222B47;
-  --bg-elevated-3: #2A3454;
-  --bg-hover: #2D3756;
-  --bg-active: #36426A;
+  --bg-base: #0b0f1a;
+  --bg-primary: #11172a;
+  --bg-secondary: #161d33;
+  --bg-elevated: #1b233d;
+  --bg-elevated-1: #1b233d;
+  --bg-elevated-2: #222b47;
+  --bg-elevated-3: #2a3454;
+  --bg-hover: #2d3756;
+  --bg-active: #36426a;
 
   /* Text */
-  --text-primary: #E6EAF2;
-  --text-secondary: #A8B3C7;
-  --text-muted: #6E7A92;
-  --text-disabled: #4A5468;
+  --text-primary: #e6eaf2;
+  --text-secondary: #a8b3c7;
+  --text-muted: #6e7a92;
+  --text-disabled: #4a5468;
 
   /* Borders */
-  --border-subtle: #1F2940;
-  --border-default: #2C3852;
+  --border-subtle: #1f2940;
+  --border-default: #2c3852;
   --border-strong: rgba(67, 80, 112, 0.4);
 
   /* Akzent (Default: SAP-Blau Dark) */
-  --accent-primary: #5B9DFF;
-  --accent-primary-hover: #7AB1FF;
-  --accent-primary-subtle: #1A2A4A;
-  --accent-primary-border: #2D4A7C;
+  --accent-primary: #5b9dff;
+  --accent-primary-hover: #7ab1ff;
+  --accent-primary-subtle: #1a2a4a;
+  --accent-primary-border: #2d4a7c;
 
   /* Status (entsaettigt) */
-  --accent-success: #4ADE80;
-  --accent-success-subtle: #0F2A1B;
-  --accent-warning: #FBBF24;
-  --accent-warning-subtle: #2A1F0A;
-  --accent-danger: #F87171;
-  --accent-danger-subtle: #2A1212;
-  --accent-info: #22D3EE;
-  --accent-info-subtle: #0E2A30;
+  --accent-success: #4ade80;
+  --accent-success-subtle: #0f2a1b;
+  --accent-warning: #fbbf24;
+  --accent-warning-subtle: #2a1f0a;
+  --accent-danger: #f87171;
+  --accent-danger-subtle: #2a1212;
+  --accent-info: #22d3ee;
+  --accent-info-subtle: #0e2a30;
 
   /* Shadows & Overlays */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -196,15 +196,18 @@
   --overlay-backdrop: rgba(8, 12, 22, 0.75);
 
   /* Spezial */
-  --scrollbar-track: #161D33;
-  --scrollbar-thumb: #36426A;
-  --code-bg: #0B0F1A;
+  --scrollbar-track: #161d33;
+  --scrollbar-thumb: #36426a;
+  --code-bg: #0b0f1a;
   --divider: rgba(31, 41, 64, 0.4);
 }
 
 /* === Smooth Theme-Transition === */
 * {
-  transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease;
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 200ms ease;
 }
 
 /* === Base Layer === */
@@ -214,7 +217,11 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    font-family:
+      'Inter',
+      system-ui,
+      -apple-system,
+      sans-serif;
     font-size: 14px;
     line-height: 1.5;
   }

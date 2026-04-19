@@ -1,1 +1,1 @@
-export { PlaceholderPage } from "./PlaceholderPage";
+export { PlaceholderPage } from './PlaceholderPage';

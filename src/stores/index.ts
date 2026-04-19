@@ -1,2 +1,2 @@
-export { useUIStore } from "./uiStore";
-export type { Command, Shortcut } from "./uiStore";
+export { useUIStore } from './uiStore';
+export type { Command, Shortcut } from './uiStore';

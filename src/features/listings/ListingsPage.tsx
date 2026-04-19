@@ -1,5 +1,5 @@
-import { FileText } from "lucide-react";
-import { PlaceholderPage } from "@/components/shared";
+import { FileText } from 'lucide-react';
+import { PlaceholderPage } from '@/components/shared';
 
 export function ListingsPage() {
   return (

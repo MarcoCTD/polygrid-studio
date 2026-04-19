@@ -1,1 +1,1 @@
-export { AIAssistantPage } from "./AIAssistantPage";
+export { AIAssistantPage } from './AIAssistantPage';

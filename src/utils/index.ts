@@ -1,4 +1,4 @@
-export { cn } from "@/lib/utils";
+export { cn } from '@/lib/utils';
 export {
   hexToHSL,
   hslToHex,
@@ -6,4 +6,4 @@ export {
   applyAccentColors,
   ACCENT_PRESETS,
   type AccentPresetKey,
-} from "./colors";
+} from './colors';

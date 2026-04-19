@@ -61,7 +61,7 @@ export function hslToHex(hsl: HSL): string {
 
   if (s === 0) {
     const val = Math.round(l * 255);
-    return `#${val.toString(16).padStart(2, "0").repeat(3)}`;
+    return `#${val.toString(16).padStart(2, '0').repeat(3)}`;
   }
 
   const hue2rgb = (p: number, q: number, t: number): number => {
@@ -80,7 +80,7 @@ export function hslToHex(hsl: HSL): string {
   const g = Math.round(hue2rgb(p, q, h) * 255);
   const b = Math.round(hue2rgb(p, q, h - 1 / 3) * 255);
 
-  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
 /**
@@ -142,12 +142,12 @@ export function computeAccentVariants(hexLight: string, hexDark: string): Accent
  * Jedes Preset hat eine Hellmodus- und Dark-Mode-Basisfarbe.
  */
 export const ACCENT_PRESETS = {
-  sap_blue: { light: "#0070F2", dark: "#5B9DFF", label: "SAP-Blau" },
-  indigo: { light: "#4F46E5", dark: "#818CF8", label: "Indigo" },
-  petrol: { light: "#0D9488", dark: "#2DD4BF", label: "Petrol" },
-  orange: { light: "#EA580C", dark: "#FB923C", label: "Orange" },
-  violet: { light: "#7C3AED", dark: "#A78BFA", label: "Violett" },
-  graphite: { light: "#475569", dark: "#94A3B8", label: "Graphit" },
+  sap_blue: { light: '#0070F2', dark: '#5B9DFF', label: 'SAP-Blau' },
+  indigo: { light: '#4F46E5', dark: '#818CF8', label: 'Indigo' },
+  petrol: { light: '#0D9488', dark: '#2DD4BF', label: 'Petrol' },
+  orange: { light: '#EA580C', dark: '#FB923C', label: 'Orange' },
+  violet: { light: '#7C3AED', dark: '#A78BFA', label: 'Violett' },
+  graphite: { light: '#475569', dark: '#94A3B8', label: 'Graphit' },
 } as const;
 
 export type AccentPresetKey = keyof typeof ACCENT_PRESETS;
@@ -155,10 +155,10 @@ export type AccentPresetKey = keyof typeof ACCENT_PRESETS;
 /**
  * Setzt die vier Akzent-CSS-Custom-Properties auf dem root-Element.
  */
-export function applyAccentColors(colors: AccentColors["light"] | AccentColors["dark"]): void {
+export function applyAccentColors(colors: AccentColors['light'] | AccentColors['dark']): void {
   const root = document.documentElement;
-  root.style.setProperty("--accent-primary", colors.primary);
-  root.style.setProperty("--accent-primary-hover", colors.hover);
-  root.style.setProperty("--accent-primary-subtle", colors.subtle);
-  root.style.setProperty("--accent-primary-border", colors.border);
+  root.style.setProperty('--accent-primary', colors.primary);
+  root.style.setProperty('--accent-primary-hover', colors.hover);
+  root.style.setProperty('--accent-primary-subtle', colors.subtle);
+  root.style.setProperty('--accent-primary-border', colors.border);
 }

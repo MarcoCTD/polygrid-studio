@@ -1,13 +1,13 @@
-import { Settings, Sun, Moon, Monitor } from "lucide-react";
-import { useTheme } from "@/hooks/useTheme";
-import { ACCENT_PRESETS, type AccentPresetKey } from "@/utils/colors";
-import { cn } from "@/lib/utils";
-import type { Theme, AccentColor } from "@/types";
+import { Settings, Sun, Moon, Monitor } from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
+import { ACCENT_PRESETS, type AccentPresetKey } from '@/utils/colors';
+import { cn } from '@/lib/utils';
+import type { Theme, AccentColor } from '@/types';
 
 const THEME_OPTIONS: { value: Theme; label: string; icon: typeof Sun }[] = [
-  { value: "light", label: "Hell", icon: Sun },
-  { value: "dark", label: "Dunkel", icon: Moon },
-  { value: "system", label: "System", icon: Monitor },
+  { value: 'light', label: 'Hell', icon: Sun },
+  { value: 'dark', label: 'Dunkel', icon: Moon },
+  { value: 'system', label: 'System', icon: Monitor },
 ];
 
 export function SettingsPage() {
@@ -21,24 +21,17 @@ export function SettingsPage() {
           <Settings size={20} className="text-pg-accent" />
         </div>
         <div>
-          <h1 className="text-xl font-semibold text-text-primary">
-            Einstellungen
-          </h1>
-          <p className="text-sm text-text-secondary">
-            Erscheinungsbild und Anzeigeoptionen
-          </p>
+          <h1 className="text-xl font-semibold text-text-primary">Einstellungen</h1>
+          <p className="text-sm text-text-secondary">Erscheinungsbild und Anzeigeoptionen</p>
         </div>
       </div>
 
       <div className="space-y-8">
         {/* Theme-Toggle */}
         <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
-          <h2 className="mb-1 text-base font-semibold text-text-primary">
-            Erscheinungsbild
-          </h2>
+          <h2 className="mb-1 text-base font-semibold text-text-primary">Erscheinungsbild</h2>
           <p className="mb-4 text-sm text-text-secondary">
-            Wechsle zwischen hellem und dunklem Modus oder nutze die
-            Systemeinstellung.
+            Wechsle zwischen hellem und dunklem Modus oder nutze die Systemeinstellung.
           </p>
           <div className="flex gap-3">
             {THEME_OPTIONS.map((option) => {
@@ -49,10 +42,10 @@ export function SettingsPage() {
                   key={option.value}
                   onClick={() => void changeTheme(option.value)}
                   className={cn(
-                    "flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors",
+                    'flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors',
                     isActive
-                      ? "bg-pg-accent text-white"
-                      : "bg-bg-hover text-text-secondary hover:text-text-primary",
+                      ? 'bg-pg-accent text-white'
+                      : 'bg-bg-hover text-text-secondary hover:text-text-primary',
                   )}
                 >
                   <Icon size={16} />
@@ -65,12 +58,9 @@ export function SettingsPage() {
 
         {/* Akzentfarben-Auswahl */}
         <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
-          <h2 className="mb-1 text-base font-semibold text-text-primary">
-            Akzentfarbe
-          </h2>
+          <h2 className="mb-1 text-base font-semibold text-text-primary">Akzentfarbe</h2>
           <p className="mb-4 text-sm text-text-secondary">
-            Wähle eine Akzentfarbe für Buttons, aktive Elemente und
-            Hervorhebungen.
+            Wähle eine Akzentfarbe für Buttons, aktive Elemente und Hervorhebungen.
           </p>
           <div className="flex flex-wrap gap-3">
             {(
@@ -85,17 +75,15 @@ export function SettingsPage() {
                   key={key}
                   onClick={() => void changeAccentColor(key as AccentColor)}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-lg px-4 py-2.5 text-sm font-medium transition-all",
+                    'flex items-center gap-2.5 rounded-lg px-4 py-2.5 text-sm font-medium transition-all',
+                    isActive ? 'ring-2 ring-offset-2 ring-offset-bg-elevated' : 'hover:bg-bg-hover',
                     isActive
-                      ? "ring-2 ring-offset-2 ring-offset-bg-elevated"
-                      : "hover:bg-bg-hover",
-                    isActive
-                      ? "bg-bg-active text-text-primary"
-                      : "bg-bg-primary text-text-secondary",
+                      ? 'bg-bg-active text-text-primary'
+                      : 'bg-bg-primary text-text-secondary',
                   )}
                   style={
                     isActive
-                      ? ({ "--tw-ring-color": preset.light } as React.CSSProperties)
+                      ? ({ '--tw-ring-color': preset.light } as React.CSSProperties)
                       : undefined
                   }
                 >

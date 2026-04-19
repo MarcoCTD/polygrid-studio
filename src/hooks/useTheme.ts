@@ -1,22 +1,20 @@
-import { useEffect, useCallback } from "react";
-import { useUIStore } from "@/stores";
-import { getSetting, setSetting } from "@/services/database";
+import { useEffect, useCallback } from 'react';
+import { useUIStore } from '@/stores';
+import { getSetting, setSetting } from '@/services/database';
 import {
   ACCENT_PRESETS,
   computeAccentVariants,
   applyAccentColors,
   type AccentPresetKey,
-} from "@/utils/colors";
-import type { Theme, AccentColor } from "@/types";
+} from '@/utils/colors';
+import type { Theme, AccentColor } from '@/types';
 
 /**
  * Ermittelt den aufgeloesten Theme-Modus.
  */
-function resolveTheme(theme: Theme): "light" | "dark" {
-  if (theme === "system") {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
+function resolveTheme(theme: Theme): 'light' | 'dark' {
+  if (theme === 'system') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
   return theme;
 }
@@ -24,13 +22,13 @@ function resolveTheme(theme: Theme): "light" | "dark" {
 /**
  * Setzt data-theme auf <html> und wendet die Akzentfarbe an.
  */
-function applyThemeToDOM(resolved: "light" | "dark", accentColor: AccentColor) {
-  document.documentElement.setAttribute("data-theme", resolved);
+function applyThemeToDOM(resolved: 'light' | 'dark', accentColor: AccentColor) {
+  document.documentElement.setAttribute('data-theme', resolved);
 
   const preset = ACCENT_PRESETS[accentColor as AccentPresetKey];
   if (preset) {
     const variants = computeAccentVariants(preset.light, preset.dark);
-    applyAccentColors(resolved === "dark" ? variants.dark : variants.light);
+    applyAccentColors(resolved === 'dark' ? variants.dark : variants.light);
   }
 }
 
@@ -56,10 +54,10 @@ export function useTheme() {
 
     async function loadSettings() {
       try {
-        const savedTheme = await getSetting<Theme>("theme");
+        const savedTheme = await getSetting<Theme>('theme');
         if (savedTheme) setTheme(savedTheme);
 
-        const savedAccent = await getSetting<AccentColor>("accent_color");
+        const savedAccent = await getSetting<AccentColor>('accent_color');
         if (savedAccent) setAccentColor(savedAccent);
       } catch {
         // Defaults bleiben bestehen
@@ -78,17 +76,17 @@ export function useTheme() {
 
   // Bei system-Modus: auf OS-Aenderung reagieren
   useEffect(() => {
-    if (theme !== "system") return;
+    if (theme !== 'system') return;
 
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handler = (e: MediaQueryListEvent) => {
-      const resolved = e.matches ? "dark" : "light";
+      const resolved = e.matches ? 'dark' : 'light';
       setResolvedTheme(resolved);
       applyThemeToDOM(resolved, accentColor);
     };
 
-    mediaQuery.addEventListener("change", handler);
-    return () => mediaQuery.removeEventListener("change", handler);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
   }, [theme, accentColor, setResolvedTheme]);
 
   // Theme wechseln + in DB persistieren
@@ -96,7 +94,7 @@ export function useTheme() {
     async (newTheme: Theme) => {
       setTheme(newTheme);
       try {
-        await setSetting("theme", newTheme);
+        await setSetting('theme', newTheme);
       } catch {
         // Stille Fehler bei Persistierung – UI funktioniert trotzdem
       }
@@ -109,7 +107,7 @@ export function useTheme() {
     async (newColor: AccentColor) => {
       setAccentColor(newColor);
       try {
-        await setSetting("accent_color", newColor);
+        await setSetting('accent_color', newColor);
       } catch {
         // Stille Fehler bei Persistierung
       }

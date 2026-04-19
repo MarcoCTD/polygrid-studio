@@ -1,5 +1,5 @@
-import { CheckSquare } from "lucide-react";
-import { PlaceholderPage } from "@/components/shared";
+import { CheckSquare } from 'lucide-react';
+import { PlaceholderPage } from '@/components/shared';
 
 export function TasksPage() {
   return (

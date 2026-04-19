@@ -1,80 +1,80 @@
-import { createRoute } from "@tanstack/react-router";
-import { rootRoute } from "./routes/__root";
-import { DashboardPage } from "@/features/dashboard";
-import { ProductsPage } from "@/features/products";
-import { ExpensesPage } from "@/features/expenses";
-import { OrdersPage } from "@/features/orders";
-import { ListingsPage } from "@/features/listings";
-import { TemplatesPage } from "@/features/templates";
-import { FilesPage } from "@/features/files";
-import { TasksPage } from "@/features/tasks";
-import { AnalyticsPage } from "@/features/analytics";
-import { AIAssistantPage } from "@/features/ai-assistant";
-import { SettingsPage } from "@/features/settings";
+import { createRoute } from '@tanstack/react-router';
+import { rootRoute } from './routes/__root';
+import { DashboardPage } from '@/features/dashboard';
+import { ProductsPage } from '@/features/products';
+import { ExpensesPage } from '@/features/expenses';
+import { OrdersPage } from '@/features/orders';
+import { ListingsPage } from '@/features/listings';
+import { TemplatesPage } from '@/features/templates';
+import { FilesPage } from '@/features/files';
+import { TasksPage } from '@/features/tasks';
+import { AnalyticsPage } from '@/features/analytics';
+import { AIAssistantPage } from '@/features/ai-assistant';
+import { SettingsPage } from '@/features/settings';
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/",
+  path: '/',
   component: DashboardPage,
 });
 
 const productsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/products",
+  path: '/products',
   component: ProductsPage,
 });
 
 const expensesRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/expenses",
+  path: '/expenses',
   component: ExpensesPage,
 });
 
 const ordersRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/orders",
+  path: '/orders',
   component: OrdersPage,
 });
 
 const listingsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/listings",
+  path: '/listings',
   component: ListingsPage,
 });
 
 const templatesRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/templates",
+  path: '/templates',
   component: TemplatesPage,
 });
 
 const filesRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/files",
+  path: '/files',
   component: FilesPage,
 });
 
 const tasksRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/tasks",
+  path: '/tasks',
   component: TasksPage,
 });
 
 const analyticsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/analytics",
+  path: '/analytics',
   component: AnalyticsPage,
 });
 
 const aiRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/ai",
+  path: '/ai',
   component: AIAssistantPage,
 });
 
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/settings",
+  path: '/settings',
   component: SettingsPage,
 });
 

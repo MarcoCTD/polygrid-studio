@@ -1,5 +1,5 @@
-import { LayoutDashboard } from "lucide-react";
-import { PlaceholderPage } from "@/components/shared";
+import { LayoutDashboard } from 'lucide-react';
+import { PlaceholderPage } from '@/components/shared';
 
 export function DashboardPage() {
   return (

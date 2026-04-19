@@ -1,8 +1,9 @@
-import type { ReactNode } from "react";
-import { Sidebar } from "./Sidebar";
-import { DetailPanel } from "./DetailPanel";
-import { useTheme } from "@/hooks/useTheme";
-import { useShortcuts } from "@/hooks/useShortcuts";
+import type { ReactNode } from 'react';
+import { Sidebar } from './Sidebar';
+import { DetailPanel } from './DetailPanel';
+import { CommandPalette } from './CommandPalette';
+import { useTheme } from '@/hooks/useTheme';
+import { useShortcuts } from '@/hooks/useShortcuts';
 
 interface AppShellProps {
   children: ReactNode;
@@ -20,6 +21,7 @@ export function AppShell({ children }: AppShellProps) {
         <div className="mx-auto max-w-7xl p-6">{children}</div>
       </main>
       <DetailPanel />
+      <CommandPalette />
     </div>
   );
 }

@@ -1,5 +1,5 @@
-import { ShoppingCart } from "lucide-react";
-import { PlaceholderPage } from "@/components/shared";
+import { ShoppingCart } from 'lucide-react';
+import { PlaceholderPage } from '@/components/shared';
 
 export function OrdersPage() {
   return (

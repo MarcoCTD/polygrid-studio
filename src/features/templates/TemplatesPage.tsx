@@ -1,5 +1,5 @@
-import { FileStack } from "lucide-react";
-import { PlaceholderPage } from "@/components/shared";
+import { FileStack } from 'lucide-react';
+import { PlaceholderPage } from '@/components/shared';
 
 export function TemplatesPage() {
   return (

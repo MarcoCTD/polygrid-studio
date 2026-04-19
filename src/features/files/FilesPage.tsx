@@ -1,5 +1,5 @@
-import { FolderOpen } from "lucide-react";
-import { PlaceholderPage } from "@/components/shared";
+import { FolderOpen } from 'lucide-react';
+import { PlaceholderPage } from '@/components/shared';
 
 export function FilesPage() {
   return (
