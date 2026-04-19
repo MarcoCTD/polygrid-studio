@@ -1,51 +1,66 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { useEffect } from 'react';
+import { RouterProvider } from '@tanstack/react-router';
+import { useUIStore } from '@/stores';
+import { initDatabase } from '@/services/database';
+import { router } from '@/router';
+import '@/styles/globals.css';
+
+function DatabaseError({ error }: { error: string }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-bg-primary p-8">
+      <div className="max-w-lg rounded-xl border border-danger bg-bg-elevated p-8 shadow-lg">
+        <h1 className="mb-4 text-xl font-semibold text-danger">Datenbank-Fehler</h1>
+        <p className="mb-4 text-sm text-text-secondary">
+          Die Datenbank konnte nicht initialisiert werden. Die App kann ohne funktionierende
+          Datenbank nicht starten.
+        </p>
+        <pre className="mb-4 overflow-auto rounded-lg bg-bg-primary p-4 font-mono text-xs text-text-primary">
+          {error}
+        </pre>
+        <div className="space-y-2 text-xs text-text-muted">
+          <p>
+            <span className="font-medium text-text-secondary">DB-Pfad:</span>{' '}
+            <code className="font-mono">polygrid.db</code> (Tauri App-Datenverzeichnis)
+          </p>
+          <p>Bitte Screenshot machen und im Repository als Issue melden.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Loading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-bg-primary">
+      <p className="text-sm text-text-muted">Datenbank wird geladen...</p>
+    </div>
+  );
+}
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const dbReady = useUIStore((s) => s.dbReady);
+  const dbError = useUIStore((s) => s.dbError);
+  const setDbReady = useUIStore((s) => s.setDbReady);
+  const setDbError = useUIStore((s) => s.setDbError);
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+  useEffect(() => {
+    initDatabase()
+      .then(() => setDbReady(true))
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        setDbError(message);
+      });
+  }, [setDbReady, setDbError]);
+
+  if (dbError) {
+    return <DatabaseError error={dbError} />;
   }
 
-  return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+  if (!dbReady) {
+    return <Loading />;
+  }
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
-  );
+  return <RouterProvider router={router} />;
 }
 
 export default App;
