@@ -240,7 +240,7 @@ export function CommandPalette() {
 
       {/* Dialog-Container */}
       <div className="fixed top-[20%] left-1/2 z-50 w-full max-w-lg -translate-x-1/2">
-        <div className="mx-4 overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated shadow-lg">
+        <div className="mx-4 overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated shadow-lg dark:border-transparent dark:bg-bg-elevated-3">
           {/* Suchfeld */}
           <Command.Input
             placeholder="Befehl suchen…"

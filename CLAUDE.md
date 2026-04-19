@@ -6,14 +6,14 @@ Plattformübergreifende Desktop-ERP-Anwendung (macOS + Windows) für ein 3D-Druc
 
 ## Aktueller Stand
 
-**Aktives Modul: Modul 01 – Foundation**
-Spec lesen: `docs/modules/MODUL_01_FOUNDATION.md`
+**Aktives Modul: Modul 02 – Produktverwaltung**
+Spec lesen: `docs/modules/MODUL_02_PRODUKTVERWALTUNG.md` (noch zu erstellen)
 Design-System: `docs/DESIGN_SYSTEM.md`
 
 | # | Modul | Status |
 |---|---|---|
-| 1 | Foundation | 🟡 In Arbeit |
-| 2 | Produktverwaltung | ⚪ Nicht begonnen |
+| 1 | Foundation | ✅ Abgeschlossen |
+| 2 | Produktverwaltung | 🟡 Nächster Schritt |
 | 3 | Dateimanager | ⚪ Nicht begonnen |
 | 4 | Ausgabenverwaltung | ⚪ Nicht begonnen |
 | 5 | Listing-Verwaltung | ⚪ Nicht begonnen |

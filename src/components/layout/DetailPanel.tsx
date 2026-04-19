@@ -13,7 +13,7 @@ export function DetailPanel() {
     <aside
       className={cn(
         'h-screen w-[400px] shrink-0 border-l border-border-subtle bg-bg-elevated overflow-y-auto',
-        'shadow-md dark:shadow-lg',
+        'shadow-md dark:bg-bg-elevated-2 dark:border-transparent dark:shadow-lg',
       )}
     >
       <div className="flex items-center justify-between border-b border-border-subtle p-4">

@@ -18,9 +18,13 @@
   --font-mono: 'JetBrains Mono', monospace;
 
   /* PolyGrid Background colors */
+  --color-bg-base: var(--bg-base);
   --color-bg-primary: var(--bg-primary);
   --color-bg-secondary: var(--bg-secondary);
   --color-bg-elevated: var(--bg-elevated);
+  --color-bg-elevated-1: var(--bg-elevated-1);
+  --color-bg-elevated-2: var(--bg-elevated-2);
+  --color-bg-elevated-3: var(--bg-elevated-3);
   --color-bg-hover: var(--bg-hover);
   --color-bg-active: var(--bg-active);
 
@@ -106,9 +110,13 @@
 :root,
 [data-theme='light'] {
   /* Hintergruende */
+  --bg-base: #f5f7fa;
   --bg-primary: #f5f7fa;
   --bg-secondary: #edf1f6;
   --bg-elevated: #ffffff;
+  --bg-elevated-1: #ffffff;
+  --bg-elevated-2: #ffffff;
+  --bg-elevated-3: #ffffff;
   --bg-hover: #e4eaf2;
   --bg-active: #dce4ee;
 

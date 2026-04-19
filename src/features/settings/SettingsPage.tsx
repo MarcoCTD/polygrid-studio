@@ -28,7 +28,7 @@ export function SettingsPage() {
 
       <div className="space-y-8">
         {/* Theme-Toggle */}
-        <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
+        <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm dark:border-transparent dark:shadow-md">
           <h2 className="mb-1 text-base font-semibold text-text-primary">Erscheinungsbild</h2>
           <p className="mb-4 text-sm text-text-secondary">
             Wechsle zwischen hellem und dunklem Modus oder nutze die Systemeinstellung.
@@ -57,7 +57,7 @@ export function SettingsPage() {
         </section>
 
         {/* Akzentfarben-Auswahl */}
-        <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm">
+        <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm dark:border-transparent dark:shadow-md">
           <h2 className="mb-1 text-base font-semibold text-text-primary">Akzentfarbe</h2>
           <p className="mb-4 text-sm text-text-secondary">
             Wähle eine Akzentfarbe für Buttons, aktive Elemente und Hervorhebungen.
