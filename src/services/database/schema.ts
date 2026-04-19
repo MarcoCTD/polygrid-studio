@@ -24,7 +24,9 @@ export const products = sqliteTable(
     collection: text('collection'),
     status: text('status').notNull(),
     material_type: text('material_type').notNull(),
-    color_variants: text('color_variants', { mode: 'json' }).$type<string[]>(),
+    color_variants: text('color_variants', { mode: 'json' }).$type<
+      { name: string; hex: string }[]
+    >(),
     print_time_minutes: integer('print_time_minutes'),
     material_grams: real('material_grams'),
     electricity_cost: real('electricity_cost'),
@@ -32,6 +34,9 @@ export const products = sqliteTable(
     shipping_class: text('shipping_class'),
     target_price: real('target_price'),
     min_price: real('min_price'),
+    price_etsy: real('price_etsy'),
+    price_ebay: real('price_ebay'),
+    price_kleinanzeigen: real('price_kleinanzeigen'),
     estimated_margin: real('estimated_margin'),
     license_source: text('license_source'),
     license_type: text('license_type'),
@@ -40,6 +45,7 @@ export const products = sqliteTable(
     platforms: text('platforms', { mode: 'json' }).$type<string[]>(),
     notes: text('notes'),
     upsell_notes: text('upsell_notes'),
+    primary_image_path: text('primary_image_path'),
     created_at: text('created_at').notNull(),
     updated_at: text('updated_at').notNull(),
     deleted_at: text('deleted_at'),

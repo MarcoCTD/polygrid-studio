@@ -7,7 +7,7 @@ Plattformübergreifende Desktop-ERP-Anwendung (macOS + Windows) für ein 3D-Druc
 ## Aktueller Stand
 
 **Aktives Modul: Modul 02 – Produktverwaltung**
-Spec lesen: `docs/modules/MODUL_02_PRODUKTVERWALTUNG.md` (noch zu erstellen)
+Spec lesen: `docs/modules/MODUL_02_PRODUKTVERWALTUNG.md`
 Design-System: `docs/DESIGN_SYSTEM.md`
 
 | # | Modul | Status |
@@ -48,6 +48,7 @@ Design-System: `docs/DESIGN_SYSTEM.md`
 - **Try/catch** um jede Dateioperation und jeden KI-Call.
 - **Soft-Delete** mit `deleted_at`-Feld, niemals hartes DELETE.
 - **Platzhalter-Code muss kompilieren.** Leeres Interface/Stub statt `// TODO`.
+- **`docs/DATABASE_SCHEMA.md` aktuell halten.** Nach jedem Modul, das Felder ergänzt oder Tabellen ändert, die Datei updaten.
 
 ### Was du NICHT tun sollst
 - Bibliotheken austauschen (kein Redux statt Zustand etc.) ohne explizite Freigabe.
@@ -132,3 +133,10 @@ Bei Widersprüchen zwischen Dokumenten:
 - Modul-Spec gewinnt für Modulscope
 - PROJEKTREGELN gewinnt für Übergreifendes
 - DESIGN_SYSTEM gewinnt für Styling
+
+### Kommunikation
+
+- **Bei Unklarheit: nachfragen, nicht raten.** Der Nutzer ist kein Entwickler. Eine Rückfrage ist immer besser als eine falsche Annahme.
+- **Keine stillen Nebenaktionen.** Keine `npm audit fix`, keine Version-Bumps, keine Formatierungs-Runs über Dateien außerhalb des aktuellen Moduls, kein "ich habe nebenbei noch X verbessert".
+- **Destruktive Operationen nur mit Bestätigung.** Git reset, Force-Push, File-Löschungen außerhalb des Modul-Scopes, DB-Wipes.
+- **Wenn ein Test/Lint fehlschlägt: Ursache suchen, nicht den Test anpassen.**

@@ -44,7 +44,7 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 | collection | TEXT | Nein | Kollektion (Minimal, Industrial etc.) |
 | status | TEXT | Ja | idea, review, print_ready, test_print, launch_ready, online, paused, discontinued |
 | material_type | TEXT | Ja | PLA, PETG, TPU etc. |
-| color_variants | TEXT (JSON) | Nein | Array von Farbvarianten |
+| color_variants | TEXT (JSON) | Nein | Array von Farbvarianten `[{name, hex}]` |
 | print_time_minutes | INTEGER | Nein | Geschätzte Druckzeit in Minuten |
 | material_grams | REAL | Nein | Materialverbrauch in Gramm |
 | electricity_cost | REAL | Nein | Strom-/Maschinenkosten in EUR |
@@ -52,6 +52,9 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 | shipping_class | TEXT | Nein | Brief, Paket, Warensendung |
 | target_price | REAL | Nein | Zielverkaufspreis in EUR |
 | min_price | REAL | Nein | Mindestverkaufspreis in EUR |
+| price_etsy | REAL | Nein | Plattform-spezifischer Etsy-Preis (Modul 02) |
+| price_ebay | REAL | Nein | Plattform-spezifischer eBay-Preis (Modul 02) |
+| price_kleinanzeigen | REAL | Nein | Plattform-spezifischer Kleinanzeigen-Preis (Modul 02) |
 | estimated_margin | REAL | Nein | Kalkulierte Marge in % (berechnet) |
 | license_source | TEXT | Nein | Quelle der STL (Thingiverse, Printables, Eigen) |
 | license_type | TEXT | Nein | own, cc_by, cc_by_sa, cc_by_nc, commercial, unclear |
@@ -60,6 +63,7 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 | platforms | TEXT (JSON) | Nein | Array: etsy, ebay, kleinanzeigen |
 | notes | TEXT | Nein | Freitextnotizen |
 | upsell_notes | TEXT | Nein | Ideen für Upselling |
+| primary_image_path | TEXT | Nein | Pfad zum Produktbild (wird in Modul 03 befüllt) |
 | created_at | TEXT (ISO) | Ja | Erstellungszeitpunkt |
 | updated_at | TEXT (ISO) | Ja | Letzte Änderung |
 | deleted_at | TEXT (ISO) | Nein | Soft-Delete Timestamp |
