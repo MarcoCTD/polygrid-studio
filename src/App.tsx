@@ -1,6 +1,8 @@
 import { useEffect } from "react";
+import { RouterProvider } from "@tanstack/react-router";
 import { useUIStore } from "@/stores";
 import { initDatabase } from "@/services/database";
+import { router } from "@/router";
 import "@/styles/globals.css";
 
 function DatabaseError({ error }: { error: string }) {
@@ -50,8 +52,7 @@ function App() {
     initDatabase()
       .then(() => setDbReady(true))
       .catch((err: unknown) => {
-        const message =
-          err instanceof Error ? err.message : String(err);
+        const message = err instanceof Error ? err.message : String(err);
         setDbError(message);
       });
   }, [setDbReady, setDbError]);
@@ -64,11 +65,7 @@ function App() {
     return <Loading />;
   }
 
-  return (
-    <div className="min-h-screen bg-bg-primary text-text-primary">
-      <p className="p-4">PolyGrid Studio – DB initialisiert</p>
-    </div>
-  );
+  return <RouterProvider router={router} />;
 }
 
 export default App;
