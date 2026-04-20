@@ -15,6 +15,9 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@fontsource-variable/geist": "^5.2.8",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
@@ -23,6 +26,8 @@
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.24",
     "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.7.0",
+    "@tauri-apps/plugin-fs": "^2.5.0",
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-sql": "^2.4.0",
     "class-variance-authority": "^0.7.1",

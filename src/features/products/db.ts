@@ -405,6 +405,55 @@ export async function listProducts(filters: ProductFilters = {}): Promise<Produc
   }
 }
 
+// ============================================================
+// Bulk Operations
+// ============================================================
+
+export async function bulkDeleteProducts(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const db = getDatabase();
+  const timestamp = now();
+
+  try {
+    const placeholders = ids.map((_, i) => `$${i + 2}`).join(', ');
+    await db.execute(
+      `UPDATE products SET deleted_at = $1, updated_at = $1 WHERE id IN (${placeholders})`,
+      [timestamp, ...ids],
+    );
+  } catch (err) {
+    throw new Error(
+      `Bulk-Löschung fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+export async function bulkUpdateStatus(ids: string[], status: Status): Promise<void> {
+  if (ids.length === 0) return;
+  const db = getDatabase();
+  const timestamp = now();
+
+  try {
+    const placeholders = ids.map((_, i) => `$${i + 3}`).join(', ');
+    await db.execute(
+      `UPDATE products SET status = $1, updated_at = $2 WHERE id IN (${placeholders})`,
+      [status, timestamp, ...ids],
+    );
+  } catch (err) {
+    throw new Error(
+      `Bulk-Statusänderung fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+export async function bulkDuplicateProducts(ids: string[]): Promise<Product[]> {
+  const results: Product[] = [];
+  for (const id of ids) {
+    const dup = await duplicateProduct(id);
+    results.push(dup);
+  }
+  return results;
+}
+
 export async function listTrashedProducts(): Promise<Product[]> {
   const db = getDatabase();
 

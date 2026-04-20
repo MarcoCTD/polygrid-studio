@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useForm } from 'react-hook-form';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import type { Product, ProductUpdate } from '../schema';
-import { getProduct } from '../db';
+import { getProduct, duplicateProduct } from '../db';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { SaveIndicator } from './SaveIndicator';
 import { OverviewTab } from './OverviewTab';
@@ -130,6 +130,20 @@ export function ProductEditPage() {
     navigate({ to: '/products' });
   }, [navigate]);
 
+  const [isDuplicating, setIsDuplicating] = useState(false);
+
+  const handleDuplicate = useCallback(async () => {
+    setIsDuplicating(true);
+    try {
+      const dup = await duplicateProduct(productId);
+      navigate({ to: '/products/$productId', params: { productId: dup.id } });
+    } catch (err) {
+      console.error('Duplizieren fehlgeschlagen:', err);
+    } finally {
+      setIsDuplicating(false);
+    }
+  }, [productId, navigate]);
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center text-text-muted">
@@ -161,7 +175,19 @@ export function ProductEditPage() {
           </Button>
           <h1 className="text-lg font-semibold text-text-primary">{product.name}</h1>
         </div>
-        <SaveIndicator status={saveStatus} error={lastError} onRetry={retry} />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDuplicate}
+            disabled={isDuplicating}
+            className="gap-1.5"
+          >
+            <Copy size={14} />
+            Duplizieren
+          </Button>
+          <SaveIndicator status={saveStatus} error={lastError} onRetry={retry} />
+        </div>
       </div>
 
       {/* Tabs */}

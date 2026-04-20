@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { Search, Filter, X, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
+import { Search, Filter, X, Eye, EyeOff, Plus, Trash2, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,8 @@ import { Separator } from '@/components/ui/separator';
 import { useProductsUIStore } from '../productsUiStore';
 import { statusEnum, platformEnum, licenseRiskEnum } from '../schema';
 import { STATUS_LABELS, PLATFORM_LABELS, LICENSE_RISK_LABELS } from '../labels';
+import { ColumnSettings } from './ColumnSettings';
+import { SavedFilters } from './SavedFilters';
 
 // ============================================================
 // Multi-Select Group
@@ -69,7 +71,7 @@ function MarginRange() {
           onChange={(e) => setMarginMin(e.target.value ? Number(e.target.value) : undefined)}
           className="w-20"
         />
-        <span className="text-text-muted">–</span>
+        <span className="text-text-muted">&ndash;</span>
         <Input
           type="number"
           placeholder="Max"
@@ -134,7 +136,7 @@ function ActiveFilterBadges() {
   if (filters.marginMin !== undefined) {
     badges.push({
       key: 'margin-min',
-      label: `Marge ≥ ${filters.marginMin}%`,
+      label: `Marge \u2265 ${filters.marginMin}%`,
       onRemove: () => setMarginMin(undefined),
     });
   }
@@ -142,7 +144,7 @@ function ActiveFilterBadges() {
   if (filters.marginMax !== undefined) {
     badges.push({
       key: 'margin-max',
-      label: `Marge ≤ ${filters.marginMax}%`,
+      label: `Marge \u2264 ${filters.marginMax}%`,
       onRemove: () => setMarginMax(undefined),
     });
   }
@@ -168,16 +170,22 @@ function ActiveFilterBadges() {
 }
 
 // ============================================================
-// Categories (extracted from data)
+// Toolbar
 // ============================================================
 
 interface ProductsToolbarProps {
   categories: string[];
   totalCount: number;
   onNewProduct: () => void;
+  onCsvExport: () => void;
 }
 
-export function ProductsToolbar({ categories, totalCount, onNewProduct }: ProductsToolbarProps) {
+export function ProductsToolbar({
+  categories,
+  totalCount,
+  onNewProduct,
+  onCsvExport,
+}: ProductsToolbarProps) {
   const navigate = useNavigate();
   const {
     filters,
@@ -303,6 +311,9 @@ export function ProductsToolbar({ categories, totalCount, onNewProduct }: Produc
           </PopoverContent>
         </Popover>
 
+        {/* Saved Filters */}
+        <SavedFilters />
+
         {/* Soft-Delete Toggle */}
         <Button
           variant="ghost"
@@ -315,6 +326,20 @@ export function ProductsToolbar({ categories, totalCount, onNewProduct }: Produc
         </Button>
 
         <div className="ml-auto flex items-center gap-2">
+          {/* Column Settings */}
+          <ColumnSettings />
+
+          {/* CSV Export */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onCsvExport}
+            className="gap-1.5 text-text-secondary"
+          >
+            <Download size={14} />
+            <span>CSV Export</span>
+          </Button>
+
           {/* Trash */}
           <Button
             variant="ghost"

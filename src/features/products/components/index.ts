@@ -12,3 +12,7 @@ export { PlaceholderTab } from './PlaceholderTab';
 export { NewProductDialog } from './NewProductDialog';
 export { LicenseWarningDialog } from './LicenseWarningDialog';
 export { TrashPage } from './TrashPage';
+export { BulkToolbar } from './BulkToolbar';
+export { ColumnSettings } from './ColumnSettings';
+export { SavedFilters } from './SavedFilters';
+export { CsvExportDialog } from './CsvExportDialog';

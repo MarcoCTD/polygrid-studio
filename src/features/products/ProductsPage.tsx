@@ -1,16 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { Plus, Search, Trash2 } from 'lucide-react';
+import { Download, Plus, Search, Trash2 } from 'lucide-react';
 import type { Product } from './schema';
 import { listProducts } from './db';
 import { getProductSettings } from './settings';
 import { calculateMargin } from './margin';
 import type { ProductSettings } from './defaults';
-import { useProductsUIStore } from './productsUiStore';
+import { useProductsUIStore, DEFAULT_COLUMNS } from './productsUiStore';
 import { useUIStore } from '@/stores/uiStore';
+import { getSetting, setSetting } from '@/services/database';
 import { ProductsToolbar } from './components/ProductsToolbar';
 import { ProductsTable } from './components/ProductsTable';
 import { NewProductDialog } from './components/NewProductDialog';
+import { BulkToolbar } from './components/BulkToolbar';
+import { CsvExportDialog } from './components/CsvExportDialog';
+import { loadSavedFilters } from './components/SavedFilters';
+
+const COLUMN_CONFIG_KEY = 'products_column_config';
 
 export function ProductsPage() {
   const navigate = useNavigate();
@@ -18,13 +24,48 @@ export function ProductsPage() {
   const [settings, setSettings] = useState<ProductSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewProduct, setShowNewProduct] = useState(false);
-  const { filters } = useProductsUIStore();
+  const [showCsvExport, setShowCsvExport] = useState(false);
+  const { filters, selectedIds, clearSelection, setColumnConfig, setSavedFilters } =
+    useProductsUIStore();
   const { registerCommands, unregisterCommands } = useUIStore();
 
   // Load settings once
   useEffect(() => {
     getProductSettings().then(setSettings).catch(console.error);
   }, []);
+
+  // Load column config + saved filters from DB once
+  useEffect(() => {
+    async function loadPersistedState() {
+      try {
+        const colConfig = await getSetting<typeof DEFAULT_COLUMNS>(COLUMN_CONFIG_KEY);
+        if (colConfig && Array.isArray(colConfig)) {
+          setColumnConfig(colConfig);
+        }
+      } catch {
+        // Use defaults
+      }
+
+      try {
+        const savedFilters = await loadSavedFilters();
+        setSavedFilters(savedFilters);
+      } catch {
+        // Ignore
+      }
+    }
+
+    loadPersistedState();
+  }, [setColumnConfig, setSavedFilters]);
+
+  // Persist column config when it changes
+  const { columnConfig } = useProductsUIStore();
+  useEffect(() => {
+    // Don't persist on initial load (when config equals defaults)
+    const isDefault = JSON.stringify(columnConfig) === JSON.stringify(DEFAULT_COLUMNS);
+    if (!isDefault) {
+      setSetting(COLUMN_CONFIG_KEY, columnConfig).catch(console.error);
+    }
+  }, [columnConfig]);
 
   // Load products when filters change
   useEffect(() => {
@@ -88,10 +129,8 @@ export function ProductsPage() {
     return Array.from(cats).sort();
   }, [products]);
 
-  // Reload products (used after create)
+  // Reload products (used after create, bulk actions, etc.)
   const reloadProducts = useCallback(() => {
-    // Trigger re-fetch by toggling a dummy state — the useEffect depends on filters
-    // so we just re-run the load
     setIsLoading(true);
     listProducts({
       search: filters.search || undefined,
@@ -110,7 +149,7 @@ export function ProductsPage() {
 
   // Command Registry
   useEffect(() => {
-    const commandIds = ['products:new', 'products:search', 'products:trash'];
+    const commandIds = ['products:new', 'products:search', 'products:trash', 'products:csv-export'];
 
     registerCommands([
       {
@@ -139,10 +178,19 @@ export function ProductsPage() {
         category: 'navigation',
         action: () => navigate({ to: '/products/trash' }),
       },
+      {
+        id: 'products:csv-export',
+        label: 'Produktliste als CSV exportieren',
+        icon: Download,
+        category: 'action',
+        action: () => setShowCsvExport(true),
+      },
     ]);
 
     return () => unregisterCommands(commandIds);
   }, [registerCommands, unregisterCommands, navigate]);
+
+  const selectedIdsArray = useMemo(() => Array.from(selectedIds), [selectedIds]);
 
   return (
     <div className="flex h-full flex-col gap-4 p-6">
@@ -157,13 +205,28 @@ export function ProductsPage() {
         categories={categories}
         totalCount={enrichedProducts.length}
         onNewProduct={() => setShowNewProduct(true)}
+        onCsvExport={() => setShowCsvExport(true)}
       />
+
+      <BulkToolbar
+        selectedCount={selectedIds.size}
+        selectedIds={selectedIdsArray}
+        onClearSelection={clearSelection}
+        onActionComplete={reloadProducts}
+      />
+
       <ProductsTable products={enrichedProducts} isLoading={isLoading} />
 
       <NewProductDialog
         open={showNewProduct}
         onOpenChange={setShowNewProduct}
         onCreated={reloadProducts}
+      />
+
+      <CsvExportDialog
+        open={showCsvExport}
+        onOpenChange={setShowCsvExport}
+        products={enrichedProducts}
       />
     </div>
   );
