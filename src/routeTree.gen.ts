@@ -2,6 +2,7 @@ import { createRoute } from '@tanstack/react-router';
 import { rootRoute } from './routes/__root';
 import { DashboardPage } from '@/features/dashboard';
 import { ProductsPage } from '@/features/products';
+import { ProductEditPage } from '@/features/products/components/ProductEditPage';
 import { ExpensesPage } from '@/features/expenses';
 import { OrdersPage } from '@/features/orders';
 import { ListingsPage } from '@/features/listings';
@@ -22,6 +23,12 @@ const productsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/products',
   component: ProductsPage,
+});
+
+const productEditRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/products/$productId',
+  component: ProductEditPage,
 });
 
 const expensesRoute = createRoute({
@@ -81,6 +88,7 @@ const settingsRoute = createRoute({
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   productsRoute,
+  productEditRoute,
   expensesRoute,
   ordersRoute,
   listingsRoute,

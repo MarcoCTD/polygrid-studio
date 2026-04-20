@@ -8,6 +8,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { useNavigate } from '@tanstack/react-router';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Product } from '../schema';
@@ -39,10 +40,14 @@ function createColumns() {
       size: 99999, // flex
       minSize: 200,
       cell: (info) => (
-        <span className="truncate font-medium" title={info.getValue()}>
+        <span
+          className="truncate font-medium text-pg-accent hover:underline"
+          title={info.getValue()}
+        >
           {info.getValue()}
         </span>
       ),
+      meta: { clickable: true },
     }),
     columnHelper.accessor('category', {
       header: 'Kategorie',
@@ -93,6 +98,7 @@ interface ProductsTableProps {
 }
 
 export function ProductsTable({ products, isLoading }: ProductsTableProps) {
+  const navigate = useNavigate();
   const columns = useMemo(() => createColumns(), []);
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -182,7 +188,9 @@ export function ProductsTable({ products, isLoading }: ProductsTableProps) {
                 }}
               >
                 {row.getVisibleCells().map((cell) => {
-                  const meta = cell.column.columnDef.meta as { align?: 'right' } | undefined;
+                  const meta = cell.column.columnDef.meta as
+                    | { align?: 'right'; clickable?: boolean }
+                    | undefined;
                   return (
                     <div
                       key={cell.id}
@@ -190,12 +198,22 @@ export function ProductsTable({ products, isLoading }: ProductsTableProps) {
                         'flex h-full items-center px-3 text-sm',
                         meta?.align === 'right' && 'justify-end',
                         isDeleted && 'line-through',
+                        meta?.clickable && 'cursor-pointer',
                       )}
                       style={{
                         width:
                           cell.column.columnDef.size === 99999 ? undefined : cell.column.getSize(),
                         flex: cell.column.columnDef.size === 99999 ? '1 1 0%' : undefined,
                       }}
+                      onClick={
+                        meta?.clickable
+                          ? () =>
+                              navigate({
+                                to: '/products/$productId',
+                                params: { productId: row.original.id },
+                              })
+                          : undefined
+                      }
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </div>
