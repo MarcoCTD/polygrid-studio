@@ -9,34 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { useProductsUIStore } from '../productsUiStore';
 import { statusEnum, platformEnum, licenseRiskEnum } from '../schema';
-import type { Status, Platform, LicenseRisk } from '../schema';
-
-// ============================================================
-// Label Maps
-// ============================================================
-
-const STATUS_LABELS: Record<Status, string> = {
-  idea: 'Idee',
-  review: 'Review',
-  print_ready: 'Druckbereit',
-  test_print: 'Testdruck',
-  launch_ready: 'Startbereit',
-  online: 'Online',
-  paused: 'Pausiert',
-  discontinued: 'Eingestellt',
-};
-
-const PLATFORM_LABELS: Record<Platform, string> = {
-  etsy: 'Etsy',
-  ebay: 'eBay',
-  kleinanzeigen: 'Kleinanzeigen',
-};
-
-const LICENSE_RISK_LABELS: Record<LicenseRisk, string> = {
-  safe: 'Sicher',
-  review_needed: 'Prüfung nötig',
-  risky: 'Riskant',
-};
+import { STATUS_LABELS, PLATFORM_LABELS, LICENSE_RISK_LABELS } from '../labels';
 
 // ============================================================
 // Multi-Select Group

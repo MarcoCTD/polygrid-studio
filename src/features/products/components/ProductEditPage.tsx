@@ -54,12 +54,16 @@ export function ProductEditPage() {
     defaultValues: {},
   });
 
+  // Track whether form has been initialized with DB data
+  const [formReady, setFormReady] = useState(false);
+
   // Load product data
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       setIsLoading(true);
+      setFormReady(false);
       try {
         const data = await getProduct(productId);
         if (cancelled) return;
@@ -68,7 +72,14 @@ export function ProductEditPage() {
           return;
         }
         setProduct(data);
-        form.reset(productToFormValues(data));
+        const formValues = productToFormValues(data);
+        console.log('[EditPage] Resetting form with DB data', {
+          productId,
+          name: formValues.name,
+          status: formValues.status,
+        });
+        form.reset(formValues);
+        setFormReady(true);
       } catch (err) {
         if (cancelled) return;
         console.error('Fehler beim Laden des Produkts:', err);
@@ -84,16 +95,24 @@ export function ProductEditPage() {
     };
   }, [productId, form]);
 
-  // Auto-save
+  // Auto-save — only enabled once form has been initialized with DB data
   const { saveStatus, lastError, retry } = useAutoSave({
     productId,
     form,
+    enabled: formReady,
     onSaved: () => {
       // Reload product to get updated data (for margin calc etc.)
       getProduct(productId).then((updated) => {
         if (updated) setProduct(updated);
       });
     },
+  });
+
+  console.log('[EditPage] Render', {
+    isLoading,
+    formReady,
+    saveStatus,
+    productId,
   });
 
   // Escape → back to list

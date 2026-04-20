@@ -11,6 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  statusEnum,
+  materialTypeEnum,
+  licenseTypeEnum,
+  licenseRiskEnum,
+  shippingClassEnum,
+  platformEnum,
+} from '../schema';
 import type {
   ProductUpdate,
   Status,
@@ -20,62 +28,20 @@ import type {
   ShippingClass,
   Platform,
 } from '../schema';
+import {
+  STATUS_LABELS,
+  MATERIAL_LABELS,
+  LICENSE_TYPE_LABELS,
+  LICENSE_RISK_LABELS,
+  SHIPPING_LABELS,
+  PLATFORM_LABELS,
+} from '../labels';
 import { ColorVariantsEditor } from './ColorVariantsEditor';
 import { LicenseWarningDialog } from './LicenseWarningDialog';
 
 interface OverviewTabProps {
   form: UseFormReturn<ProductUpdate>;
 }
-
-// ============================================================
-// Label Maps
-// ============================================================
-
-const STATUS_OPTIONS: { value: Status; label: string }[] = [
-  { value: 'idea', label: 'Idee' },
-  { value: 'review', label: 'Review' },
-  { value: 'print_ready', label: 'Druckbereit' },
-  { value: 'test_print', label: 'Testdruck' },
-  { value: 'launch_ready', label: 'Startbereit' },
-  { value: 'online', label: 'Online' },
-  { value: 'paused', label: 'Pausiert' },
-  { value: 'discontinued', label: 'Eingestellt' },
-];
-
-const MATERIAL_OPTIONS: { value: MaterialType; label: string }[] = [
-  { value: 'PLA', label: 'PLA' },
-  { value: 'PETG', label: 'PETG' },
-  { value: 'TPU', label: 'TPU' },
-  { value: 'ABS', label: 'ABS' },
-  { value: 'Resin', label: 'Resin' },
-];
-
-const LICENSE_TYPE_OPTIONS: { value: LicenseType; label: string }[] = [
-  { value: 'own', label: 'Eigenes Design' },
-  { value: 'cc_by', label: 'CC BY' },
-  { value: 'cc_by_sa', label: 'CC BY-SA' },
-  { value: 'cc_by_nc', label: 'CC BY-NC' },
-  { value: 'commercial', label: 'Kommerzielle Lizenz' },
-  { value: 'unclear', label: 'Unklar' },
-];
-
-const LICENSE_RISK_OPTIONS: { value: LicenseRisk; label: string }[] = [
-  { value: 'safe', label: 'Sicher' },
-  { value: 'review_needed', label: 'Prüfung nötig' },
-  { value: 'risky', label: 'Riskant' },
-];
-
-const SHIPPING_OPTIONS: { value: ShippingClass; label: string }[] = [
-  { value: 'Brief', label: 'Brief' },
-  { value: 'Warensendung', label: 'Warensendung' },
-  { value: 'Paket', label: 'Paket' },
-];
-
-const PLATFORM_OPTIONS: { value: Platform; label: string }[] = [
-  { value: 'etsy', label: 'Etsy' },
-  { value: 'ebay', label: 'eBay' },
-  { value: 'kleinanzeigen', label: 'Kleinanzeigen' },
-];
 
 // ============================================================
 // Helpers
@@ -212,12 +178,14 @@ export function OverviewTab({ form }: OverviewTabProps) {
             }}
           >
             <SelectTrigger className="w-full">
-              <SelectValue />
+              <SelectValue placeholder="Status wählen">
+                {status ? STATUS_LABELS[status] : 'Status wählen'}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {STATUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
+              {statusEnum.options.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {STATUS_LABELS[s]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -232,12 +200,14 @@ export function OverviewTab({ form }: OverviewTabProps) {
             }}
           >
             <SelectTrigger className="w-full">
-              <SelectValue />
+              <SelectValue placeholder="Material wählen">
+                {materialType ? MATERIAL_LABELS[materialType] : 'Material wählen'}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {MATERIAL_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
+              {materialTypeEnum.options.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {MATERIAL_LABELS[m]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -269,12 +239,14 @@ export function OverviewTab({ form }: OverviewTabProps) {
             }
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Keine" />
+              <SelectValue placeholder="Keine">
+                {shippingClass ? SHIPPING_LABELS[shippingClass] : 'Keine'}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {SHIPPING_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
+              {shippingClassEnum.options.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {SHIPPING_LABELS[s]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -326,12 +298,14 @@ export function OverviewTab({ form }: OverviewTabProps) {
             }
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Nicht gesetzt" />
+              <SelectValue placeholder="Nicht gesetzt">
+                {licenseType ? LICENSE_TYPE_LABELS[licenseType] : 'Nicht gesetzt'}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {LICENSE_TYPE_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
+              {licenseTypeEnum.options.map((l) => (
+                <SelectItem key={l} value={l}>
+                  {LICENSE_TYPE_LABELS[l]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -350,12 +324,14 @@ export function OverviewTab({ form }: OverviewTabProps) {
             }
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Nicht bewertet" />
+              <SelectValue placeholder="Nicht bewertet">
+                {licenseRisk ? LICENSE_RISK_LABELS[licenseRisk] : 'Nicht bewertet'}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {LICENSE_RISK_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
+              {licenseRiskEnum.options.map((r) => (
+                <SelectItem key={r} value={r}>
+                  {LICENSE_RISK_LABELS[r]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -366,13 +342,13 @@ export function OverviewTab({ form }: OverviewTabProps) {
       {/* Plattformen */}
       <FormSection title="Plattformen">
         <div className="col-span-2 flex flex-col gap-2">
-          {PLATFORM_OPTIONS.map((opt) => (
-            <label key={opt.value} className="flex cursor-pointer items-center gap-2 text-sm">
+          {platformEnum.options.map((p) => (
+            <label key={p} className="flex cursor-pointer items-center gap-2 text-sm">
               <Checkbox
-                checked={(platforms as Platform[]).includes(opt.value)}
-                onCheckedChange={() => togglePlatform(opt.value)}
+                checked={(platforms as Platform[]).includes(p)}
+                onCheckedChange={() => togglePlatform(p)}
               />
-              <span>{opt.label}</span>
+              <span>{PLATFORM_LABELS[p]}</span>
             </label>
           ))}
         </div>

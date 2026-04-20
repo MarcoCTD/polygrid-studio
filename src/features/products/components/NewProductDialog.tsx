@@ -49,6 +49,13 @@ import { calculateMargin, getMarginColor, getMarginLabel } from '../margin';
 import { getProductSettings } from '../settings';
 import type { ProductSettings } from '../defaults';
 import { formatEUR } from '../utils';
+import {
+  STATUS_LABELS,
+  MATERIAL_LABELS,
+  LICENSE_TYPE_LABELS,
+  LICENSE_RISK_LABELS,
+  SHIPPING_LABELS,
+} from '../labels';
 
 // ============================================================
 // Per-Step Zod Schemas
@@ -82,50 +89,6 @@ const step3Schema = z.object({
 type Step1Data = z.infer<typeof step1Schema>;
 type Step2Data = z.infer<typeof step2Schema>;
 type Step3Data = z.infer<typeof step3Schema>;
-
-// ============================================================
-// Label Maps
-// ============================================================
-
-const STATUS_LABELS: Record<Status, string> = {
-  idea: 'Idee',
-  review: 'Review',
-  print_ready: 'Druckbereit',
-  test_print: 'Testdruck',
-  launch_ready: 'Startbereit',
-  online: 'Online',
-  paused: 'Pausiert',
-  discontinued: 'Eingestellt',
-};
-
-const MATERIAL_LABELS: Record<MaterialType, string> = {
-  PLA: 'PLA',
-  PETG: 'PETG',
-  TPU: 'TPU',
-  ABS: 'ABS',
-  Resin: 'Resin',
-};
-
-const LICENSE_TYPE_LABELS: Record<LicenseType, string> = {
-  own: 'Eigenes Design',
-  cc_by: 'CC BY',
-  cc_by_sa: 'CC BY-SA',
-  cc_by_nc: 'CC BY-NC',
-  commercial: 'Kommerzielle Lizenz',
-  unclear: 'Unklar',
-};
-
-const LICENSE_RISK_LABELS: Record<LicenseRisk, string> = {
-  safe: 'Sicher',
-  review_needed: 'Prüfung nötig',
-  risky: 'Riskant',
-};
-
-const SHIPPING_LABELS: Record<ShippingClass, string> = {
-  Brief: 'Brief',
-  Warensendung: 'Warensendung',
-  Paket: 'Paket',
-};
 
 // ============================================================
 // Form Field Helper
@@ -436,7 +399,7 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
                       }}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue />
+                        <SelectValue>{MATERIAL_LABELS[form1.watch('material_type')]}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {materialTypeEnum.options.map((m) => (
@@ -455,7 +418,7 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
                       }}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue />
+                        <SelectValue>{STATUS_LABELS[form1.watch('status')]}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {statusEnum.options.map((s) => (
@@ -502,7 +465,11 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
                     }
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Keine" />
+                      <SelectValue placeholder="Keine">
+                        {form2.watch('shipping_class')
+                          ? SHIPPING_LABELS[form2.watch('shipping_class')!]
+                          : 'Keine'}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {shippingClassEnum.options.map((s) => (
@@ -545,7 +512,11 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
                     }
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Nicht gesetzt" />
+                      <SelectValue placeholder="Nicht gesetzt">
+                        {form3.watch('license_type')
+                          ? LICENSE_TYPE_LABELS[form3.watch('license_type')!]
+                          : 'Nicht gesetzt'}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {licenseTypeEnum.options.map((l) => (
@@ -570,7 +541,11 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
                     }
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Nicht bewertet" />
+                      <SelectValue placeholder="Nicht bewertet">
+                        {form3.watch('license_risk')
+                          ? LICENSE_RISK_LABELS[form3.watch('license_risk')!]
+                          : 'Nicht bewertet'}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {licenseRiskEnum.options.map((r) => (

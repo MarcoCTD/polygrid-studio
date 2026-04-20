@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { AlertTriangle } from 'lucide-react';
 import type { Product } from '../schema';
+import { LICENSE_TYPE_LABELS, LICENSE_RISK_LABELS } from '../labels';
 
 interface LicenseWarningDialogProps {
   open: boolean;
@@ -19,21 +20,6 @@ interface LicenseWarningDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
 }
-
-const LICENSE_TYPE_LABELS: Record<string, string> = {
-  own: 'Eigenes Design',
-  cc_by: 'CC BY',
-  cc_by_sa: 'CC BY-SA',
-  cc_by_nc: 'CC BY-NC',
-  commercial: 'Kommerzielle Lizenz',
-  unclear: 'Unklar',
-};
-
-const LICENSE_RISK_LABELS: Record<string, string> = {
-  safe: 'Sicher',
-  review_needed: 'Prüfung nötig',
-  risky: 'Riskant',
-};
 
 export function LicenseWarningDialog({
   open,

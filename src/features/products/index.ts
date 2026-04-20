@@ -53,5 +53,21 @@ export { StatusBadge } from './components/StatusBadge';
 export { MarginCell } from './components/MarginCell';
 export { PlatformIcons } from './components/PlatformIcons';
 
+// Labels (Single Source of Truth für deutsche UI-Labels)
+export {
+  STATUS_LABELS,
+  MATERIAL_LABELS,
+  LICENSE_TYPE_LABELS,
+  LICENSE_RISK_LABELS,
+  SHIPPING_LABELS,
+  PLATFORM_LABELS,
+  getStatusLabel,
+  getMaterialLabel,
+  getLicenseTypeLabel,
+  getLicenseRiskLabel,
+  getShippingLabel,
+  getPlatformLabel,
+} from './labels';
+
 // Utils
 export { formatRelativeDate, formatEUR } from './utils';

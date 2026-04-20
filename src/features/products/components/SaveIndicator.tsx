@@ -10,10 +10,14 @@ interface SaveIndicatorProps {
 }
 
 export function SaveIndicator({ status, error, onRetry }: SaveIndicatorProps) {
-  if (status === 'idle') return null;
-
   return (
     <div className="flex items-center gap-1.5 text-xs">
+      {status === 'idle' && (
+        <>
+          <Check size={14} className="text-text-muted" />
+          <span className="text-text-muted">Bereit</span>
+        </>
+      )}
       {status === 'saved' && (
         <>
           <Check size={14} className="text-text-muted" />
