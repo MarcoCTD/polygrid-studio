@@ -27,9 +27,7 @@ const DEBOUNCE_MS = 800;
  * still gets validated against min() constraints. We convert "" → undefined so
  * the partial schema treats empty fields as absent.
  */
-function prepareForPartialValidation(
-  data: Record<string, unknown>,
-): Record<string, unknown> {
+function prepareForPartialValidation(data: Record<string, unknown>): Record<string, unknown> {
   const cleaned: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
     if (value === '') {
