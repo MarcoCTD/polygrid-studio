@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Search, Filter, X, Eye, EyeOff } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import { Search, Filter, X, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -200,9 +201,11 @@ function ActiveFilterBadges() {
 interface ProductsToolbarProps {
   categories: string[];
   totalCount: number;
+  onNewProduct: () => void;
 }
 
-export function ProductsToolbar({ categories, totalCount }: ProductsToolbarProps) {
+export function ProductsToolbar({ categories, totalCount, onNewProduct }: ProductsToolbarProps) {
+  const navigate = useNavigate();
   const {
     filters,
     setSearch,
@@ -338,10 +341,29 @@ export function ProductsToolbar({ categories, totalCount }: ProductsToolbarProps
           <span>{filters.includeDeleted ? 'Gelöschte ausblenden' : 'Gelöschte anzeigen'}</span>
         </Button>
 
-        {/* Count */}
-        <span className="ml-auto text-xs text-text-muted">
-          {totalCount} {totalCount === 1 ? 'Produkt' : 'Produkte'}
-        </span>
+        <div className="ml-auto flex items-center gap-2">
+          {/* Trash */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate({ to: '/products/trash' })}
+            className="gap-1.5 text-text-secondary"
+          >
+            <Trash2 size={14} />
+            <span>Papierkorb</span>
+          </Button>
+
+          {/* New Product */}
+          <Button size="sm" onClick={onNewProduct} className="gap-1.5">
+            <Plus size={14} />
+            <span>Neues Produkt</span>
+          </Button>
+
+          {/* Count */}
+          <span className="text-xs text-text-muted">
+            {totalCount} {totalCount === 1 ? 'Produkt' : 'Produkte'}
+          </span>
+        </div>
       </div>
 
       {/* Active filter badges */}

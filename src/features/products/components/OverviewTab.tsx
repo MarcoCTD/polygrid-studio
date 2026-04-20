@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { type UseFormReturn } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,6 +21,7 @@ import type {
   Platform,
 } from '../schema';
 import { ColorVariantsEditor } from './ColorVariantsEditor';
+import { LicenseWarningDialog } from './LicenseWarningDialog';
 
 interface OverviewTabProps {
   form: UseFormReturn<ProductUpdate>;
@@ -144,12 +146,26 @@ export function OverviewTab({ form }: OverviewTabProps) {
     formState: { errors },
   } = form;
 
+  const [showLicenseWarning, setShowLicenseWarning] = useState(false);
+
   const platforms = watch('platforms') ?? [];
   const status = watch('status');
   const materialType = watch('material_type');
   const licenseType = watch('license_type');
   const licenseRisk = watch('license_risk');
+  const licenseSource = watch('license_source');
   const shippingClass = watch('shipping_class');
+
+  const handleStatusChange = (newStatus: Status) => {
+    if (newStatus === 'online') {
+      const risk = licenseRisk;
+      if (!risk || risk === 'risky' || risk === 'review_needed') {
+        setShowLicenseWarning(true);
+        return;
+      }
+    }
+    setValue('status', newStatus, { shouldDirty: true });
+  };
 
   const togglePlatform = (platform: Platform) => {
     const current = platforms as Platform[];
@@ -192,7 +208,7 @@ export function OverviewTab({ form }: OverviewTabProps) {
           <Select
             value={status ?? 'idea'}
             onValueChange={(val) => {
-              if (val) setValue('status', val as Status, { shouldDirty: true });
+              if (val) handleStatusChange(val as Status);
             }}
           >
             <SelectTrigger className="w-full">
@@ -384,6 +400,22 @@ export function OverviewTab({ form }: OverviewTabProps) {
           />
         </FormField>
       </FormSection>
+
+      {/* License Warning Dialog */}
+      <LicenseWarningDialog
+        open={showLicenseWarning}
+        onOpenChange={setShowLicenseWarning}
+        product={{
+          license_type: licenseType ?? null,
+          license_risk: licenseRisk ?? null,
+          license_source: licenseSource ?? null,
+        }}
+        onConfirm={() => {
+          setValue('status', 'online', { shouldDirty: true });
+          setShowLicenseWarning(false);
+        }}
+        onCancel={() => setShowLicenseWarning(false)}
+      />
     </div>
   );
 }

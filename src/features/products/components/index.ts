@@ -9,3 +9,6 @@ export { OverviewTab } from './OverviewTab';
 export { MarginCalculator } from './MarginCalculator';
 export { ColorVariantsEditor } from './ColorVariantsEditor';
 export { PlaceholderTab } from './PlaceholderTab';
+export { NewProductDialog } from './NewProductDialog';
+export { LicenseWarningDialog } from './LicenseWarningDialog';
+export { TrashPage } from './TrashPage';

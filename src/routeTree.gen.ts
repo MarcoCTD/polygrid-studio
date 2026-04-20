@@ -3,6 +3,7 @@ import { rootRoute } from './routes/__root';
 import { DashboardPage } from '@/features/dashboard';
 import { ProductsPage } from '@/features/products';
 import { ProductEditPage } from '@/features/products/components/ProductEditPage';
+import { TrashPage } from '@/features/products/components/TrashPage';
 import { ExpensesPage } from '@/features/expenses';
 import { OrdersPage } from '@/features/orders';
 import { ListingsPage } from '@/features/listings';
@@ -29,6 +30,12 @@ const productEditRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/products/$productId',
   component: ProductEditPage,
+});
+
+const productsTrashRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/products/trash',
+  component: TrashPage,
 });
 
 const expensesRoute = createRoute({
@@ -88,6 +95,7 @@ const settingsRoute = createRoute({
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   productsRoute,
+  productsTrashRoute,
   productEditRoute,
   expensesRoute,
   ordersRoute,
