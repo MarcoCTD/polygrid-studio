@@ -44,3 +44,14 @@ export { getProductSettings } from './settings';
 
 // Margin Logic
 export { calculateMargin, getMarginColor, getMarginLabel, type MarginResult } from './margin';
+
+// UI Store
+export { useProductsUIStore, type ProductsFilterState } from './productsUiStore';
+
+// Components
+export { StatusBadge } from './components/StatusBadge';
+export { MarginCell } from './components/MarginCell';
+export { PlatformIcons } from './components/PlatformIcons';
+
+// Utils
+export { formatRelativeDate, formatEUR } from './utils';
