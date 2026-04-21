@@ -64,6 +64,7 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 | notes | TEXT | Nein | Freitextnotizen |
 | upsell_notes | TEXT | Nein | Ideen für Upselling |
 | primary_image_path | TEXT | Nein | Pfad zum Produktbild (wird in Modul 03 befüllt) |
+| shipping_paid_by_customer | BOOLEAN | Nein | NULL = globaler Default aus app_settings; TRUE = Käufer zahlt (Versand nicht in Marge); FALSE = wir zahlen (Versand in Marge) |
 | created_at | TEXT (ISO) | Ja | Erstellungszeitpunkt |
 | updated_at | TEXT (ISO) | Ja | Letzte Änderung |
 | deleted_at | TEXT (ISO) | Nein | Soft-Delete Timestamp |
@@ -291,6 +292,7 @@ Diese Keys werden über verschiedene Module hinweg verwendet. Die vollständige 
 - `shipping_classes`: Array `[{ name, price }]`
 - `printer_power_watts`: Number (Default: 200)
 - `electricity_price_per_kwh`: Number (Default: 0.35)
+- `shipping_paid_by_customer_default`: Boolean (Default: true — Käufer zahlt Versand)
 - `color_variants_library`: Array `[{ name, hex }]`
 
 **KI (Modul 06, 11):**

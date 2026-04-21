@@ -75,6 +75,7 @@ export const productSchema = z.object({
   notes: z.string().nullable(),
   upsell_notes: z.string().nullable(),
   primary_image_path: z.string().nullable(),
+  shipping_paid_by_customer: z.boolean().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
   deleted_at: z.string().nullable(),

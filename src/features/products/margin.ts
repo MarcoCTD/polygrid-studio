@@ -43,10 +43,17 @@ export function calculateMargin(
   // Verpackung
   const packagingCost = product.packaging_cost ?? 0;
 
-  // Versand
-  const shippingCost = product.shipping_class
-    ? (settings.shippingPrices[product.shipping_class] ?? 0)
-    : 0;
+  // Versand: nur einrechnen, wenn WIR (nicht der Käufer) den Versand zahlen.
+  // Produktfeld überschreibt den globalen Default; NULL = Default verwenden.
+  const effectiveShippingPaidByCustomer =
+    product.shipping_paid_by_customer !== null && product.shipping_paid_by_customer !== undefined
+      ? product.shipping_paid_by_customer
+      : settings.shippingPaidByCustomerDefault;
+
+  const shippingCost =
+    !effectiveShippingPaidByCustomer && product.shipping_class
+      ? (settings.shippingPrices[product.shipping_class] ?? 0)
+      : 0;
 
   // Verkaufspreis je nach Plattform
   let sellingPrice: number;

@@ -313,6 +313,7 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
         platforms: null,
         notes: null,
         upsell_notes: null,
+        shipping_paid_by_customer: null,
       };
 
       const product = await createProduct(input);
@@ -361,6 +362,7 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
       notes: null,
       upsell_notes: null,
       primary_image_path: null,
+      shipping_paid_by_customer: null,
       created_at: '',
       updated_at: '',
       deleted_at: null,

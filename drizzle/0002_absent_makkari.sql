@@ -1,0 +1,1 @@
+ALTER TABLE `products` ADD `shipping_paid_by_customer` integer;

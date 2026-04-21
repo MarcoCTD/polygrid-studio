@@ -46,6 +46,7 @@ export const products = sqliteTable(
     notes: text('notes'),
     upsell_notes: text('upsell_notes'),
     primary_image_path: text('primary_image_path'),
+    shipping_paid_by_customer: integer('shipping_paid_by_customer', { mode: 'boolean' }),
     created_at: text('created_at').notNull(),
     updated_at: text('updated_at').notNull(),
     deleted_at: text('deleted_at'),

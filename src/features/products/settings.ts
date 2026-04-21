@@ -1,5 +1,9 @@
 import { getSetting } from '@/services/database';
-import { DEFAULT_PRODUCT_SETTINGS, type ProductSettings } from './defaults';
+import {
+  DEFAULT_PRODUCT_SETTINGS,
+  SHIPPING_PAID_BY_CUSTOMER_DEFAULT_KEY,
+  type ProductSettings,
+} from './defaults';
 
 /**
  * Liest Produktions-/Plattform-Parameter aus app_settings und mergt mit Defaults.
@@ -33,6 +37,13 @@ export async function getProductSettings(): Promise<ProductSettings> {
       await getSetting<Record<string, { percent: number; fixed: number }>>('platform_fees');
     if (platformFees) {
       settings.platformFees = { ...settings.platformFees, ...platformFees };
+    }
+
+    const shippingPaidByCustomerDefault = await getSetting<boolean>(
+      SHIPPING_PAID_BY_CUSTOMER_DEFAULT_KEY,
+    );
+    if (shippingPaidByCustomerDefault !== null) {
+      settings.shippingPaidByCustomerDefault = shippingPaidByCustomerDefault;
     }
   } catch {
     // Bei Lesefehlern: Defaults verwenden

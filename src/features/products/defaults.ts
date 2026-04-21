@@ -12,7 +12,14 @@ export interface ProductSettings {
   printerPowerWatts: number;
   shippingPrices: Record<ShippingClass, number>;
   platformFees: Record<Platform, { percent: number; fixed: number }>;
+  /** true = Käufer zahlt Versand (Versand NICHT in Marge), false = wir zahlen */
+  shippingPaidByCustomerDefault: boolean;
 }
+
+/** Settings-Key für den globalen Default "Wer zahlt den Versand?" */
+export const SHIPPING_PAID_BY_CUSTOMER_DEFAULT_KEY = 'shipping_paid_by_customer_default';
+/** Globaler Default: true = Käufer zahlt Versand standardmäßig */
+export const SHIPPING_PAID_BY_CUSTOMER_DEFAULT_VALUE = true;
 
 export const DEFAULT_PRODUCT_SETTINGS: ProductSettings = {
   filamentPrices: {
@@ -34,4 +41,5 @@ export const DEFAULT_PRODUCT_SETTINGS: ProductSettings = {
     ebay: { percent: 11.0, fixed: 0.0 },
     kleinanzeigen: { percent: 0.0, fixed: 0.0 },
   },
+  shippingPaidByCustomerDefault: SHIPPING_PAID_BY_CUSTOMER_DEFAULT_VALUE,
 };

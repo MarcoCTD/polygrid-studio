@@ -121,6 +121,7 @@ export function OverviewTab({ form }: OverviewTabProps) {
   const licenseRisk = watch('license_risk');
   const licenseSource = watch('license_source');
   const shippingClass = watch('shipping_class');
+  const shippingPaidByCustomer = watch('shipping_paid_by_customer');
 
   const handleStatusChange = (newStatus: Status) => {
     if (newStatus === 'online') {
@@ -225,10 +226,6 @@ export function OverviewTab({ form }: OverviewTabProps) {
           <NumberInput form={form} name="material_grams" placeholder="z.B. 50" />
         </FormField>
 
-        <FormField label="Verpackungskosten (EUR)">
-          <NumberInput form={form} name="packaging_cost" placeholder="z.B. 0.50" />
-        </FormField>
-
         <FormField label="Versandklasse">
           <Select
             value={shippingClass ?? ''}
@@ -251,6 +248,45 @@ export function OverviewTab({ form }: OverviewTabProps) {
               ))}
             </SelectContent>
           </Select>
+        </FormField>
+
+        <FormField label="Wer zahlt den Versand?" span2>
+          <div className="flex gap-4">
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="shipping_paid_by_customer"
+                className="accent-[var(--accent-primary)]"
+                checked={shippingPaidByCustomer === null || shippingPaidByCustomer === undefined}
+                onChange={() => setValue('shipping_paid_by_customer', null, { shouldDirty: true })}
+              />
+              <span>Standard (Einstellung)</span>
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="shipping_paid_by_customer"
+                className="accent-[var(--accent-primary)]"
+                checked={shippingPaidByCustomer === true}
+                onChange={() => setValue('shipping_paid_by_customer', true, { shouldDirty: true })}
+              />
+              <span>Käufer zahlt Versand</span>
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="shipping_paid_by_customer"
+                className="accent-[var(--accent-primary)]"
+                checked={shippingPaidByCustomer === false}
+                onChange={() => setValue('shipping_paid_by_customer', false, { shouldDirty: true })}
+              />
+              <span>Ich zahle Versand</span>
+            </label>
+          </div>
+        </FormField>
+
+        <FormField label="Verpackungskosten (EUR)">
+          <NumberInput form={form} name="packaging_cost" placeholder="z.B. 0.50" />
         </FormField>
 
         <FormField label="Farbvarianten" span2>

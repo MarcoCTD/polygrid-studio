@@ -71,6 +71,11 @@ function rowToProduct(row: Record<string, unknown>): Product {
     notes: (row.notes as string) ?? null,
     upsell_notes: (row.upsell_notes as string) ?? null,
     primary_image_path: (row.primary_image_path as string) ?? null,
+    // SQLite stores booleans as integers (0/1); null means "use global default"
+    shipping_paid_by_customer:
+      row.shipping_paid_by_customer === null || row.shipping_paid_by_customer === undefined
+        ? null
+        : Boolean(row.shipping_paid_by_customer),
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
     deleted_at: (row.deleted_at as string) ?? null,
@@ -300,6 +305,7 @@ export async function duplicateProduct(id: string): Promise<Product> {
     platforms: original.platforms,
     notes: original.notes,
     upsell_notes: original.upsell_notes,
+    shipping_paid_by_customer: original.shipping_paid_by_customer,
   };
 
   return createProduct(createInput);
