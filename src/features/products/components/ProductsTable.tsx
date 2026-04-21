@@ -24,6 +24,8 @@ import { LICENSE_RISK_LABELS } from '../labels';
 const columnHelper = createColumnHelper<Product>();
 
 const ROW_HEIGHT = 44;
+// Name column is flex — this is its minimum width used for the totalMinWidth calculation
+const NAME_COL_MIN_WIDTH = 200;
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   if (sorted === 'asc') return <ArrowUp size={12} />;
@@ -80,10 +82,12 @@ function createAllColumns(
       size: 100,
       cell: (info) => <StatusBadge status={info.getValue()} />,
     }) as ColumnDef<Product, unknown>,
+    // Name: flex column — no fixed size, grows to fill available space
     name: columnHelper.accessor('name', {
       header: 'Name',
+      // size 99999 = sentinel: treated as flex in our layout
       size: 99999,
-      minSize: 200,
+      minSize: NAME_COL_MIN_WIDTH,
       cell: (info) => (
         <span
           className="truncate font-medium text-pg-accent hover:underline"
@@ -192,6 +196,34 @@ function buildVisibleColumns(
 }
 
 // ============================================================
+// Helper: compute the minimum total width for the column set
+// Used to set minWidth on the inner container so horizontal
+// scroll kicks in before columns start compressing.
+// ============================================================
+
+function computeTotalMinWidth(columns: ColumnDef<Product, unknown>[]): number {
+  return columns.reduce((sum, col) => {
+    const size = col.size;
+    if (size === undefined) return sum + 100;
+    if (size === 99999) return sum + NAME_COL_MIN_WIDTH; // flex name col
+    return sum + size;
+  }, 0);
+}
+
+// ============================================================
+// Cell width helpers — returns the style props for a cell/header
+// Fixed cols: flex 0 0 auto → never shrink or grow
+// Flex col (name): flex 1 1 0% + min-width → grows but never below min
+// ============================================================
+
+function colStyle(size: number | undefined): React.CSSProperties {
+  if (size === undefined || size === 99999) {
+    return { flex: '1 1 0%', minWidth: NAME_COL_MIN_WIDTH, overflow: 'hidden' };
+  }
+  return { flex: '0 0 auto', width: size };
+}
+
+// ============================================================
 // ProductsTable
 // ============================================================
 
@@ -227,6 +259,8 @@ export function ProductsTable({ products, isLoading }: ProductsTableProps) {
     [allColumns, columnConfig],
   );
 
+  const totalMinWidth = useMemo(() => computeTotalMinWidth(columns), [columns]);
+
   const table = useReactTable({
     data: products,
     columns,
@@ -238,8 +272,11 @@ export function ProductsTable({ products, isLoading }: ProductsTableProps) {
 
   const { rows } = table.getRowModel();
 
-  // Virtualization
+  // Single scroll container: both x (horizontal) and y (vertical).
+  // The header sits sticky inside it, so it scrolls horizontally in sync
+  // but stays fixed when scrolling vertically.
   const parentRef = useRef<HTMLDivElement>(null);
+
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
@@ -250,7 +287,6 @@ export function ProductsTable({ products, isLoading }: ProductsTableProps) {
   // Keyboard Navigation
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      // Don't intercept if user is typing in an input
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
         return;
@@ -333,7 +369,7 @@ export function ProductsTable({ products, isLoading }: ProductsTableProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  // Scroll active row into view
+  // Scroll active row into view (vertical only)
   useEffect(() => {
     if (activeRowIndex >= 0) {
       virtualizer.scrollToIndex(activeRowIndex, { align: 'auto' });
@@ -359,96 +395,105 @@ export function ProductsTable({ products, isLoading }: ProductsTableProps) {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden rounded-lg border border-border-subtle bg-bg-elevated dark:border-transparent dark:shadow-md">
-      {/* Table Header */}
-      <div className="flex border-b border-border-subtle bg-bg-secondary dark:border-transparent dark:bg-bg-elevated-1">
-        {table.getHeaderGroups().map((headerGroup) =>
-          headerGroup.headers.map((header) => {
-            const meta = header.column.columnDef.meta as { align?: 'right' } | undefined;
-            return (
-              <div
-                key={header.id}
-                className={cn(
-                  'group flex h-9 shrink-0 items-center gap-1 px-3 text-xs font-medium text-text-secondary transition-colors',
-                  header.column.getCanSort() &&
-                    'cursor-pointer select-none hover:text-text-primary',
-                  meta?.align === 'right' && 'justify-end',
-                )}
-                style={{
-                  width:
-                    header.column.columnDef.size === 99999 ? undefined : header.column.getSize(),
-                  flex: header.column.columnDef.size === 99999 ? '1 1 0%' : undefined,
-                }}
-                onClick={
-                  header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined
-                }
-              >
-                {flexRender(header.column.columnDef.header, header.getContext())}
-                {header.column.getCanSort() && <SortIcon sorted={header.column.getIsSorted()} />}
-              </div>
-            );
-          }),
-        )}
-      </div>
-
-      {/* Table Body (virtualized) */}
+      {/*
+       * Single scroll container that handles BOTH axes:
+       * - overflow-x: auto → horizontal scrollbar appears when content exceeds width
+       * - overflow-y: auto → vertical scrollbar for virtualized rows
+       *
+       * The header uses `sticky top-0` so it stays visible when scrolling
+       * vertically, but moves with the body when scrolling horizontally.
+       */}
       <div ref={parentRef} className="flex-1 overflow-auto">
-        <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
-          {virtualizer.getVirtualItems().map((virtualRow) => {
-            const row = rows[virtualRow.index];
-            const isDeleted = row.original.deleted_at !== null;
-            const isActive = virtualRow.index === activeRowIndex;
-            const isRowSelected = selectedIds.has(row.original.id);
+        {/* Inner content wrapper: forces minimum width so scroll triggers correctly */}
+        <div style={{ minWidth: totalMinWidth }} className="flex flex-col">
+          {/* Sticky header — scrolls horizontally with body, stays fixed vertically */}
+          <div className="sticky top-0 z-10 flex border-b border-border-subtle bg-bg-secondary dark:border-transparent dark:bg-bg-elevated-1">
+            {table.getHeaderGroups().map((headerGroup) =>
+              headerGroup.headers.map((header) => {
+                const meta = header.column.columnDef.meta as { align?: 'right' } | undefined;
+                return (
+                  <div
+                    key={header.id}
+                    className={cn(
+                      'group flex h-9 items-center gap-1 px-3 text-xs font-medium text-text-secondary transition-colors',
+                      header.column.getCanSort() &&
+                        'cursor-pointer select-none hover:text-text-primary',
+                      meta?.align === 'right' && 'justify-end',
+                    )}
+                    style={colStyle(header.column.columnDef.size)}
+                    onClick={
+                      header.column.getCanSort()
+                        ? header.column.getToggleSortingHandler()
+                        : undefined
+                    }
+                  >
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {header.column.getCanSort() && (
+                      <SortIcon sorted={header.column.getIsSorted()} />
+                    )}
+                  </div>
+                );
+              }),
+            )}
+          </div>
 
-            return (
-              <div
-                key={row.id}
-                className={cn(
-                  'absolute left-0 top-0 flex w-full items-center border-b border-border-subtle transition-colors hover:bg-bg-hover dark:border-transparent',
-                  isDeleted && 'opacity-50',
-                  isRowSelected && 'bg-accent-subtle',
-                  isActive && 'ring-2 ring-inset ring-pg-accent',
-                )}
-                style={{
-                  height: `${virtualRow.size}px`,
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
-                onClick={() => setActiveRowIndex(virtualRow.index)}
-              >
-                {row.getVisibleCells().map((cell) => {
-                  const meta = cell.column.columnDef.meta as
-                    | { align?: 'right'; clickable?: boolean }
-                    | undefined;
-                  return (
-                    <div
-                      key={cell.id}
-                      className={cn(
-                        'flex h-full items-center px-3 text-sm',
-                        meta?.align === 'right' && 'justify-end',
-                        isDeleted && 'line-through',
-                        meta?.clickable && 'cursor-pointer',
-                      )}
-                      style={{
-                        width:
-                          cell.column.columnDef.size === 99999 ? undefined : cell.column.getSize(),
-                        flex: cell.column.columnDef.size === 99999 ? '1 1 0%' : undefined,
-                      }}
-                      onClick={
-                        meta?.clickable
-                          ? () =>
-                              navigate({
-                                to: '/products/$productId',
-                                params: { productId: row.original.id },
-                              })
-                          : undefined
-                      }
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
+          {/* Virtualized rows */}
+          <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const row = rows[virtualRow.index];
+              const isDeleted = row.original.deleted_at !== null;
+              const isActive = virtualRow.index === activeRowIndex;
+              const isRowSelected = selectedIds.has(row.original.id);
+
+              return (
+                <div
+                  key={row.id}
+                  className={cn(
+                    'absolute left-0 top-0 flex w-full items-center border-b border-border-subtle transition-colors hover:bg-bg-hover dark:border-transparent',
+                    isDeleted && 'opacity-50',
+                    isRowSelected && 'bg-accent-subtle',
+                    isActive && 'ring-2 ring-inset ring-pg-accent',
+                  )}
+                  style={{
+                    height: `${virtualRow.size}px`,
+                    transform: `translateY(${virtualRow.start}px)`,
+                    // Ensure row is never narrower than the inner content
+                    minWidth: '100%',
+                  }}
+                  onClick={() => setActiveRowIndex(virtualRow.index)}
+                >
+                  {row.getVisibleCells().map((cell) => {
+                    const meta = cell.column.columnDef.meta as
+                      | { align?: 'right'; clickable?: boolean }
+                      | undefined;
+                    return (
+                      <div
+                        key={cell.id}
+                        className={cn(
+                          'flex h-full items-center px-3 text-sm',
+                          meta?.align === 'right' && 'justify-end',
+                          isDeleted && 'line-through',
+                          meta?.clickable && 'cursor-pointer',
+                        )}
+                        style={colStyle(cell.column.columnDef.size)}
+                        onClick={
+                          meta?.clickable
+                            ? () =>
+                                navigate({
+                                  to: '/products/$productId',
+                                  params: { productId: row.original.id },
+                                })
+                            : undefined
+                        }
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
