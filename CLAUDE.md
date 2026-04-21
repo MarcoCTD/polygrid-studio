@@ -50,6 +50,12 @@ Design-System: `docs/DESIGN_SYSTEM.md`
 - **Platzhalter-Code muss kompilieren.** Leeres Interface/Stub statt `// TODO`.
 - **`docs/DATABASE_SCHEMA.md` aktuell halten.** Nach jedem Modul, das Felder ergänzt oder Tabellen ändert, die Datei updaten.
 
+### Kommunikation
+- **Bei Unklarheit: nachfragen, nicht raten.** Der Nutzer ist kein Entwickler. Eine Rückfrage ist immer besser als eine falsche Annahme.
+- **Keine stillen Nebenaktionen.** Keine `npm audit fix`, keine Version-Bumps, keine Formatierungs-Runs über Dateien außerhalb des aktuellen Moduls, kein "ich habe nebenbei noch X verbessert".
+- **Destruktive Operationen nur mit Bestätigung.** Git reset, Force-Push, File-Löschungen außerhalb des Modul-Scopes, DB-Wipes.
+- **Wenn ein Test/Lint fehlschlägt: Ursache suchen, nicht den Test anpassen.**
+
 ### Was du NICHT tun sollst
 - Bibliotheken austauschen (kein Redux statt Zustand etc.) ohne explizite Freigabe.
 - Ordnerstruktur ändern.
@@ -57,6 +63,15 @@ Design-System: `docs/DESIGN_SYSTEM.md`
 - DB-Schema ändern, das in einem anderen Modul definiert wurde.
 - Vorgriffe auf spätere Module. Wenn ein Feature noch nicht spezifiziert ist: Platzhalter.
 - `any`-Types ohne begründeten Kommentar.
+- Direkt auf `main` committen oder pushen. Immer auf dem aktuellen Feature-Branch arbeiten.
+
+## Git-Workflow
+
+- **Feature-Branches pro Modul.** Namensschema: `feature/modul-NN-kurzname`, z.B. `feature/modul-03-dateimanager`, `feature/modul-04-ausgabenverwaltung`.
+- Alle Phasen-Commits (A/B/C/D/E) und Fix-Commits eines Moduls landen auf dem Feature-Branch, nicht auf `main`.
+- Nach Abschluss der letzten Phase wird ein Pull Request auf GitHub erstellt und gemergt. Danach wird der Feature-Branch gelöscht.
+- Claude Code committet und pusht NIEMALS auf `main` direkt. Bei Unsicherheit über den aktiven Branch: `git branch --show-current` prüfen und nachfragen.
+- Historische Ausnahme: Modul 02 wurde direkt auf `main` entwickelt. Ab Modul 03 gilt der Feature-Branch-Workflow konsequent.
 
 ## Architekturprinzipien
 
@@ -76,7 +91,9 @@ polygrid-studio/
 │   ├── DESIGN_SYSTEM.md         # Vollständiges Design-System
 │   ├── DATABASE_SCHEMA.md       # Konsolidiertes DB-Schema
 │   └── modules/
-│       └── MODUL_01_FOUNDATION.md
+│       ├── MODUL_01_FOUNDATION.md
+│       ├── MODUL_02_PRODUKTVERWALTUNG.md
+│       └── MODUL_03_DATEIMANAGER.md
 ├── src/
 │   ├── components/{ui,layout,shared}/
 │   ├── features/{dashboard,products,expenses,orders,listings,templates,files,tasks,analytics,ai-assistant,settings}/
@@ -111,16 +128,26 @@ npx drizzle-kit generate
 
 # Drizzle: Migrations anwenden (geschieht automatisch beim App-Start)
 npx drizzle-kit push
+
+# Aktuellen Branch prüfen
+git branch --show-current
+
+# Feature-Branch für neues Modul anlegen (Beispiel)
+git checkout main
+git pull
+git checkout -b feature/modul-XX-kurzname
+git push -u origin feature/modul-XX-kurzname
 ```
 
 ## Session-Ablauf
 
 1. Diese `CLAUDE.md` lesen (immer)
-2. Aktuelle Modul-Spec aus `docs/modules/` lesen
-3. Implementieren – nur Scope des aktiven Moduls
-4. Lint + TypeScript-Check müssen grün sein
-5. Manuell testen
-6. Commit mit aussagekräftiger Message
+2. Aktiven Branch prüfen (`git branch --show-current`) und auf dem Feature-Branch bleiben
+3. Aktuelle Modul-Spec aus `docs/modules/` lesen
+4. Implementieren – nur Scope des aktiven Moduls
+5. Lint + TypeScript-Check müssen grün sein
+6. Manuell testen
+7. Commit mit aussagekräftiger Message auf dem Feature-Branch
 
 ## Wichtige Referenzen
 
@@ -133,10 +160,3 @@ Bei Widersprüchen zwischen Dokumenten:
 - Modul-Spec gewinnt für Modulscope
 - PROJEKTREGELN gewinnt für Übergreifendes
 - DESIGN_SYSTEM gewinnt für Styling
-
-### Kommunikation
-
-- **Bei Unklarheit: nachfragen, nicht raten.** Der Nutzer ist kein Entwickler. Eine Rückfrage ist immer besser als eine falsche Annahme.
-- **Keine stillen Nebenaktionen.** Keine `npm audit fix`, keine Version-Bumps, keine Formatierungs-Runs über Dateien außerhalb des aktuellen Moduls, kein "ich habe nebenbei noch X verbessert".
-- **Destruktive Operationen nur mit Bestätigung.** Git reset, Force-Push, File-Löschungen außerhalb des Modul-Scopes, DB-Wipes.
-- **Wenn ein Test/Lint fehlschlägt: Ursache suchen, nicht den Test anpassen.**
