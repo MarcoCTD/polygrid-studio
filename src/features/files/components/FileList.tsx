@@ -2,15 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { File, FileText, Folder, Image, Package } from 'lucide-react';
 import { listDirectory, openInExplorer, type FileEntry } from '@/services/filesystem';
 import { useFilesStore } from '../store';
+import { FileContextMenu, type FileAction } from './FileContextMenu';
 
 type SortKey = 'name' | 'size' | 'modifiedAt';
 type SortDirection = 'asc' | 'desc';
 
 interface FileListProps {
   selectedPath: string;
+  onAction: (path: string, action: FileAction) => void;
 }
 
-export function FileList({ selectedPath }: FileListProps) {
+export function FileList({ selectedPath, onAction }: FileListProps) {
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>('name');
@@ -18,6 +20,7 @@ export function FileList({ selectedPath }: FileListProps) {
   const setSelectedPath = useFilesStore((state) => state.setSelectedPath);
   const setError = useFilesStore((state) => state.setError);
   const clearError = useFilesStore((state) => state.clearError);
+  const refreshCounter = useFilesStore((state) => state.refreshCounter);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,10 +46,10 @@ export function FileList({ selectedPath }: FileListProps) {
     return () => {
       cancelled = true;
     };
-  }, [clearError, selectedPath, setError]);
+  }, [clearError, refreshCounter, selectedPath, setError]);
 
   const sortedEntries = useMemo(() => {
-    const sorted = [...entries].sort((a, b) => {
+    return [...entries].sort((a, b) => {
       if (a.isDirectory !== b.isDirectory) {
         return a.isDirectory ? -1 : 1;
       }
@@ -54,7 +57,6 @@ export function FileList({ selectedPath }: FileListProps) {
       const result = compareEntry(a, b, sortKey);
       return sortDirection === 'asc' ? result : -result;
     });
-    return sorted;
   }, [entries, sortDirection, sortKey]);
 
   function updateSort(nextKey: SortKey) {
@@ -130,10 +132,16 @@ export function FileList({ selectedPath }: FileListProps) {
               onDoubleClick={() => void handleDoubleClick(entry)}
             >
               <td className="min-w-0 px-3">
-                <div className="flex min-w-0 items-center gap-2">
-                  <FileIcon entry={entry} />
-                  <span className="truncate">{entry.name}</span>
-                </div>
+                <FileContextMenu
+                  type={entry.isDirectory ? 'folder' : 'file'}
+                  path={entry.path}
+                  onAction={onAction}
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <FileIcon entry={entry} />
+                    <span className="truncate">{entry.name}</span>
+                  </div>
+                </FileContextMenu>
               </td>
               <td className="px-3 text-right text-text-secondary">{formatSize(entry)}</td>
               <td className="px-3 text-text-secondary">{formatDate(entry.modifiedAt)}</td>

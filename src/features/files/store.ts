@@ -5,6 +5,8 @@ interface FilesState {
   setSelectedPath: (path: string | null) => void;
   expandedFolders: Set<string>;
   toggleFolder: (path: string) => void;
+  refreshCounter: number;
+  refreshCurrentFolder: () => void;
   error: string | null;
   setError: (message: string) => void;
   clearError: () => void;
@@ -24,6 +26,8 @@ export const useFilesStore = create<FilesState>((set) => ({
       }
       return { expandedFolders };
     }),
+  refreshCounter: 0,
+  refreshCurrentFolder: () => set((state) => ({ refreshCounter: state.refreshCounter + 1 })),
   error: null,
   setError: (message) => set({ error: message }),
   clearError: () => set({ error: null }),
