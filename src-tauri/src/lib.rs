@@ -20,7 +20,12 @@ pub fn run() {
             filesystem::commands::create_directory,
             filesystem::commands::open_in_explorer,
             filesystem::commands::check_path_exists,
-            filesystem::commands::ensure_onedrive_structure
+            filesystem::commands::ensure_onedrive_structure,
+            filesystem::commands::rename_file,
+            filesystem::commands::move_file,
+            filesystem::commands::copy_file,
+            filesystem::commands::delete_to_archive,
+            filesystem::commands::undo_last_operation
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
