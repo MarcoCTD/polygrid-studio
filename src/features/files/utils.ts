@@ -15,3 +15,7 @@ export function getBaseName(path: string): string {
   const parts = path.split(/[\\/]/).filter(Boolean);
   return parts[parts.length - 1] ?? path;
 }
+
+export function isImageFile(fileName: string): boolean {
+  return /\.(png|jpe?g|webp)$/i.test(fileName);
+}

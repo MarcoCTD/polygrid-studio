@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { File, FileText, Folder, Image, Package } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { listDirectory, openInExplorer, type FileEntry } from '@/services/filesystem';
+import { getProductFileLinksByFolder } from '../db';
+import { absoluteToRelative } from '../productFolders';
 import { useFilesStore } from '../store';
+import type { FileLinkWithProductName } from '../types';
+import { isImageFile } from '../utils';
 import { FileContextMenu, type FileAction } from './FileContextMenu';
 
 type SortKey = 'name' | 'size' | 'modifiedAt';
@@ -9,11 +14,19 @@ type SortDirection = 'asc' | 'desc';
 
 interface FileListProps {
   selectedPath: string;
+  oneDriveBasePath: string;
   onAction: (path: string, action: FileAction) => void;
+  onImageSelect: (image: { path: string; name: string } | null) => void;
 }
 
-export function FileList({ selectedPath, onAction }: FileListProps) {
+export function FileList({
+  selectedPath,
+  oneDriveBasePath,
+  onAction,
+  onImageSelect,
+}: FileListProps) {
   const [entries, setEntries] = useState<FileEntry[]>([]);
+  const [linksByPath, setLinksByPath] = useState<Map<string, FileLinkWithProductName[]>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -27,15 +40,17 @@ export function FileList({ selectedPath, onAction }: FileListProps) {
     queueMicrotask(() => {
       setIsLoading(true);
 
-      listDirectory(selectedPath)
-        .then((data) => {
+      Promise.all([listDirectory(selectedPath), loadFolderLinks(selectedPath, oneDriveBasePath)])
+        .then(([data, links]) => {
           if (cancelled) return;
           setEntries(data);
+          setLinksByPath(groupLinksByPath(links));
           clearError();
         })
         .catch((err) => {
           if (cancelled) return;
           setEntries([]);
+          setLinksByPath(new Map());
           setError(err instanceof Error ? err.message : String(err));
         })
         .finally(() => {
@@ -46,7 +61,7 @@ export function FileList({ selectedPath, onAction }: FileListProps) {
     return () => {
       cancelled = true;
     };
-  }, [clearError, refreshCounter, selectedPath, setError]);
+  }, [clearError, oneDriveBasePath, refreshCounter, selectedPath, setError]);
 
   const sortedEntries = useMemo(() => {
     return [...entries].sort((a, b) => {
@@ -81,6 +96,15 @@ export function FileList({ selectedPath, onAction }: FileListProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
+  }
+
+  function handleClick(entry: FileEntry) {
+    if (!entry.isDirectory && isImageFile(entry.name)) {
+      onImageSelect({ path: entry.path, name: entry.name });
+      return;
+    }
+
+    onImageSelect(null);
   }
 
   if (isLoading) {
@@ -129,6 +153,7 @@ export function FileList({ selectedPath, onAction }: FileListProps) {
             <tr
               key={entry.path}
               className="h-11 cursor-default border-b border-border-subtle text-text-primary hover:bg-bg-hover"
+              onClick={() => handleClick(entry)}
               onDoubleClick={() => void handleDoubleClick(entry)}
             >
               <td className="min-w-0 px-3">
@@ -145,12 +170,71 @@ export function FileList({ selectedPath, onAction }: FileListProps) {
               </td>
               <td className="px-3 text-right text-text-secondary">{formatSize(entry)}</td>
               <td className="px-3 text-text-secondary">{formatDate(entry.modifiedAt)}</td>
-              <td className="px-3 text-text-muted">-</td>
+              <td className="px-3 text-text-muted">
+                <LinkBadge
+                  links={linksByPath.get(relativeEntryPath(entry.path, oneDriveBasePath)) ?? []}
+                />
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+async function loadFolderLinks(
+  selectedPath: string,
+  oneDriveBasePath: string | null,
+): Promise<FileLinkWithProductName[]> {
+  if (!oneDriveBasePath) {
+    return [];
+  }
+
+  return getProductFileLinksByFolder(absoluteToRelative(selectedPath, oneDriveBasePath));
+}
+
+function groupLinksByPath(
+  links: FileLinkWithProductName[],
+): Map<string, FileLinkWithProductName[]> {
+  const map = new Map<string, FileLinkWithProductName[]>();
+  for (const link of links) {
+    const existing = map.get(link.file_path) ?? [];
+    existing.push(link);
+    map.set(link.file_path, existing);
+  }
+  return map;
+}
+
+function relativeEntryPath(path: string, oneDriveBasePath: string | null): string {
+  if (!oneDriveBasePath) {
+    return path;
+  }
+
+  try {
+    return absoluteToRelative(path, oneDriveBasePath);
+  } catch {
+    return path;
+  }
+}
+
+function LinkBadge({ links }: { links: FileLinkWithProductName[] }) {
+  if (links.length === 0) {
+    return <span>-</span>;
+  }
+
+  if (links.length > 1) {
+    return (
+      <span onClick={(event) => event.stopPropagation()}>
+        <Badge variant="outline">{links.length} Verknüpfungen</Badge>
+      </span>
+    );
+  }
+
+  return (
+    <span onClick={(event) => event.stopPropagation()}>
+      <Badge variant="outline">{links[0].product_name ?? 'Produkt'}</Badge>
+    </span>
   );
 }
 

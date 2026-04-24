@@ -31,5 +31,9 @@ export interface FileLink {
   updated_at: string;
 }
 
+export interface FileLinkWithProductName extends FileLink {
+  product_name: string | null;
+}
+
 export type NewFileLink = Omit<FileLink, 'id' | 'created_at' | 'updated_at'>;
 export type FileType = z.infer<typeof fileTypeSchema>;

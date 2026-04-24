@@ -8,6 +8,7 @@ import {
   FileBreadcrumb,
   FileList,
   FolderTree,
+  ImagePreview,
   OneDriveSetupDialog,
   type FileAction,
 } from './components';
@@ -27,6 +28,7 @@ export function FilesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [pathReachable, setPathReachable] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<{ path: string; name: string } | null>(null);
   const selectedPath = useFilesStore((state) => state.selectedPath);
   const setSelectedPath = useFilesStore((state) => state.setSelectedPath);
   const storeError = useFilesStore((state) => state.error);
@@ -45,12 +47,14 @@ export function FilesPage() {
       if (!path) {
         setPathReachable(false);
         setSelectedPath(null);
+        setSelectedImage(null);
         return;
       }
 
       const exists = await checkPathExists(path);
       setPathReachable(exists);
       setSelectedPath(exists ? path : null);
+      setSelectedImage(null);
       if (!exists) {
         setError('Der konfigurierte OneDrive-Ordner ist nicht erreichbar.');
       }
@@ -79,6 +83,10 @@ export function FilesPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [fileActions]);
+
+  useEffect(() => {
+    queueMicrotask(() => setSelectedImage(null));
+  }, [selectedPath]);
 
   if (isLoading) {
     return (
@@ -155,7 +163,12 @@ export function FilesPage() {
                 selectedPath={selectedPath}
                 onNavigate={setSelectedPath}
               />
-              <FileList selectedPath={selectedPath} onAction={handleFileAction} />
+              <FileList
+                selectedPath={selectedPath}
+                oneDriveBasePath={oneDrivePath}
+                onAction={handleFileAction}
+                onImageSelect={setSelectedImage}
+              />
             </>
           ) : (
             <div className="flex flex-1 items-center justify-center text-sm text-text-muted">
@@ -163,6 +176,13 @@ export function FilesPage() {
             </div>
           )}
         </section>
+        {selectedImage ? (
+          <ImagePreview
+            filePath={selectedImage.path}
+            fileName={selectedImage.name}
+            onClose={() => setSelectedImage(null)}
+          />
+        ) : null}
       </div>
       {fileActions.dialogs}
     </div>
@@ -178,6 +198,7 @@ export function FilesPage() {
     setOneDrivePath(null);
     setPathReachable(false);
     setSelectedPath(null);
+    setSelectedImage(null);
     clearStoreError();
   }
 

@@ -1,5 +1,5 @@
 import { getDatabase } from '@/services/database';
-import type { FileLink, NewFileLink } from './types';
+import type { FileLink, FileLinkWithProductName, NewFileLink } from './types';
 
 function now(): string {
   return new Date().toISOString();
@@ -20,6 +20,13 @@ function rowToFileLink(row: Record<string, unknown>): FileLink {
     display_name: (row.display_name as string) ?? null,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
+  };
+}
+
+function rowToFileLinkWithProductName(row: Record<string, unknown>): FileLinkWithProductName {
+  return {
+    ...rowToFileLink(row),
+    product_name: (row.product_name as string) ?? null,
   };
 }
 
@@ -73,6 +80,35 @@ export async function getFileLinksByEntity(
   );
 
   return rows.map(rowToFileLink);
+}
+
+export async function getProductFileLinksByFolder(
+  folderRelativePath: string,
+): Promise<FileLinkWithProductName[]> {
+  const db = getDatabase();
+  const normalizedFolder = folderRelativePath.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+
+  const rows = await db.select<Record<string, unknown>[]>(
+    `SELECT file_links.*, products.name AS product_name
+     FROM file_links
+     LEFT JOIN products ON products.id = file_links.entity_id
+     WHERE file_links.entity_type = 'product'
+     ORDER BY file_links.created_at DESC`,
+  );
+
+  return rows
+    .map(rowToFileLinkWithProductName)
+    .filter((link) => getRelativeParent(link.file_path) === normalizedFolder);
+}
+
+function getRelativeParent(relativePath: string): string {
+  const normalized = relativePath.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+  const lastSlash = normalized.lastIndexOf('/');
+  if (lastSlash === -1) {
+    return '';
+  }
+
+  return normalized.slice(0, lastSlash);
 }
 
 export async function updateFileLink(id: string, data: Partial<FileLink>): Promise<void> {

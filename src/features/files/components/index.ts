@@ -3,6 +3,7 @@ export { FileBreadcrumb } from './FileBreadcrumb';
 export { FileContextMenu, type FileAction } from './FileContextMenu';
 export { FileList } from './FileList';
 export { FolderTree } from './FolderTree';
+export { ImagePreview } from './ImagePreview';
 export { LinkFileDialog } from './LinkFileDialog';
 export { MoveDialog } from './MoveDialog';
 export { NewFolderDialog } from './NewFolderDialog';
