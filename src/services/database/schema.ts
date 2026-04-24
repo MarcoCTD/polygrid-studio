@@ -211,7 +211,29 @@ export const fileLinks = sqliteTable(
 );
 
 // ============================================================
-// 8. templates (Modul 07) – keine FKs
+// 8. file_operations (Modul 03) – Operations-Log fuer Dateiaktionen
+// ============================================================
+export const fileOperations = sqliteTable(
+  'file_operations',
+  {
+    id: text('id').primaryKey(),
+    operation_type: text('operation_type').notNull(),
+    source_path: text('source_path').notNull(),
+    target_path: text('target_path'),
+    status: text('status').notNull(),
+    error_message: text('error_message'),
+    is_undoable: integer('is_undoable', { mode: 'boolean' }).notNull().default(false),
+    created_at: text('created_at').notNull(),
+    undone_at: text('undone_at'),
+  },
+  (table) => [
+    index('idx_file_operations_created_at').on(table.created_at),
+    index('idx_file_operations_status').on(table.status),
+  ],
+);
+
+// ============================================================
+// 9. templates (Modul 07) – keine FKs
 // ============================================================
 export const templates = sqliteTable(
   'templates',
@@ -233,7 +255,7 @@ export const templates = sqliteTable(
 );
 
 // ============================================================
-// 9. ai_jobs (Modul 06) – keine FKs
+// 10. ai_jobs (Modul 06) – keine FKs
 // ============================================================
 export const aiJobs = sqliteTable(
   'ai_jobs',
@@ -260,7 +282,7 @@ export const aiJobs = sqliteTable(
 );
 
 // ============================================================
-// 10. kpi_records (Modul 10) – keine FKs
+// 11. kpi_records (Modul 10) – keine FKs
 // ============================================================
 export const kpiRecords = sqliteTable(
   'kpi_records',

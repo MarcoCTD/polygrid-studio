@@ -1,3 +1,5 @@
+mod filesystem;
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -11,7 +13,15 @@ pub fn run() {
         .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            filesystem::commands::list_directory,
+            filesystem::commands::get_file_info,
+            filesystem::commands::create_directory,
+            filesystem::commands::open_in_explorer,
+            filesystem::commands::check_path_exists,
+            filesystem::commands::ensure_onedrive_structure
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
