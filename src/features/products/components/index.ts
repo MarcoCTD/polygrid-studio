@@ -4,6 +4,7 @@ export { PlatformIcons } from './PlatformIcons';
 export { ProductsToolbar } from './ProductsToolbar';
 export { ProductsTable } from './ProductsTable';
 export { ProductEditPage } from './ProductEditPage';
+export { ProductFilesTab } from './ProductFilesTab';
 export { SaveIndicator } from './SaveIndicator';
 export { OverviewTab } from './OverviewTab';
 export { MarginCalculator } from './MarginCalculator';

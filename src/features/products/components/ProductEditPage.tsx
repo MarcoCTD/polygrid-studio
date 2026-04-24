@@ -11,6 +11,7 @@ import { SaveIndicator } from './SaveIndicator';
 import { OverviewTab } from './OverviewTab';
 import { MarginCalculator } from './MarginCalculator';
 import { PlaceholderTab } from './PlaceholderTab';
+import { ProductFilesTab } from './ProductFilesTab';
 
 function productToFormValues(product: Product): ProductUpdate {
   return {
@@ -208,7 +209,7 @@ export function ProductEditPage() {
           </TabsContent>
 
           <TabsContent value="files">
-            <PlaceholderTab type="files" />
+            <ProductFilesTab product={product} />
           </TabsContent>
 
           <TabsContent value="listings">

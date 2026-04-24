@@ -19,6 +19,7 @@ import {
   undoLastOperation,
 } from '@/services/filesystem';
 import { useFilesStore } from '../store';
+import { LinkFileDialog } from '../components/LinkFileDialog';
 import { MoveDialog } from '../components/MoveDialog';
 import { NewFolderDialog } from '../components/NewFolderDialog';
 import { RenameDialog } from '../components/RenameDialog';
@@ -40,6 +41,7 @@ export function useFileActions({ rootPath }: UseFileActionsOptions) {
   const [newFolderParent, setNewFolderParent] = useState<PendingPath | null>(null);
   const [moveTarget, setMoveTarget] = useState<PendingPath | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<PendingPath | null>(null);
+  const [linkTarget, setLinkTarget] = useState<PendingPath | null>(null);
 
   async function runAction(action: () => Promise<void>) {
     try {
@@ -65,6 +67,10 @@ export function useFileActions({ rootPath }: UseFileActionsOptions) {
 
   function handleNewFolder(parentPath?: string | null) {
     setNewFolderParent({ path: parentPath ?? selectedPath ?? rootPath });
+  }
+
+  function handleLinkFile(path: string) {
+    setLinkTarget({ path });
   }
 
   async function handleCopy(path: string) {
@@ -141,6 +147,17 @@ export function useFileActions({ rootPath }: UseFileActionsOptions) {
         }}
         onConfirm={confirmMove}
       />
+      {linkTarget ? (
+        <LinkFileDialog
+          filePath={linkTarget.path}
+          onClose={() => setLinkTarget(null)}
+          onSuccess={() => {
+            setLinkTarget(null);
+            clearError();
+            refreshCurrentFolder();
+          }}
+        />
+      ) : null}
       <AlertDialog
         open={archiveTarget !== null}
         onOpenChange={(open) => !open && setArchiveTarget(null)}
@@ -172,6 +189,7 @@ export function useFileActions({ rootPath }: UseFileActionsOptions) {
     handleArchive,
     handleOpenInExplorer,
     handleNewFolder,
+    handleLinkFile,
     handleUndo,
   };
 }

@@ -188,5 +188,6 @@ export function FilesPage() {
     if (action.type === 'archive') fileActions.handleArchive(path);
     if (action.type === 'open_in_explorer') void fileActions.handleOpenInExplorer(path);
     if (action.type === 'new_subfolder') fileActions.handleNewFolder(path);
+    if (action.type === 'link_file') fileActions.handleLinkFile(path);
   }
 }

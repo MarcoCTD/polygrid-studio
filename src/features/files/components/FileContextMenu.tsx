@@ -1,6 +1,15 @@
 import { useRef } from 'react';
 import type { ReactNode } from 'react';
-import { Archive, Copy, Edit3, ExternalLink, FolderPlus, MoveRight, Play } from 'lucide-react';
+import {
+  Archive,
+  Copy,
+  Edit3,
+  ExternalLink,
+  FilePlus2,
+  FolderPlus,
+  MoveRight,
+  Play,
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +24,8 @@ export type FileAction =
   | { type: 'copy' }
   | { type: 'archive' }
   | { type: 'open_in_explorer' }
-  | { type: 'new_subfolder' };
+  | { type: 'new_subfolder' }
+  | { type: 'link_file' };
 
 interface FileContextMenuProps {
   type: 'file' | 'folder';
@@ -94,6 +104,10 @@ export function FileContextMenu({ type, path, onAction, children }: FileContextM
             <DropdownMenuItem onClick={() => run({ type: 'copy' })}>
               <Copy size={14} />
               Kopieren
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => run({ type: 'link_file' })}>
+              <FilePlus2 size={14} />
+              Verknüpfen mit...
             </DropdownMenuItem>
           </>
         )}
