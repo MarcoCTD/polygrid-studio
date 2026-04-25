@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ChevronDown, ChevronRight, Folder, FolderOpen } from 'lucide-react';
 import { listDirectory, type FileEntry } from '@/services/filesystem';
 import { useFilesStore } from '../store';
+import { isHiddenFile } from '../utils';
 import { FileContextMenu, type FileAction } from './FileContextMenu';
 
 interface FolderTreeProps {
@@ -70,7 +71,7 @@ function FolderNode({ path, name, level, onAction }: FolderNodeProps) {
       listDirectory(path)
         .then((entries) => {
           if (cancelled) return;
-          setChildren(entries.filter((entry) => entry.isDirectory));
+          setChildren(entries.filter((entry) => entry.isDirectory && !isHiddenFile(entry.name)));
         })
         .catch(() => {
           if (cancelled) return;

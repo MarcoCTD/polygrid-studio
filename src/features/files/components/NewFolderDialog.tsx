@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { validateFileName } from '../utils';
+import { formatUnknownError, validateFileName } from '../utils';
 
 interface NewFolderDialogProps {
   open: boolean;
@@ -50,7 +50,7 @@ export function NewFolderDialog({
       await onConfirm(name.trim());
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatUnknownError(err));
     } finally {
       setIsSaving(false);
     }

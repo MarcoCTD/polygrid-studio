@@ -19,12 +19,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { getFileInfo, getOneDriveBasePath } from '@/services/filesystem';
+import { getFileInfo, getOneDriveBasePath, hasOneDriveBasePath } from '@/services/filesystem';
 import { createFileLink, searchProductsForFileLinks } from '../db';
 import { absoluteToRelative } from '../productFolders';
 import type { FileType } from '../types';
 import { newFileLinkSchema } from '../types';
-import { getBaseName } from '../utils';
+import { formatUnknownError, getBaseName } from '../utils';
 
 const FILE_TYPE_OPTIONS: { value: FileType; label: string }[] = [
   { value: 'stl', label: 'STL-Datei' },
@@ -34,6 +34,9 @@ const FILE_TYPE_OPTIONS: { value: FileType; label: string }[] = [
   { value: 'beleg', label: 'Beleg' },
   { value: 'sonstiges', label: 'Sonstiges' },
 ];
+
+const OUTSIDE_ONEDRIVE_MESSAGE =
+  'Diese Datei liegt außerhalb deines OneDrive-Ordners und kann nicht zuverlässig verknüpft werden. Verschiebe sie zuerst in deinen PolyGrid Studio Ordner.';
 
 interface ProductSearchResult {
   id: string;
@@ -68,8 +71,31 @@ export function LinkFileDialog({
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isOutsideOneDrive, setIsOutsideOneDrive] = useState(false);
 
-  const canSave = Boolean(selectedProduct) && displayName.trim().length > 0;
+  const canSave = Boolean(selectedProduct) && displayName.trim().length > 0 && !isOutsideOneDrive;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      Promise.all([hasOneDriveBasePath(), getOneDriveBasePath()])
+        .then(([hasBasePath, basePath]) => {
+          if (cancelled || !hasBasePath || !basePath) {
+            return;
+          }
+
+          setIsOutsideOneDrive(!isPathInsideBasePath(filePath, basePath));
+        })
+        .catch((err) => {
+          if (!cancelled) setError(formatUnknownError(err));
+        });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filePath]);
 
   useEffect(() => {
     if (initialProductId && initialProductName) {
@@ -89,7 +115,7 @@ export function LinkFileDialog({
           if (!cancelled) setProducts(results);
         })
         .catch((err) => {
-          if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+          if (!cancelled) setError(formatUnknownError(err));
         })
         .finally(() => {
           if (!cancelled) setIsLoadingProducts(false);
@@ -135,7 +161,7 @@ export function LinkFileDialog({
       await createFileLink(payload);
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatUnknownError(err));
     } finally {
       setIsSaving(false);
     }
@@ -236,6 +262,12 @@ export function LinkFileDialog({
             <Textarea value={note} onChange={(event) => setNote(event.target.value)} />
           </div>
 
+          {isOutsideOneDrive ? (
+            <p className="rounded-md border border-danger bg-danger-subtle p-3 text-sm text-danger">
+              {OUTSIDE_ONEDRIVE_MESSAGE}
+            </p>
+          ) : null}
+
           {error ? <p className="text-sm text-danger">{error}</p> : null}
         </div>
 
@@ -262,4 +294,17 @@ function guessMimeType(extension: string | null): string | null {
   if (normalized === 'stl') return 'model/stl';
   if (normalized === 'pdf') return 'application/pdf';
   return null;
+}
+
+function isPathInsideBasePath(filePath: string, basePath: string): boolean {
+  const normalizedFilePath = normalizePath(filePath);
+  const normalizedBasePath = normalizePath(basePath);
+  return (
+    normalizedFilePath === normalizedBasePath ||
+    normalizedFilePath.startsWith(`${normalizedBasePath}/`)
+  );
+}
+
+function normalizePath(path: string): string {
+  return path.replace(/\\/g, '/').replace(/\/+$/, '');
 }

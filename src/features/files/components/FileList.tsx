@@ -6,7 +6,7 @@ import { getProductFileLinksByFolder } from '../db';
 import { absoluteToRelative } from '../productFolders';
 import { useFilesStore } from '../store';
 import type { FileLinkWithProductName } from '../types';
-import { isImageFile } from '../utils';
+import { formatUnknownError, isHiddenFile, isImageFile } from '../utils';
 import { FileContextMenu, type FileAction } from './FileContextMenu';
 
 type SortKey = 'name' | 'size' | 'modifiedAt';
@@ -43,7 +43,7 @@ export function FileList({
       Promise.all([listDirectory(selectedPath), loadFolderLinks(selectedPath, oneDriveBasePath)])
         .then(([data, links]) => {
           if (cancelled) return;
-          setEntries(data);
+          setEntries(data.filter((entry) => !isHiddenFile(entry.name)));
           setLinksByPath(groupLinksByPath(links));
           clearError();
         })
@@ -51,7 +51,7 @@ export function FileList({
           if (cancelled) return;
           setEntries([]);
           setLinksByPath(new Map());
-          setError(err instanceof Error ? err.message : String(err));
+          setError(formatUnknownError(err));
         })
         .finally(() => {
           if (!cancelled) setIsLoading(false);
@@ -94,7 +94,7 @@ export function FileList({
       await openInExplorer(entry.path);
       clearError();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatUnknownError(err));
     }
   }
 

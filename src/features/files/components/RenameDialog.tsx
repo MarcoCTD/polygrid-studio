@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { getBaseName, validateFileName } from '../utils';
+import { formatUnknownError, getBaseName, validateFileName } from '../utils';
 
 interface RenameDialogProps {
   open: boolean;
@@ -45,7 +45,7 @@ export function RenameDialog({ open, path, onOpenChange, onConfirm }: RenameDial
       await onConfirm(name.trim());
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatUnknownError(err));
     } finally {
       setIsSaving(false);
     }

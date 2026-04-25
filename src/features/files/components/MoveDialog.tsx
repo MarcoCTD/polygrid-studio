@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { listDirectory, type FileEntry } from '@/services/filesystem';
+import { formatUnknownError, isHiddenFile } from '../utils';
 
 interface MoveDialogProps {
   open: boolean;
@@ -57,7 +58,7 @@ export function MoveDialog({
       await onConfirm(selectedTarget);
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatUnknownError(err));
     } finally {
       setIsSaving(false);
     }
@@ -138,7 +139,7 @@ function MoveFolderNode({
       listDirectory(path)
         .then((entries) => {
           if (cancelled) return;
-          setChildren(entries.filter((entry) => entry.isDirectory));
+          setChildren(entries.filter((entry) => entry.isDirectory && !isHiddenFile(entry.name)));
         })
         .catch(() => {
           if (cancelled) return;

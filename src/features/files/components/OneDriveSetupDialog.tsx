@@ -3,6 +3,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ensureOneDriveStructure, setOneDriveBasePath } from '@/services/filesystem';
+import { formatUnknownError } from '../utils';
 
 interface OneDriveSetupDialogProps {
   onConfigured: (path: string) => void;
@@ -31,7 +32,7 @@ export function OneDriveSetupDialog({ onConfigured }: OneDriveSetupDialogProps) 
       await setOneDriveBasePath(polyGridPath);
       onConfigured(polyGridPath);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatUnknownError(err));
     } finally {
       setIsSelecting(false);
     }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Grid2X2, FolderPlus } from 'lucide-react';
+import { FolderPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { checkPathExists, getOneDriveBasePath } from '@/services/filesystem';
 import { useFilesStore } from './store';
@@ -13,6 +13,7 @@ import {
   type FileAction,
 } from './components';
 import { useFileActions } from './hooks';
+import { formatUnknownError } from './utils';
 
 function shortenMiddle(path: string, maxLength = 50): string {
   if (path.length <= maxLength) {
@@ -60,7 +61,7 @@ export function FilesPage() {
       }
     } catch (err) {
       setPathReachable(false);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatUnknownError(err));
     } finally {
       setIsLoading(false);
     }
@@ -129,16 +130,6 @@ export function FilesPage() {
           >
             <FolderPlus size={14} />
             Neuer Ordner
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled
-            className="gap-1.5"
-            title="Grid-Ansicht kommt später"
-          >
-            <Grid2X2 size={14} />
-            Ansicht
           </Button>
         </div>
         <p

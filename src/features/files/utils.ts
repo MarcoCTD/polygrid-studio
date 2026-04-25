@@ -19,3 +19,19 @@ export function getBaseName(path: string): string {
 export function isImageFile(fileName: string): boolean {
   return /\.(png|jpe?g|webp)$/i.test(fileName);
 }
+
+export function isHiddenFile(name: string): boolean {
+  return name.startsWith('.');
+}
+
+export function formatUnknownError(err: unknown): string {
+  if (err instanceof Error) {
+    return err.message;
+  }
+
+  if (typeof err === 'string') {
+    return err;
+  }
+
+  return JSON.stringify(err);
+}

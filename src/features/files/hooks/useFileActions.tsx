@@ -23,6 +23,7 @@ import { LinkFileDialog } from '../components/LinkFileDialog';
 import { MoveDialog } from '../components/MoveDialog';
 import { NewFolderDialog } from '../components/NewFolderDialog';
 import { RenameDialog } from '../components/RenameDialog';
+import { formatUnknownError } from '../utils';
 
 interface UseFileActionsOptions {
   rootPath: string;
@@ -49,7 +50,7 @@ export function useFileActions({ rootPath }: UseFileActionsOptions) {
       clearError();
       refreshCurrentFolder();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatUnknownError(err));
     }
   }
 
