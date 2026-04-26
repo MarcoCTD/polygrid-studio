@@ -6,6 +6,7 @@ export {
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABELS,
   EXPENSE_CATEGORY_COLORS,
+  EXPENSE_CATEGORY_CHART_COLORS,
   type ExpenseCategory,
   type ExpenseSubcategory,
   type PaymentMethod,

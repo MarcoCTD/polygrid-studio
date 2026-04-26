@@ -106,6 +106,20 @@ export const EXPENSE_CATEGORY_COLORS: Record<ExpenseCategory, string> = {
   sonstiges: 'bg-stone-100 text-stone-800 border-stone-200',
 };
 
+export const EXPENSE_CATEGORY_CHART_COLORS: Record<ExpenseCategory, string> = {
+  filament: '#2563eb',
+  verpackung: '#059669',
+  werkzeuge: '#52525b',
+  druckerzubehoer: '#0891b2',
+  maschinen_hardware: '#475569',
+  software_saas: '#7c3aed',
+  werbung: '#db2777',
+  versand: '#d97706',
+  reisekosten: '#ea580c',
+  buero: '#4f46e5',
+  sonstiges: '#78716c',
+};
+
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 export type ExpenseSubcategory =
   (typeof EXPENSE_SUBCATEGORIES)[keyof typeof EXPENSE_SUBCATEGORIES][number];

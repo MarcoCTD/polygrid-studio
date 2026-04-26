@@ -30,6 +30,7 @@ export {
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABELS,
   EXPENSE_CATEGORY_COLORS,
+  EXPENSE_CATEGORY_CHART_COLORS,
 } from './constants';
 
 export {
@@ -68,5 +69,7 @@ export {
   previousMonthValue,
   getPeriodDateRange,
   calculatePercentChange,
+  buildExpenseCsvFilename,
+  exportExpensesAsCsv,
   type ExpensePeriod,
 } from './utils';

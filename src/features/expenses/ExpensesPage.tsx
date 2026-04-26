@@ -10,9 +10,15 @@ import { ExpensesHeader } from './components/ExpensesHeader';
 import { ExpensesTable } from './components/ExpensesTable';
 import { ExpensesToolbar, type ExpensesFilterState } from './components/ExpensesToolbar';
 import { QuickExpenseForm } from './components/QuickExpenseForm';
-import { getExpenses, getMonthlySum, getPreviousMonthSum } from './services';
+import { getCategoryBreakdown, getExpenses, getMonthlySum, getPreviousMonthSum } from './services';
 import type { Expense, ExpenseFilter } from './schemas';
-import { getPeriodDateRange, monthInputValue, parseMonthValue } from './utils';
+import {
+  buildExpenseCsvFilename,
+  exportExpensesAsCsv,
+  getPeriodDateRange,
+  monthInputValue,
+  parseMonthValue,
+} from './utils';
 
 const INITIAL_FILTERS: ExpensesFilterState = {
   search: '',
@@ -35,7 +41,11 @@ export function ExpensesPage() {
   const [selectedMonth, setSelectedMonth] = useState(monthInputValue(new Date()));
   const [monthlySum, setMonthlySum] = useState(0);
   const [previousMonthSum, setPreviousMonthSum] = useState(0);
+  const [categoryBreakdown, setCategoryBreakdown] = useState<{ category: string; total: number }[]>(
+    [],
+  );
   const [isHeaderLoading, setIsHeaderLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
 
   const serviceFilters = useMemo<ExpenseFilter>(() => {
     const dateRange = getPeriodDateRange(filters.period, filters.customFrom, filters.customTo);
@@ -71,10 +81,15 @@ export function ExpensesPage() {
     const { year, month } = parseMonthValue(selectedMonth);
     setIsHeaderLoading(true);
 
-    Promise.all([getMonthlySum(year, month), getPreviousMonthSum(year, month)])
-      .then(([current, previous]) => {
+    Promise.all([
+      getMonthlySum(year, month),
+      getPreviousMonthSum(year, month),
+      getCategoryBreakdown(year, month),
+    ])
+      .then(([current, previous, breakdown]) => {
         setMonthlySum(current);
         setPreviousMonthSum(previous);
+        setCategoryBreakdown(breakdown);
       })
       .catch((err) => {
         toast.error(
@@ -112,6 +127,25 @@ export function ExpensesPage() {
     },
     [openDetailPanel, reloadAll],
   );
+
+  const handleExport = useCallback(() => {
+    setIsExporting(true);
+
+    exportExpensesAsCsv(expenses, buildExpenseCsvFilename(selectedMonth))
+      .then((exported) => {
+        if (exported) {
+          toast.success(
+            `${expenses.length} ${expenses.length === 1 ? 'Ausgabe' : 'Ausgaben'} exportiert`,
+          );
+        }
+      })
+      .catch((err) => {
+        toast.error(
+          err instanceof Error ? err.message : 'Ausgaben konnten nicht exportiert werden',
+        );
+      })
+      .finally(() => setIsExporting(false));
+  }, [expenses, selectedMonth]);
 
   useEffect(() => {
     let cancelled = false;
@@ -161,12 +195,12 @@ export function ExpensesPage() {
         label: 'Ausgaben exportieren',
         icon: Download,
         category: 'action',
-        action: () => toast.info('CSV-Export kommt in Sub-Session D.'),
+        action: handleExport,
       },
     ]);
 
     return () => unregisterCommands(commandIds);
-  }, [openExpenseDetail, registerCommands, unregisterCommands]);
+  }, [handleExport, openExpenseDetail, registerCommands, unregisterCommands]);
 
   return (
     <div
@@ -187,6 +221,7 @@ export function ExpensesPage() {
         selectedMonth={selectedMonth}
         monthlySum={monthlySum}
         previousMonthSum={previousMonthSum}
+        categoryBreakdown={categoryBreakdown}
         isLoading={isHeaderLoading}
         onSelectedMonthChange={setSelectedMonth}
       />
@@ -203,10 +238,12 @@ export function ExpensesPage() {
         <ExpensesToolbar
           filters={filters}
           totalCount={expenses.length}
+          isExporting={isExporting}
           onFiltersChange={(nextFilters) => {
             setFilters(nextFilters);
             setRowSelection({});
           }}
+          onExport={handleExport}
         />
       )}
 

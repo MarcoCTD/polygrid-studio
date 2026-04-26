@@ -29,7 +29,9 @@ export interface ExpensesFilterState {
 interface ExpensesToolbarProps {
   filters: ExpensesFilterState;
   totalCount: number;
+  isExporting: boolean;
   onFiltersChange: (filters: ExpensesFilterState) => void;
+  onExport: () => void;
 }
 
 interface ActiveBadge {
@@ -38,7 +40,13 @@ interface ActiveBadge {
   onRemove: () => void;
 }
 
-export function ExpensesToolbar({ filters, totalCount, onFiltersChange }: ExpensesToolbarProps) {
+export function ExpensesToolbar({
+  filters,
+  totalCount,
+  isExporting,
+  onFiltersChange,
+  onExport,
+}: ExpensesToolbarProps) {
   const patchFilters = useCallback(
     (patch: Partial<ExpensesFilterState>) => {
       onFiltersChange({ ...filters, ...patch });
@@ -189,12 +197,12 @@ export function ExpensesToolbar({ filters, totalCount, onFiltersChange }: Expens
           <Button
             variant="ghost"
             size="sm"
-            disabled
-            title="Kommt bald"
+            disabled={isExporting}
+            onClick={onExport}
             className="gap-1.5 text-text-secondary"
           >
             <Download size={14} />
-            <span>Ausgaben exportieren</span>
+            <span>{isExporting ? 'Export läuft...' : 'Ausgaben exportieren'}</span>
           </Button>
           <span className="text-xs text-text-muted">
             {totalCount} {totalCount === 1 ? 'Ausgabe' : 'Ausgaben'}

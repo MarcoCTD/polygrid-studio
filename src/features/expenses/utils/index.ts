@@ -1,4 +1,4 @@
-import type { ExpenseFilter } from './schemas';
+import type { ExpenseFilter } from '../schemas';
 
 export type ExpensePeriod = 'current_month' | 'previous_month' | 'current_year' | 'custom';
 
@@ -106,3 +106,5 @@ export function calculatePercentChange(current: number, previous: number): numbe
 
   return ((current - previous) / previous) * 100;
 }
+
+export { buildExpenseCsvFilename, exportExpensesAsCsv } from './exportUtils';
