@@ -3,6 +3,7 @@ import { RouterProvider } from '@tanstack/react-router';
 import { useUIStore } from '@/stores';
 import { initDatabase } from '@/services/database';
 import { router } from '@/router';
+import { Toaster } from '@/components/ui/sonner';
 import '@/styles/globals.css';
 
 function DatabaseError({ error }: { error: string }) {
@@ -60,7 +61,12 @@ function App() {
     return <Loading />;
   }
 
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <RouterProvider router={router} />
+      <Toaster position="bottom-right" richColors />
+    </>
+  );
 }
 
 export default App;

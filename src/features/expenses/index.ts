@@ -44,3 +44,27 @@ export {
   getPreviousMonthSum,
   checkDuplicate,
 } from './services';
+
+export {
+  ExpenseCategoryBadge,
+  ExpensesBulkToolbar,
+  ExpensesHeader,
+  ExpensesTable,
+  ExpensesToolbar,
+  QuickExpenseForm,
+  type ExpensesFilterState,
+} from './components';
+
+export {
+  formatEUR,
+  formatDateDE,
+  todayISODate,
+  monthInputValue,
+  parseMonthValue,
+  formatMonthLabel,
+  monthOptions,
+  previousMonthValue,
+  getPeriodDateRange,
+  calculatePercentChange,
+  type ExpensePeriod,
+} from './utils';
