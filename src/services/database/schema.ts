@@ -109,10 +109,13 @@ export const expenses = sqliteTable(
     payment_method: text('payment_method'),
     purpose: text('purpose'),
     product_id: text('product_id').references(() => products.id),
+    order_id: text('order_id').references(() => orders.id),
     receipt_attached: integer('receipt_attached', { mode: 'boolean' }).notNull().default(false),
     receipt_file_path: text('receipt_file_path'),
     tax_relevant: integer('tax_relevant', { mode: 'boolean' }).notNull().default(true),
     recurring: integer('recurring', { mode: 'boolean' }).notNull().default(false),
+    import_source: text('import_source').notNull().default('manual'),
+    import_ref: text('import_ref'),
     notes: text('notes'),
     created_at: text('created_at').notNull(),
     updated_at: text('updated_at').notNull(),
@@ -122,6 +125,8 @@ export const expenses = sqliteTable(
     index('idx_expenses_date').on(table.date),
     index('idx_expenses_category').on(table.category),
     index('idx_expenses_vendor').on(table.vendor),
+    index('idx_expenses_product_id').on(table.product_id),
+    index('idx_expenses_order_id').on(table.order_id),
   ],
 );
 

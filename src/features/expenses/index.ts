@@ -1,1 +1,46 @@
 export { ExpensesPage } from './ExpensesPage';
+
+export {
+  expenseSchema,
+  createExpenseSchema,
+  updateExpenseSchema,
+  expenseFilterSchema,
+  expenseCategoryEnum,
+  expenseSubcategoryEnum,
+  paymentMethodEnum,
+  importSourceEnum,
+  expenseSortFieldEnum,
+  type Expense,
+  type CreateExpense,
+  type ExpenseUpdateWithId,
+  type UpdateExpense,
+  type ExpenseFilter,
+  type ExpenseCategory,
+  type ExpenseSubcategory,
+  type PaymentMethod,
+  type ImportSource,
+  type ExpenseSortField,
+} from './schemas';
+
+export {
+  EXPENSE_CATEGORIES,
+  EXPENSE_CATEGORY_LABELS,
+  EXPENSE_SUBCATEGORIES,
+  EXPENSE_SUBCATEGORY_LABELS,
+  PAYMENT_METHODS,
+  PAYMENT_METHOD_LABELS,
+  EXPENSE_CATEGORY_COLORS,
+} from './constants';
+
+export {
+  createExpense,
+  updateExpense,
+  softDeleteExpense,
+  restoreExpense,
+  getExpenseById,
+  getExpenses,
+  getMonthlySum,
+  getCategoryBreakdown,
+  getPreviousMonthSum,
+  checkDuplicate,
+} from './services';
