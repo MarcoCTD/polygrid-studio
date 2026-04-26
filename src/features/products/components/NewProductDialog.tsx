@@ -13,6 +13,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getOneDriveBasePath } from '@/services/filesystem';
+import { createProductFolderStructure } from '@/features/files/productFolders';
 import {
   Select,
   SelectContent,
@@ -190,7 +192,14 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [isCreating, setIsCreating] = useState(false);
+  const [isCreatingProductFolder, setIsCreatingProductFolder] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [createdProductPrompt, setCreatedProductPrompt] = useState<{
+    id: string;
+    name: string;
+    basePath: string;
+  } | null>(null);
+  const [folderError, setFolderError] = useState<string | null>(null);
   const [settings, setSettings] = useState<ProductSettings | null>(null);
 
   // Per-step form instances
@@ -319,11 +328,40 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
       const product = await createProduct(input);
       onOpenChange(false);
       onCreated?.();
-      navigate({ to: '/products/$productId', params: { productId: product.id } });
+
+      const basePath = await getOneDriveBasePath();
+      if (basePath) {
+        setCreatedProductPrompt({ id: product.id, name: product.name, basePath });
+      } else {
+        navigate({ to: '/products/$productId', params: { productId: product.id } });
+      }
     } catch (err) {
       console.error('Fehler beim Erstellen:', err);
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const navigateToCreatedProduct = () => {
+    if (!createdProductPrompt) return;
+    const productId = createdProductPrompt.id;
+    setCreatedProductPrompt(null);
+    setFolderError(null);
+    navigate({ to: '/products/$productId', params: { productId } });
+  };
+
+  const handleCreateProductFolder = async () => {
+    if (!createdProductPrompt) return;
+
+    setIsCreatingProductFolder(true);
+    setFolderError(null);
+    try {
+      await createProductFolderStructure(createdProductPrompt.basePath, createdProductPrompt.name);
+      navigateToCreatedProduct();
+    } catch (err) {
+      setFolderError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsCreatingProductFolder(false);
     }
   };
 
@@ -666,6 +704,28 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
               }}
             >
               Verwerfen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={createdProductPrompt !== null}>
+        <AlertDialogContent className="bg-bg-elevated text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Produktordner anlegen?</AlertDialogTitle>
+            <AlertDialogDescription className="text-text-secondary">
+              Soll PolyGrid Studio automatisch einen Ordner für '{createdProductPrompt?.name ?? ''}'
+              in deinem OneDrive anlegen?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {folderError ? <p className="text-sm text-danger">{folderError}</p> : null}
+          <AlertDialogFooter className="bg-bg-elevated">
+            <AlertDialogCancel onClick={navigateToCreatedProduct}>Später</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isCreatingProductFolder}
+              onClick={() => void handleCreateProductFolder()}
+            >
+              {isCreatingProductFolder ? 'Legt an...' : 'Ja, anlegen'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
