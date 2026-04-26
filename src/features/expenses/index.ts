@@ -47,10 +47,12 @@ export {
 
 export {
   ExpenseCategoryBadge,
+  ExpenseDetailPanel,
   ExpensesBulkToolbar,
   ExpensesHeader,
   ExpensesTable,
   ExpensesToolbar,
+  ProductCombobox,
   QuickExpenseForm,
   type ExpensesFilterState,
 } from './components';

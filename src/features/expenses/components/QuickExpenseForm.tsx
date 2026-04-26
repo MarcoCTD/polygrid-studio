@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
 import { MoreHorizontal, Plus } from 'lucide-react';
@@ -12,20 +11,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useUIStore } from '@/stores';
 import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS } from '../constants';
 import { createExpense, checkDuplicate } from '../services';
 import { createExpenseSchema, type CreateExpense } from '../schemas';
 import { todayISODate } from '../utils';
+import { ProductCombobox } from './ProductCombobox';
 
 interface QuickExpenseFormProps {
   onCreated: () => void;
+  onMore: () => void;
 }
 
-export function QuickExpenseForm({ onCreated }: QuickExpenseFormProps) {
-  const [productReference, setProductReference] = useState('');
-  const openDetailPanel = useUIStore((state) => state.openDetailPanel);
-
+export function QuickExpenseForm({ onCreated, onMore }: QuickExpenseFormProps) {
   const form = useForm<CreateExpense>({
     resolver: zodResolver(createExpenseSchema),
     defaultValues: {
@@ -37,6 +34,7 @@ export function QuickExpenseForm({ onCreated }: QuickExpenseFormProps) {
       receipt_attached: false,
       recurring: false,
       import_source: 'manual',
+      product_id: null,
     },
   });
 
@@ -58,23 +56,12 @@ export function QuickExpenseForm({ onCreated }: QuickExpenseFormProps) {
         receipt_attached: false,
         recurring: false,
         import_source: 'manual',
+        product_id: null,
       });
-      setProductReference('');
       onCreated();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Ausgabe konnte nicht gespeichert werden');
     }
-  }
-
-  function openMorePanel() {
-    openDetailPanel(
-      <div className="p-4">
-        <h2 className="text-sm font-semibold text-text-primary">Ausgabe bearbeiten</h2>
-        <p className="mt-2 text-sm text-text-secondary">
-          Das Detail-Panel wird in Sub-Session C implementiert.
-        </p>
-      </div>,
-    );
   }
 
   return (
@@ -131,12 +118,16 @@ export function QuickExpenseForm({ onCreated }: QuickExpenseFormProps) {
           )}
         />
 
-        <Input
-          value={productReference}
-          onChange={(event) => setProductReference(event.target.value)}
-          placeholder="Produktbezug"
-          aria-label="Produktbezug"
-          title="Wird in Sub-Session C mit Produktsuche verknüpft."
+        <Controller
+          control={form.control}
+          name="product_id"
+          render={({ field }) => (
+            <ProductCombobox
+              value={field.value ?? null}
+              onChange={(productId) => field.onChange(productId)}
+              placeholder="Produktbezug"
+            />
+          )}
         />
 
         <Button type="submit" disabled={form.formState.isSubmitting} className="gap-1.5">
@@ -144,7 +135,7 @@ export function QuickExpenseForm({ onCreated }: QuickExpenseFormProps) {
           Hinzufügen
         </Button>
 
-        <Button type="button" variant="ghost" onClick={openMorePanel} className="gap-1.5">
+        <Button type="button" variant="ghost" onClick={onMore} className="gap-1.5">
           <MoreHorizontal size={14} />
           Mehr...
         </Button>

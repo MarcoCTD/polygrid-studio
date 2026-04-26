@@ -3,6 +3,8 @@ import type { RowSelectionState } from '@tanstack/react-table';
 import { Download, Info, Plus, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUIStore } from '@/stores';
+import { listProducts, type Product } from '@/features/products';
+import { ExpenseDetailPanel } from './components/ExpenseDetailPanel';
 import { ExpensesBulkToolbar } from './components/ExpensesBulkToolbar';
 import { ExpensesHeader } from './components/ExpensesHeader';
 import { ExpensesTable } from './components/ExpensesTable';
@@ -25,6 +27,8 @@ const INITIAL_FILTERS: ExpensesFilterState = {
 export function ExpensesPage() {
   const { registerCommands, unregisterCommands, openDetailPanel } = useUIStore();
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null | 'new'>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState<ExpensesFilterState>(INITIAL_FILTERS);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -48,21 +52,9 @@ export function ExpensesPage() {
   }, [filters]);
 
   const selectedIds = useMemo(() => Object.keys(rowSelection), [rowSelection]);
-
-  const openDetailPlaceholder = useCallback(
-    (expense?: Expense) => {
-      openDetailPanel(
-        <div className="p-4">
-          <h2 className="text-sm font-semibold text-text-primary">
-            {expense ? 'Ausgabe bearbeiten' : 'Neue Ausgabe'}
-          </h2>
-          <p className="mt-2 text-sm text-text-secondary">
-            Das Detail-Panel wird in Sub-Session C implementiert.
-          </p>
-        </div>,
-      );
-    },
-    [openDetailPanel],
+  const productNamesById = useMemo(
+    () => new Map(products.map((product) => [product.id, product.name])),
+    [products],
   );
 
   const reloadExpenses = useCallback(() => {
@@ -97,6 +89,52 @@ export function ExpensesPage() {
     reloadHeader();
   }, [reloadExpenses, reloadHeader]);
 
+  const openExpenseDetail = useCallback(
+    (expense: Expense | 'new') => {
+      setSelectedExpense(expense);
+      openDetailPanel(
+        <ExpenseDetailPanel
+          expense={expense}
+          onSaved={() => {
+            reloadAll();
+            setSelectedExpense(null);
+          }}
+          onDeleted={() => {
+            reloadAll();
+            setSelectedExpense(null);
+          }}
+          onRestored={() => {
+            reloadAll();
+            setSelectedExpense(null);
+          }}
+        />,
+      );
+    },
+    [openDetailPanel, reloadAll],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      listProducts({ includeDeleted: false })
+        .then((items) => {
+          if (!cancelled) setProducts(items);
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            toast.error(
+              err instanceof Error ? err.message : 'Produktliste konnte nicht geladen werden',
+            );
+          }
+        });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     const timeout = window.setTimeout(reloadExpenses, 0);
     return () => window.clearTimeout(timeout);
@@ -116,7 +154,7 @@ export function ExpensesPage() {
         label: 'Neue Ausgabe',
         icon: Plus,
         category: 'action',
-        action: () => openDetailPlaceholder(),
+        action: () => openExpenseDetail('new'),
       },
       {
         id: 'expenses:csv-export',
@@ -128,10 +166,13 @@ export function ExpensesPage() {
     ]);
 
     return () => unregisterCommands(commandIds);
-  }, [openDetailPlaceholder, registerCommands, unregisterCommands]);
+  }, [openExpenseDetail, registerCommands, unregisterCommands]);
 
   return (
-    <div className="flex h-full flex-col gap-4 overflow-hidden p-6">
+    <div
+      data-detail-selection={selectedExpense === 'new' ? 'new' : selectedExpense ? 'edit' : 'none'}
+      className="flex h-full flex-col gap-4 overflow-hidden p-6"
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-lg font-semibold text-text-primary">Ausgaben</h1>
@@ -150,7 +191,7 @@ export function ExpensesPage() {
         onSelectedMonthChange={setSelectedMonth}
       />
 
-      <QuickExpenseForm onCreated={reloadAll} />
+      <QuickExpenseForm onCreated={reloadAll} onMore={() => openExpenseDetail('new')} />
 
       {selectedIds.length > 0 ? (
         <ExpensesBulkToolbar
@@ -174,8 +215,9 @@ export function ExpensesPage() {
         isLoading={isLoading}
         rowSelection={rowSelection}
         onRowSelectionChange={setRowSelection}
-        onEditExpense={openDetailPlaceholder}
+        onEditExpense={openExpenseDetail}
         onDataChanged={reloadAll}
+        productNamesById={productNamesById}
       />
 
       <div className="flex shrink-0 items-start gap-2 rounded-lg border border-info/20 bg-info-subtle px-3 py-2 text-xs text-text-secondary">

@@ -59,6 +59,7 @@ interface ExpensesTableProps {
   onRowSelectionChange: (selection: RowSelectionState) => void;
   onEditExpense: (expense: Expense) => void;
   onDataChanged: () => void;
+  productNamesById?: Map<string, string>;
 }
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
@@ -91,6 +92,7 @@ export function ExpensesTable({
   onRowSelectionChange,
   onEditExpense,
   onDataChanged,
+  productNamesById,
 }: ExpensesTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'date', desc: true }]);
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null);
@@ -152,9 +154,13 @@ export function ExpensesTable({
           size: 150,
           cell: (info) => {
             const productId = info.getValue();
+            const productName = productId ? productNamesById?.get(productId) : null;
             return (
-              <span className="truncate text-text-secondary" title={productId ?? undefined}>
-                {productId ? 'Produkt zugeordnet' : ''}
+              <span
+                className="truncate text-text-secondary"
+                title={productName ?? productId ?? undefined}
+              >
+                {productName ?? (productId ? 'Produkt zugeordnet' : '')}
               </span>
             );
           },
@@ -225,7 +231,7 @@ export function ExpensesTable({
           enableSorting: false,
         }),
       ] as ColumnDef<Expense, unknown>[],
-    [onEditExpense],
+    [onEditExpense, productNamesById],
   );
 
   const table = useReactTable({
