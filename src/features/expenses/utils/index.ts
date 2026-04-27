@@ -108,3 +108,16 @@ export function calculatePercentChange(current: number, previous: number): numbe
 }
 
 export { buildExpenseCsvFilename, exportExpensesAsCsv } from './exportUtils';
+export {
+  autoMapColumns,
+  hasRequiredMapping,
+  importExpenses,
+  mapRowToExpense,
+  parseAmount,
+  parseCSV,
+  parseDateToISO,
+  type ColumnMapping,
+  type ExpenseField,
+  type ImportResult,
+  type ParsedCSV,
+} from './importUtils';

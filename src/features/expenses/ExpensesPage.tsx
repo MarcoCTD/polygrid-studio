@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useUIStore } from '@/stores';
 import { listProducts, type Product } from '@/features/products';
 import { ExpenseDetailPanel } from './components/ExpenseDetailPanel';
+import { ExpenseImportDialog } from './components/ExpenseImportDialog';
 import { ExpensesBulkToolbar } from './components/ExpensesBulkToolbar';
 import { ExpensesHeader } from './components/ExpensesHeader';
 import { ExpensesTable } from './components/ExpensesTable';
@@ -46,6 +47,7 @@ export function ExpensesPage() {
   );
   const [isHeaderLoading, setIsHeaderLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const serviceFilters = useMemo<ExpenseFilter>(() => {
     const dateRange = getPeriodDateRange(filters.period, filters.customFrom, filters.customTo);
@@ -244,6 +246,7 @@ export function ExpensesPage() {
             setRowSelection({});
           }}
           onExport={handleExport}
+          onImport={() => setIsImportDialogOpen(true)}
         />
       )}
 
@@ -264,6 +267,21 @@ export function ExpensesPage() {
           steuerliche Buchführung. Bitte konsultiere deinen Steuerberater.
         </p>
       </div>
+
+      <ExpenseImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        onImported={(result) => {
+          toast.success(`${result.imported} Ausgaben importiert`);
+          if (result.skipped > 0) {
+            toast.info(`${result.skipped} Duplikate übersprungen`);
+          }
+          if (result.errors.length > 0) {
+            toast.error(`${result.errors.length} Zeilen konnten nicht importiert werden`);
+          }
+          reloadAll();
+        }}
+      />
     </div>
   );
 }

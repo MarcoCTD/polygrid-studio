@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Download, Eye, EyeOff, Filter, Search, X } from 'lucide-react';
+import { Download, Eye, EyeOff, Filter, Search, Upload, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -32,6 +32,7 @@ interface ExpensesToolbarProps {
   isExporting: boolean;
   onFiltersChange: (filters: ExpensesFilterState) => void;
   onExport: () => void;
+  onImport: () => void;
 }
 
 interface ActiveBadge {
@@ -46,6 +47,7 @@ export function ExpensesToolbar({
   isExporting,
   onFiltersChange,
   onExport,
+  onImport,
 }: ExpensesToolbarProps) {
   const patchFilters = useCallback(
     (patch: Partial<ExpensesFilterState>) => {
@@ -194,6 +196,15 @@ export function ExpensesToolbar({
         </Button>
 
         <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onImport}
+            className="gap-1.5 text-text-secondary"
+          >
+            <Upload size={14} />
+            <span>Ausgaben importieren</span>
+          </Button>
           <Button
             variant="ghost"
             size="sm"
