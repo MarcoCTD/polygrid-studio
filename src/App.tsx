@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
 import { RouterProvider } from '@tanstack/react-router';
+import { toast } from 'sonner';
 import { useUIStore } from '@/stores';
 import { initDatabase } from '@/services/database';
+import { processDueRecurringExpenses } from '@/features/expenses/services';
 import { router } from '@/router';
 import { Toaster } from '@/components/ui/sonner';
 import '@/styles/globals.css';
@@ -46,7 +48,33 @@ function App() {
 
   useEffect(() => {
     initDatabase()
-      .then(() => setDbReady(true))
+      .then(async () => {
+        try {
+          const createdCount = await processDueRecurringExpenses();
+          setDbReady(true);
+
+          if (createdCount > 0) {
+            window.setTimeout(
+              () =>
+                toast.success(
+                  `${createdCount} wiederkehrende ${createdCount === 1 ? 'Ausgabe wurde' : 'Ausgaben wurden'} automatisch erfasst`,
+                ),
+              0,
+            );
+          }
+        } catch (err) {
+          setDbReady(true);
+          window.setTimeout(
+            () =>
+              toast.error(
+                err instanceof Error
+                  ? err.message
+                  : 'Wiederkehrende Ausgaben konnten nicht verarbeitet werden',
+              ),
+            0,
+          );
+        }
+      })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : String(err);
         setDbError(message);

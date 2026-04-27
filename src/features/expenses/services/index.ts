@@ -9,4 +9,6 @@ export {
   getCategoryBreakdown,
   getPreviousMonthSum,
   checkDuplicate,
+  calculateNextRecurringDate,
+  processDueRecurringExpenses,
 } from './expenseService';

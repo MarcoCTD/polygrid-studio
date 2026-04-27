@@ -33,6 +33,8 @@ export function QuickExpenseForm({ onCreated, onMore }: QuickExpenseFormProps) {
       tax_relevant: true,
       receipt_attached: false,
       recurring: false,
+      recurring_interval: null,
+      recurring_next_date: null,
       import_source: 'manual',
       product_id: null,
     },
@@ -55,6 +57,8 @@ export function QuickExpenseForm({ onCreated, onMore }: QuickExpenseFormProps) {
         tax_relevant: true,
         receipt_attached: false,
         recurring: false,
+        recurring_interval: null,
+        recurring_next_date: null,
         import_source: 'manual',
         product_id: null,
       });

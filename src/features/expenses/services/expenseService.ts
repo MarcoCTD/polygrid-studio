@@ -6,6 +6,7 @@ import {
   type CreateExpense,
   type Expense,
   type ExpenseFilter,
+  type RecurringInterval,
   type UpdateExpense,
 } from '../schemas';
 
@@ -25,6 +26,8 @@ const EXPENSE_UPDATE_FIELDS = [
   'receipt_file_path',
   'tax_relevant',
   'recurring',
+  'recurring_interval',
+  'recurring_next_date',
   'import_source',
   'import_ref',
   'notes',
@@ -61,6 +64,21 @@ function previousMonth(year: number, month: number): { year: number; month: numb
   return { year, month: month - 1 };
 }
 
+export function calculateNextRecurringDate(
+  startDate: string,
+  interval: RecurringInterval,
+  referenceDate = new Date(),
+): string {
+  let nextDate = addInterval(startDate, interval);
+  const today = toISODate(referenceDate);
+
+  while (nextDate <= today) {
+    nextDate = addInterval(nextDate, interval);
+  }
+
+  return nextDate;
+}
+
 function rowToExpense(row: Record<string, unknown>): Expense {
   return {
     id: row.id as string,
@@ -81,6 +99,8 @@ function rowToExpense(row: Record<string, unknown>): Expense {
     receipt_file_path: (row.receipt_file_path as string) ?? null,
     tax_relevant: Boolean(row.tax_relevant),
     recurring: Boolean(row.recurring),
+    recurring_interval: (row.recurring_interval as Expense['recurring_interval']) ?? null,
+    recurring_next_date: (row.recurring_next_date as string) ?? null,
     import_source: (row.import_source as Expense['import_source']) ?? 'manual',
     import_ref: (row.import_ref as string) ?? null,
     notes: (row.notes as string) ?? null,
@@ -103,13 +123,13 @@ export async function createExpense(data: CreateExpense): Promise<Expense> {
       `INSERT INTO expenses (
         id, date, amount_gross, amount_net, tax_amount, vendor, category, subcategory,
         payment_method, purpose, product_id, order_id, receipt_attached, receipt_file_path,
-        tax_relevant, recurring, import_source, import_ref, notes, created_at, updated_at,
-        deleted_at
+        tax_relevant, recurring, recurring_interval, recurring_next_date, import_source,
+        import_ref, notes, created_at, updated_at, deleted_at
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8,
         $9, $10, $11, $12, $13, $14,
         $15, $16, $17, $18, $19, $20, $21,
-        $22
+        $22, $23, $24
       )`,
       [
         id,
@@ -128,6 +148,8 @@ export async function createExpense(data: CreateExpense): Promise<Expense> {
         input.receipt_file_path ?? null,
         input.tax_relevant ?? true,
         input.recurring ?? false,
+        input.recurring_interval ?? null,
+        input.recurring_next_date ?? null,
         input.import_source ?? 'manual',
         input.import_ref ?? null,
         input.notes ?? null,
@@ -412,4 +434,101 @@ export async function checkDuplicate(
       `Duplikatprüfung konnte nicht ausgeführt werden: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
+}
+
+export async function processDueRecurringExpenses(): Promise<number> {
+  const db = getDatabase();
+  const today = toISODate(new Date());
+  let createdCount = 0;
+
+  try {
+    const rows = await db.select<Record<string, unknown>[]>(
+      `SELECT * FROM expenses
+       WHERE deleted_at IS NULL
+         AND recurring = 1
+         AND recurring_interval IS NOT NULL
+         AND recurring_next_date IS NOT NULL
+         AND recurring_next_date <= $1
+       ORDER BY recurring_next_date ASC, created_at ASC`,
+      [today],
+    );
+
+    for (const row of rows) {
+      const source = rowToExpense(row);
+      if (!source.recurring_interval || !source.recurring_next_date) {
+        continue;
+      }
+
+      const nextDate = calculateNextRecurringDate(
+        source.recurring_next_date,
+        source.recurring_interval,
+      );
+      const duplicate = await checkDuplicate(
+        source.recurring_next_date,
+        source.amount_gross,
+        source.vendor,
+      );
+
+      if (!duplicate) {
+        await createExpense({
+          date: source.recurring_next_date,
+          amount_gross: source.amount_gross,
+          amount_net: source.amount_net,
+          tax_amount: source.tax_amount,
+          vendor: source.vendor,
+          category: source.category,
+          subcategory: source.subcategory,
+          payment_method: source.payment_method,
+          purpose: source.purpose,
+          product_id: source.product_id,
+          order_id: source.order_id,
+          receipt_attached: false,
+          receipt_file_path: null,
+          tax_relevant: source.tax_relevant,
+          recurring: true,
+          recurring_interval: source.recurring_interval,
+          recurring_next_date: nextDate,
+          import_source: 'recurring',
+          import_ref: source.id,
+          notes: source.notes,
+        });
+        createdCount++;
+      }
+
+      await updateExpense(source.id, {
+        recurring_next_date: nextDate,
+      });
+    }
+
+    return createdCount;
+  } catch (err) {
+    throw new Error(
+      `Wiederkehrende Ausgaben konnten nicht verarbeitet werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+function addInterval(dateValue: string, interval: RecurringInterval): string {
+  if (interval === 'monthly') {
+    return addMonths(dateValue, 1);
+  }
+  if (interval === 'quarterly') {
+    return addMonths(dateValue, 3);
+  }
+  return addMonths(dateValue, 12);
+}
+
+function addMonths(dateValue: string, months: number): string {
+  const [yearValue, monthValue, dayValue] = dateValue.split('-').map(Number);
+  const targetMonthIndex = monthValue - 1 + months;
+  const targetYear = yearValue + Math.floor(targetMonthIndex / 12);
+  const normalizedMonthIndex = ((targetMonthIndex % 12) + 12) % 12;
+  const lastDay = new Date(targetYear, normalizedMonthIndex + 1, 0).getDate();
+  const targetDay = Math.min(dayValue, lastDay);
+
+  return `${String(targetYear).padStart(4, '0')}-${String(normalizedMonthIndex + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+}
+
+function toISODate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }

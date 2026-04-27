@@ -114,6 +114,8 @@ export const expenses = sqliteTable(
     receipt_file_path: text('receipt_file_path'),
     tax_relevant: integer('tax_relevant', { mode: 'boolean' }).notNull().default(true),
     recurring: integer('recurring', { mode: 'boolean' }).notNull().default(false),
+    recurring_interval: text('recurring_interval'),
+    recurring_next_date: text('recurring_next_date'),
     import_source: text('import_source').notNull().default('manual'),
     import_ref: text('import_ref'),
     notes: text('notes'),

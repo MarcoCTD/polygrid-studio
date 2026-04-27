@@ -9,6 +9,7 @@ export {
   expenseSubcategoryEnum,
   paymentMethodEnum,
   importSourceEnum,
+  recurringIntervalEnum,
   expenseSortFieldEnum,
   type Expense,
   type CreateExpense,
@@ -18,6 +19,7 @@ export {
   type ExpenseCategory,
   type ExpenseSubcategory,
   type PaymentMethod,
+  type RecurringInterval,
   type ImportSource,
   type ExpenseSortField,
 } from './schemas';
@@ -44,6 +46,8 @@ export {
   getCategoryBreakdown,
   getPreviousMonthSum,
   checkDuplicate,
+  calculateNextRecurringDate,
+  processDueRecurringExpenses,
 } from './services';
 
 export {

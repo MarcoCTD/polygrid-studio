@@ -3,7 +3,8 @@ import { EXPENSE_CATEGORIES, EXPENSE_SUBCATEGORIES, PAYMENT_METHODS } from '../c
 
 export const expenseCategoryEnum = z.enum(EXPENSE_CATEGORIES);
 export const paymentMethodEnum = z.enum(PAYMENT_METHODS);
-export const importSourceEnum = z.enum(['manual', 'csv_import']);
+export const recurringIntervalEnum = z.enum(['monthly', 'quarterly', 'yearly']);
+export const importSourceEnum = z.enum(['manual', 'csv_import', 'recurring']);
 
 const subcategoryValues = Object.values(EXPENSE_SUBCATEGORIES).flat() as [
   ExpenseSubcategoryValue,
@@ -34,6 +35,8 @@ export const expenseSchema = z.object({
   receipt_file_path: nullableText,
   tax_relevant: z.boolean(),
   recurring: z.boolean(),
+  recurring_interval: recurringIntervalEnum.nullable(),
+  recurring_next_date: isoDateString.nullable(),
   import_source: importSourceEnum,
   import_ref: nullableText,
   notes: nullableText,
@@ -58,6 +61,8 @@ export const createExpenseSchema = z.object({
   receipt_file_path: optionalNullableText,
   tax_relevant: z.boolean().optional(),
   recurring: z.boolean().optional(),
+  recurring_interval: recurringIntervalEnum.nullable().optional(),
+  recurring_next_date: isoDateString.nullable().optional(),
   import_source: importSourceEnum.optional(),
   import_ref: optionalNullableText,
   notes: optionalNullableText,
@@ -102,5 +107,6 @@ export type ExpenseFilter = z.infer<typeof expenseFilterSchema>;
 export type ExpenseCategory = z.infer<typeof expenseCategoryEnum>;
 export type ExpenseSubcategory = z.infer<typeof expenseSubcategoryEnum>;
 export type PaymentMethod = z.infer<typeof paymentMethodEnum>;
+export type RecurringInterval = z.infer<typeof recurringIntervalEnum>;
 export type ImportSource = z.infer<typeof importSourceEnum>;
 export type ExpenseSortField = z.infer<typeof expenseSortFieldEnum>;

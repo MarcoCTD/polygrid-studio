@@ -39,13 +39,20 @@ import {
   type ExpenseSubcategory,
   type PaymentMethod,
 } from '../constants';
-import { createExpense, restoreExpense, softDeleteExpense, updateExpense } from '../services';
+import {
+  calculateNextRecurringDate,
+  createExpense,
+  restoreExpense,
+  softDeleteExpense,
+  updateExpense,
+} from '../services';
 import {
   createExpenseSchema,
   updateExpenseSchema,
   type CreateExpense,
   type Expense,
   type ExpenseUpdateWithId,
+  type RecurringInterval,
   type UpdateExpense,
 } from '../schemas';
 import { todayISODate } from '../utils';
@@ -79,6 +86,8 @@ function createDefaultValues(expense: DetailMode): ExpenseUpdateWithId {
       receipt_file_path: null,
       tax_relevant: true,
       recurring: false,
+      recurring_interval: null,
+      recurring_next_date: null,
       import_source: 'manual',
       import_ref: null,
       notes: null,
@@ -102,6 +111,8 @@ function createDefaultValues(expense: DetailMode): ExpenseUpdateWithId {
     receipt_file_path: expense.receipt_file_path,
     tax_relevant: expense.tax_relevant,
     recurring: expense.recurring,
+    recurring_interval: expense.recurring_interval,
+    recurring_next_date: expense.recurring_next_date,
     import_source: expense.import_source,
     import_ref: expense.import_ref,
     notes: expense.notes,
@@ -132,6 +143,8 @@ export function ExpenseDetailPanel({
   async function handleSave(values: ExpenseUpdateWithId) {
     setIsSaving(true);
     try {
+      const recurringValues = normalizeRecurringValues(values);
+
       if (isNew) {
         const createInput: CreateExpense = createExpenseSchema.parse({
           date: values.date,
@@ -148,7 +161,9 @@ export function ExpenseDetailPanel({
           receipt_attached: values.receipt_attached,
           receipt_file_path: values.receipt_file_path,
           tax_relevant: values.tax_relevant,
-          recurring: values.recurring,
+          recurring: recurringValues.recurring,
+          recurring_interval: recurringValues.recurring_interval,
+          recurring_next_date: recurringValues.recurring_next_date,
           import_source: values.import_source,
           import_ref: values.import_ref,
           notes: values.notes,
@@ -173,7 +188,9 @@ export function ExpenseDetailPanel({
           receipt_attached: values.receipt_attached,
           receipt_file_path: values.receipt_file_path,
           tax_relevant: values.tax_relevant,
-          recurring: values.recurring,
+          recurring: recurringValues.recurring,
+          recurring_interval: recurringValues.recurring_interval,
+          recurring_next_date: recurringValues.recurring_next_date,
           import_source: values.import_source,
           import_ref: values.import_ref,
           notes: values.notes,
@@ -315,6 +332,28 @@ export function ExpenseDetailPanel({
   );
 }
 
+function normalizeRecurringValues(values: ExpenseUpdateWithId): {
+  recurring: boolean;
+  recurring_interval: RecurringInterval | null;
+  recurring_next_date: string | null;
+} {
+  if (!values.recurring) {
+    return {
+      recurring: false,
+      recurring_interval: null,
+      recurring_next_date: null,
+    };
+  }
+
+  const interval = values.recurring_interval ?? 'monthly';
+  const date = values.date ?? todayISODate();
+  return {
+    recurring: true,
+    recurring_interval: interval,
+    recurring_next_date: calculateNextRecurringDate(date, interval),
+  };
+}
+
 function OverviewTab({ form }: { form: UseFormReturn<ExpenseUpdateWithId> }) {
   const {
     register,
@@ -330,7 +369,13 @@ function OverviewTab({ form }: { form: UseFormReturn<ExpenseUpdateWithId> }) {
   const subcategory = watch('subcategory');
   const productId = watch('product_id');
   const taxRelevant = watch('tax_relevant') ?? true;
-  const recurring = watch('recurring') ?? false;
+  const recurring = watch('recurring') === true;
+  const recurringInterval = watch('recurring_interval');
+  const expenseDate = watch('date') ?? todayISODate();
+  const recurringNextDate =
+    recurring && recurringInterval
+      ? calculateNextRecurringDate(expenseDate, recurringInterval)
+      : null;
 
   return (
     <div className="space-y-4">
@@ -457,13 +502,58 @@ function OverviewTab({ form }: { form: UseFormReturn<ExpenseUpdateWithId> }) {
         <label className="flex items-center gap-2 rounded-lg border border-border-subtle p-3 text-sm">
           <Checkbox
             checked={recurring}
-            onCheckedChange={(checked) =>
-              setValue('recurring', Boolean(checked), { shouldDirty: true })
-            }
+            onCheckedChange={(checked) => {
+              const isChecked = checked === true;
+              setValue('recurring', isChecked, { shouldDirty: true });
+              if (isChecked) {
+                const nextInterval = recurringInterval ?? 'monthly';
+                setValue('recurring_interval', nextInterval, { shouldDirty: true });
+                setValue(
+                  'recurring_next_date',
+                  calculateNextRecurringDate(expenseDate, nextInterval),
+                  {
+                    shouldDirty: true,
+                  },
+                );
+              } else {
+                setValue('recurring_interval', null, { shouldDirty: true });
+                setValue('recurring_next_date', null, { shouldDirty: true });
+              }
+            }}
           />
           Wiederkehrend
         </label>
       </div>
+
+      {recurring ? (
+        <div className="space-y-3 rounded-lg border border-border-subtle bg-bg-primary p-3">
+          <FormField label="Intervall">
+            <Select
+              value={recurringInterval ?? 'monthly'}
+              onValueChange={(value) => {
+                const interval = value as RecurringInterval;
+                setValue('recurring_interval', interval, { shouldDirty: true });
+                setValue('recurring_next_date', calculateNextRecurringDate(expenseDate, interval), {
+                  shouldDirty: true,
+                });
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="monthly">Monatlich</SelectItem>
+                <SelectItem value="quarterly">Quartalsweise</SelectItem>
+                <SelectItem value="yearly">Jährlich</SelectItem>
+              </SelectContent>
+            </Select>
+          </FormField>
+
+          <FormField label="Nächste Fälligkeit">
+            <Input value={recurringNextDate ?? ''} readOnly className="bg-bg-secondary" />
+          </FormField>
+        </div>
+      ) : null}
 
       <FormField label="Notizen">
         <Textarea {...register('notes')} rows={4} placeholder="Optional" />

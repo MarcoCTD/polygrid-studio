@@ -6,6 +6,7 @@ export {
   expenseCategoryEnum,
   expenseSubcategoryEnum,
   paymentMethodEnum,
+  recurringIntervalEnum,
   importSourceEnum,
   expenseSortFieldEnum,
   type Expense,
@@ -16,6 +17,7 @@ export {
   type ExpenseCategory,
   type ExpenseSubcategory,
   type PaymentMethod,
+  type RecurringInterval,
   type ImportSource,
   type ExpenseSortField,
 } from './expenseSchema';

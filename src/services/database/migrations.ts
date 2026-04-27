@@ -8,6 +8,7 @@ import migration0002 from '../../../drizzle/0002_absent_makkari.sql?raw';
 import migration0003 from '../../../drizzle/0003_parallel_menace.sql?raw';
 import migration0004 from '../../../drizzle/0004_little_princess_powerful.sql?raw';
 import migration0005 from '../../../drizzle/0005_brown_amazoness.sql?raw';
+import migration0006 from '../../../drizzle/0006_familiar_wallflower.sql?raw';
 
 export interface Migration {
   tag: string;
@@ -21,4 +22,5 @@ export const MIGRATIONS: Migration[] = [
   { tag: '0003_parallel_menace', sql: migration0003 },
   { tag: '0004_little_princess_powerful', sql: migration0004 },
   { tag: '0005_brown_amazoness', sql: migration0005 },
+  { tag: '0006_familiar_wallflower', sql: migration0006 },
 ];
