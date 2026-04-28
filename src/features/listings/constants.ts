@@ -1,4 +1,4 @@
-import type { ListingInsert, Platform } from './schemas';
+import type { ListingInsert, ListingStatus, Platform } from './schemas';
 
 export interface PlatformLimits {
   maxTitleLength: number;
@@ -14,6 +14,14 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
   etsy: 'Etsy',
   ebay: 'eBay',
   kleinanzeigen: 'Kleinanzeigen',
+};
+
+export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
+  draft: 'Entwurf',
+  ready: 'Bereit',
+  online: 'Online',
+  paused: 'Pausiert',
+  archived: 'Archiviert',
 };
 
 export const PLATFORM_LIMITS: Record<Platform, PlatformLimits> = {
