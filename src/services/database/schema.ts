@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 // ============================================================
 // 1. app_settings (Modul 01) – keine Abhängigkeiten
@@ -68,28 +68,116 @@ export const listings = sqliteTable(
     product_id: text('product_id')
       .notNull()
       .references(() => products.id),
-    platform: text('platform').notNull(),
-    title: text('title').notNull(),
-    short_description: text('short_description'),
-    long_description: text('long_description'),
-    bullet_points: text('bullet_points', { mode: 'json' }).$type<string[]>(),
-    tags: text('tags', { mode: 'json' }).notNull().$type<string[]>(),
-    price: real('price').notNull(),
-    variants: text('variants', { mode: 'json' }).$type<{ name: string; price: number }[]>(),
-    shipping_info: text('shipping_info'),
-    processing_time_days: integer('processing_time_days'),
-    status: text('status').notNull(),
+    master_title: text('master_title').notNull(),
+    master_short_description: text('master_short_description'),
+    master_long_description: text('master_long_description'),
+    master_bullet_points: text('master_bullet_points', { mode: 'json' }).$type<string[]>(),
+    master_tags: text('master_tags', { mode: 'json' }).notNull().$type<string[]>(),
+    base_price: real('base_price').notNull(),
+    currency: text('currency').notNull().default('EUR'),
+    inventory_mode: text('inventory_mode').notNull(),
+    stock_quantity: integer('stock_quantity'),
+    sku_base: text('sku_base'),
+    processing_time_min_days: integer('processing_time_min_days'),
+    processing_time_max_days: integer('processing_time_max_days'),
+    weight_grams: real('weight_grams'),
+    dimension_length_cm: real('dimension_length_cm'),
+    dimension_width_cm: real('dimension_width_cm'),
+    dimension_height_cm: real('dimension_height_cm'),
+    condition: text('condition').notNull().default('new'),
     language: text('language').notNull(),
+    status: text('status').notNull(),
     seo_notes: text('seo_notes'),
+    append_legal_texts: integer('append_legal_texts', { mode: 'boolean' }).notNull().default(true),
     created_at: text('created_at').notNull(),
     updated_at: text('updated_at').notNull(),
     deleted_at: text('deleted_at'),
   },
   (table) => [
-    index('idx_listings_platform').on(table.platform),
+    uniqueIndex('idx_listings_product_id_unique').on(table.product_id),
     index('idx_listings_status').on(table.status),
-    index('idx_listings_product_id').on(table.product_id),
+    index('idx_listings_language').on(table.language),
   ],
+);
+
+// ============================================================
+// 3b. listing_platform_overrides (Modul 05) – Plattformwerte
+// ============================================================
+export const listingPlatformOverrides = sqliteTable(
+  'listing_platform_overrides',
+  {
+    id: text('id').primaryKey(),
+    listing_id: text('listing_id')
+      .notNull()
+      .references(() => listings.id, { onDelete: 'cascade' }),
+    platform: text('platform').notNull(),
+    is_active: integer('is_active', { mode: 'boolean' }).notNull().default(false),
+    title_override: text('title_override'),
+    short_description_override: text('short_description_override'),
+    long_description_override: text('long_description_override'),
+    tags_override: text('tags_override', { mode: 'json' }).$type<string[]>(),
+    price_override: real('price_override'),
+    platform_category_id: text('platform_category_id'),
+    shipping_profile_id: text('shipping_profile_id'),
+    return_policy_id: text('return_policy_id'),
+    payment_policy_id: text('payment_policy_id'),
+    external_listing_id: text('external_listing_id'),
+    external_listing_url: text('external_listing_url'),
+    sync_status: text('sync_status').notNull().default('manual'),
+    sync_error_message: text('sync_error_message'),
+    last_synced_at: text('last_synced_at'),
+    platform_metadata: text('platform_metadata', { mode: 'json' }).$type<Record<string, unknown>>(),
+    created_at: text('created_at').notNull(),
+    updated_at: text('updated_at').notNull(),
+  },
+  (table) => [
+    uniqueIndex('idx_listing_platform_overrides_listing_platform_unique').on(
+      table.listing_id,
+      table.platform,
+    ),
+    index('idx_listing_platform_overrides_sync_status').on(table.sync_status),
+  ],
+);
+
+// ============================================================
+// 3c. listing_variants (Modul 05) – Varianten
+// ============================================================
+export const listingVariants = sqliteTable(
+  'listing_variants',
+  {
+    id: text('id').primaryKey(),
+    listing_id: text('listing_id')
+      .notNull()
+      .references(() => listings.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    sku_suffix: text('sku_suffix'),
+    price: real('price').notNull(),
+    stock_quantity: integer('stock_quantity'),
+    color_hex: text('color_hex'),
+    sort_order: integer('sort_order').notNull().default(0),
+    is_default: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+  },
+  (table) => [index('idx_listing_variants_listing_sort').on(table.listing_id, table.sort_order)],
+);
+
+// ============================================================
+// 3d. listing_images (Modul 05) – Bildverknüpfungen
+// ============================================================
+export const listingImages = sqliteTable(
+  'listing_images',
+  {
+    id: text('id').primaryKey(),
+    listing_id: text('listing_id')
+      .notNull()
+      .references(() => listings.id, { onDelete: 'cascade' }),
+    file_link_id: text('file_link_id')
+      .notNull()
+      .references(() => fileLinks.id),
+    sort_order: integer('sort_order').notNull().default(0),
+    alt_text: text('alt_text'),
+    platforms: text('platforms', { mode: 'json' }).$type<string[]>(),
+  },
+  (table) => [index('idx_listing_images_listing_sort').on(table.listing_id, table.sort_order)],
 );
 
 // ============================================================
