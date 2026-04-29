@@ -13,4 +13,5 @@ export { MasterTab } from './MasterTab';
 export { NewListingModal } from './NewListingModal';
 export { PlatformTabBase } from './PlatformTabBase';
 export { PlatformStatusBadges } from './PlatformStatusBadges';
+export { PreviewTab } from './PreviewTab';
 export { VariantsTab } from './VariantsTab';

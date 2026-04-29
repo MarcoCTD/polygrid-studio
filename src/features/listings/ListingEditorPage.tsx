@@ -27,7 +27,7 @@ import { ImagesTab } from './components/ImagesTab';
 import { KleinanzeigenTab } from './components/KleinanzeigenTab';
 import { MasterTab } from './components/MasterTab';
 import { ListingEditorFooter, type SaveStatus } from './components/ListingEditorFooter';
-import { ListingPlaceholderTab } from './components/ListingPlaceholderTab';
+import { PreviewTab } from './components/PreviewTab';
 import { VariantsTab } from './components/VariantsTab';
 
 const PLATFORM_TAB_LABELS: Record<Platform, string> = {
@@ -244,7 +244,7 @@ export function ListingEditorPage() {
             <KleinanzeigenTab listing={listing} onChanged={() => void loadListing()} />
           </TabsContent>
           <TabsContent value="preview">
-            <ListingPlaceholderTab title="Vorschau" subSession="5.7" />
+            <PreviewTab listing={listing} />
           </TabsContent>
         </div>
       </Tabs>

@@ -111,6 +111,7 @@ export {
   NewListingModal,
   PlatformTabBase,
   PlatformStatusBadges,
+  PreviewTab,
   VariantsTab,
 } from './components';
 
