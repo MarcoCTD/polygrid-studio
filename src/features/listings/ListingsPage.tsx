@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { FileText, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ function hasActiveFilters(filters: ListingsFilterState) {
 }
 
 export function ListingsPage() {
+  const navigate = useNavigate();
   const {
     listings,
     isLoading,
@@ -53,9 +55,12 @@ export function ListingsPage() {
     await loadListings();
   }, [clearSelection, loadListings]);
 
-  const handleOpenListing = useCallback((listing: ListingListItem) => {
-    toast.info(`Editor folgt in 5.3: ${listing.master_title}`);
-  }, []);
+  const handleOpenListing = useCallback(
+    (listing: ListingListItem) => {
+      void navigate({ to: '/listings/$listingId', params: { listingId: listing.id } });
+    },
+    [navigate],
+  );
 
   const handlePause = useCallback(async () => {
     try {

@@ -6,7 +6,7 @@ import { ProductEditPage } from '@/features/products/components/ProductEditPage'
 import { TrashPage } from '@/features/products/components/TrashPage';
 import { ExpensesPage } from '@/features/expenses';
 import { OrdersPage } from '@/features/orders';
-import { ListingsPage } from '@/features/listings';
+import { ListingEditorPage, ListingsPage } from '@/features/listings';
 import { TemplatesPage } from '@/features/templates';
 import { FilesPage } from '@/features/files';
 import { TasksPage } from '@/features/tasks';
@@ -56,6 +56,12 @@ const listingsRoute = createRoute({
   component: ListingsPage,
 });
 
+const listingEditRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/listings/$listingId',
+  component: ListingEditorPage,
+});
+
 const templatesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/templates',
@@ -100,6 +106,7 @@ export const routeTree = rootRoute.addChildren([
   expensesRoute,
   ordersRoute,
   listingsRoute,
+  listingEditRoute,
   templatesRoute,
   filesRoute,
   tasksRoute,
