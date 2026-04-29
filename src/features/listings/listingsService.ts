@@ -778,6 +778,183 @@ export async function removeListingImage(id: string): Promise<void> {
   }
 }
 
+export type CreateVariantInput = Partial<
+  Pick<
+    ListingVariant,
+    'name' | 'sku_suffix' | 'price' | 'stock_quantity' | 'color_hex' | 'is_default'
+  >
+>;
+
+export type UpdateVariantInput = Partial<
+  Pick<ListingVariant, 'name' | 'sku_suffix' | 'price' | 'stock_quantity' | 'color_hex'>
+>;
+
+export async function getListingVariants(listingId: string): Promise<ListingVariant[]> {
+  const db = getDatabase();
+
+  try {
+    const rows = await db.select<VariantRow[]>(
+      'SELECT * FROM listing_variants WHERE listing_id = $1 ORDER BY sort_order ASC',
+      [listingId],
+    );
+    return rows.map(rowToVariant);
+  } catch (err) {
+    throw new Error(
+      `Listing-Varianten konnten nicht geladen werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+export async function createVariant(
+  listingId: string,
+  data: CreateVariantInput = {},
+): Promise<ListingVariant> {
+  const db = getDatabase();
+  const id = createId();
+
+  try {
+    const [countRow] = await db.select<{ count: number }[]>(
+      'SELECT COUNT(*) AS count FROM listing_variants WHERE listing_id = $1',
+      [listingId],
+    );
+    const [sortRow] = await db.select<{ max_sort_order: number | null }[]>(
+      'SELECT MAX(sort_order) AS max_sort_order FROM listing_variants WHERE listing_id = $1',
+      [listingId],
+    );
+    const isFirst = (countRow?.count ?? 0) === 0;
+    const isDefault = data.is_default ?? isFirst;
+    const sortOrder = (sortRow?.max_sort_order ?? -1) + 1;
+
+    if (isDefault) {
+      await db.execute('UPDATE listing_variants SET is_default = 0 WHERE listing_id = $1', [
+        listingId,
+      ]);
+    }
+
+    await db.execute(
+      `INSERT INTO listing_variants (
+        id, listing_id, name, sku_suffix, price, stock_quantity, color_hex, sort_order, is_default
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        id,
+        listingId,
+        data.name ?? 'Neue Variante',
+        data.sku_suffix ?? null,
+        data.price ?? 0,
+        data.stock_quantity ?? null,
+        data.color_hex ?? null,
+        sortOrder,
+        isDefault,
+      ],
+    );
+
+    const variants = await getListingVariants(listingId);
+    const variant = variants.find((item) => item.id === id);
+    if (!variant) throw new Error('Variante wurde erstellt, konnte aber nicht geladen werden');
+    return variant;
+  } catch (err) {
+    throw new Error(
+      `Variante konnte nicht erstellt werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+export async function updateVariant(id: string, data: UpdateVariantInput): Promise<void> {
+  const db = getDatabase();
+  const allowedFields = ['name', 'sku_suffix', 'price', 'stock_quantity', 'color_hex'] as const;
+  const setClauses: string[] = [];
+  const params: unknown[] = [];
+  let paramIndex = 1;
+
+  for (const field of allowedFields) {
+    if (field in data) {
+      setClauses.push(`${field} = $${paramIndex}`);
+      params.push(data[field] ?? null);
+      paramIndex++;
+    }
+  }
+
+  if (setClauses.length === 0) return;
+
+  params.push(id);
+
+  try {
+    await db.execute(
+      `UPDATE listing_variants SET ${setClauses.join(', ')} WHERE id = $${paramIndex}`,
+      params,
+    );
+  } catch (err) {
+    throw new Error(
+      `Variante konnte nicht aktualisiert werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+export async function updateVariantOrder(
+  variants: Array<{ id: string; sort_order: number }>,
+): Promise<void> {
+  if (variants.length === 0) return;
+  const db = getDatabase();
+
+  try {
+    for (const variant of variants) {
+      await db.execute('UPDATE listing_variants SET sort_order = $1 WHERE id = $2', [
+        variant.sort_order,
+        variant.id,
+      ]);
+    }
+  } catch (err) {
+    throw new Error(
+      `Varianten-Reihenfolge konnte nicht gespeichert werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+export async function deleteVariant(id: string): Promise<void> {
+  const db = getDatabase();
+
+  try {
+    const [target] = await db.select<{ listing_id: string; is_default: number }[]>(
+      'SELECT listing_id, is_default FROM listing_variants WHERE id = $1',
+      [id],
+    );
+    if (!target) return;
+
+    const [countRow] = await db.select<{ count: number }[]>(
+      'SELECT COUNT(*) AS count FROM listing_variants WHERE listing_id = $1',
+      [target.listing_id],
+    );
+    if ((countRow?.count ?? 0) <= 1) {
+      throw new Error('Die letzte Variante kann nicht gelöscht werden');
+    }
+
+    if (target.is_default === 1) {
+      throw new Error('Die Default-Variante kann nicht gelöscht werden');
+    }
+
+    await db.execute('DELETE FROM listing_variants WHERE id = $1', [id]);
+  } catch (err) {
+    throw new Error(
+      err instanceof Error ? err.message : `Variante konnte nicht gelöscht werden: ${String(err)}`,
+    );
+  }
+}
+
+export async function setDefaultVariant(id: string, listingId: string): Promise<void> {
+  const db = getDatabase();
+
+  try {
+    await db.execute('UPDATE listing_variants SET is_default = 0 WHERE listing_id = $1', [
+      listingId,
+    ]);
+    await db.execute('UPDATE listing_variants SET is_default = 1 WHERE id = $1', [id]);
+  } catch (err) {
+    throw new Error(
+      `Default-Variante konnte nicht gesetzt werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
 export function calculateCompleteness(
   listing: Listing & { overrides?: ListingPlatformOverride[]; imageCount?: number },
   platform: Platform,

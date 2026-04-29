@@ -9,3 +9,4 @@ export { ListingsToolbar } from './ListingsToolbar';
 export { MasterTab } from './MasterTab';
 export { NewListingModal } from './NewListingModal';
 export { PlatformStatusBadges } from './PlatformStatusBadges';
+export { VariantsTab } from './VariantsTab';

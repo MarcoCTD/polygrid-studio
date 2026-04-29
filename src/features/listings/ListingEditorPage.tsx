@@ -25,6 +25,7 @@ import { ImagesTab } from './components/ImagesTab';
 import { MasterTab } from './components/MasterTab';
 import { ListingEditorFooter, type SaveStatus } from './components/ListingEditorFooter';
 import { ListingPlaceholderTab } from './components/ListingPlaceholderTab';
+import { VariantsTab } from './components/VariantsTab';
 
 const PLATFORM_TAB_LABELS: Record<Platform, string> = {
   etsy: 'Etsy',
@@ -228,7 +229,7 @@ export function ListingEditorPage() {
             <ImagesTab listing={listing} onImagesChanged={() => void loadListing()} />
           </TabsContent>
           <TabsContent value="variants">
-            <ListingPlaceholderTab title="Varianten" subSession="5.5" />
+            <VariantsTab listing={listing} onVariantsChanged={() => void loadListing()} />
           </TabsContent>
           <TabsContent value="etsy">
             <ListingPlaceholderTab title="Etsy" subSession="5.6" />
