@@ -37,6 +37,23 @@ export interface CreateListingInput extends ListingInsert {
 
 export type UpdateListingInput = Partial<ListingInsert>;
 
+export interface ProductWithoutListingOption {
+  id: string;
+  name: string;
+  target_price: number | null;
+}
+
+export interface ImageFileLinkOption {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  file_path: string;
+  file_type: string;
+  display_name: string | null;
+  mime_type: string | null;
+  isProductFile: boolean;
+}
+
 export interface ListingListItem extends Listing {
   product_name: string | null;
   overrides: ListingPlatformOverride[];
@@ -49,6 +66,13 @@ export interface ListingListItem extends Listing {
 export interface ListingDetail extends ListingListItem {
   variants: ListingVariant[];
   images: ListingImage[];
+}
+
+export interface ListingImageWithFile extends ListingImage {
+  file_path: string;
+  file_type: string;
+  display_name: string | null;
+  mime_type: string | null;
 }
 
 interface ListingBaseRow extends Record<string, unknown> {
@@ -69,6 +93,17 @@ interface VariantRow extends Record<string, unknown> {
 
 interface ImageRow extends Record<string, unknown> {
   listing_id: string;
+}
+
+interface ImageFileLinkRow extends Record<string, unknown> {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  file_path: string;
+  file_type: string;
+  display_name: string | null;
+  mime_type: string | null;
+  is_product_file: number;
 }
 
 function now(): string {
@@ -205,6 +240,29 @@ function rowToImage(row: Record<string, unknown>): ListingImage {
     alt_text: nullableString(row.alt_text),
     platforms: parseJsonArray(row.platforms),
   });
+}
+
+function rowToImageWithFile(row: Record<string, unknown>): ListingImageWithFile {
+  return {
+    ...rowToImage(row),
+    file_path: row.file_path as string,
+    file_type: row.file_type as string,
+    display_name: nullableString(row.display_name),
+    mime_type: nullableString(row.mime_type),
+  };
+}
+
+function rowToImageFileLink(row: ImageFileLinkRow): ImageFileLinkOption {
+  return {
+    id: row.id,
+    entity_type: row.entity_type,
+    entity_id: row.entity_id,
+    file_path: row.file_path,
+    file_type: row.file_type,
+    display_name: row.display_name,
+    mime_type: row.mime_type,
+    isProductFile: row.is_product_file === 1,
+  };
 }
 
 function mapListItem(row: ListingBaseRow, overrides: ListingPlatformOverride[]): ListingListItem {
@@ -447,6 +505,24 @@ export async function createListing(data: CreateListingInput): Promise<ListingDe
   }
 }
 
+export async function getProductsWithoutListing(): Promise<ProductWithoutListingOption[]> {
+  const db = getDatabase();
+
+  try {
+    return await db.select<ProductWithoutListingOption[]>(
+      `SELECT p.id, p.name, p.target_price
+       FROM products p
+       LEFT JOIN listings l ON l.product_id = p.id
+       WHERE p.deleted_at IS NULL AND l.id IS NULL
+       ORDER BY p.name ASC`,
+    );
+  } catch (err) {
+    throw new Error(
+      `Produkte ohne Listing konnten nicht geladen werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
 export async function updateListing(id: string, data: UpdateListingInput): Promise<ListingDetail> {
   const db = getDatabase();
   const parsed = listingInsertSchema.partial().parse(data);
@@ -532,6 +608,172 @@ export async function softDeleteListings(ids: string[]): Promise<void> {
   } catch (err) {
     throw new Error(
       `Listings konnten nicht gelöscht werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+export async function getListingImages(listingId: string): Promise<ListingImageWithFile[]> {
+  const db = getDatabase();
+
+  try {
+    const rows = await db.select<Record<string, unknown>[]>(
+      `SELECT li.*, fl.file_path, fl.file_type, fl.display_name, fl.mime_type
+       FROM listing_images li
+       INNER JOIN file_links fl ON fl.id = li.file_link_id
+       WHERE li.listing_id = $1
+       ORDER BY li.sort_order ASC`,
+      [listingId],
+    );
+
+    return rows.map(rowToImageWithFile);
+  } catch (err) {
+    throw new Error(
+      `Listing-Bilder konnten nicht geladen werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+export async function getAvailableListingImageFileLinks(
+  listingId: string,
+  productId: string,
+): Promise<ImageFileLinkOption[]> {
+  const db = getDatabase();
+
+  try {
+    const rows = await db.select<ImageFileLinkRow[]>(
+      `SELECT
+        fl.id,
+        fl.entity_type,
+        fl.entity_id,
+        fl.file_path,
+        fl.file_type,
+        fl.display_name,
+        fl.mime_type,
+        CASE WHEN fl.entity_type = 'product' AND fl.entity_id = $2 THEN 1 ELSE 0 END AS is_product_file
+       FROM file_links fl
+       LEFT JOIN listing_images li ON li.file_link_id = fl.id AND li.listing_id = $1
+       WHERE li.id IS NULL
+         AND (
+          fl.file_type IN ('image', 'mockup')
+          OR fl.mime_type LIKE 'image/%'
+          OR lower(fl.file_path) LIKE '%.png'
+          OR lower(fl.file_path) LIKE '%.jpg'
+          OR lower(fl.file_path) LIKE '%.jpeg'
+          OR lower(fl.file_path) LIKE '%.webp'
+         )
+       ORDER BY is_product_file DESC, fl.position ASC, fl.created_at DESC`,
+      [listingId, productId],
+    );
+
+    return rows.map(rowToImageFileLink);
+  } catch (err) {
+    throw new Error(
+      `Bilddateien konnten nicht geladen werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+export async function addListingImage(
+  listingId: string,
+  fileLinkId: string,
+  altText: string | null = null,
+): Promise<ListingImageWithFile> {
+  const db = getDatabase();
+  const id = createId();
+
+  try {
+    const rows = await db.select<{ max_sort_order: number | null }[]>(
+      'SELECT MAX(sort_order) AS max_sort_order FROM listing_images WHERE listing_id = $1',
+      [listingId],
+    );
+    const sortOrder = (rows[0]?.max_sort_order ?? -1) + 1;
+
+    await db.execute(
+      `INSERT INTO listing_images (id, listing_id, file_link_id, sort_order, alt_text, platforms)
+       VALUES ($1, $2, $3, $4, $5, NULL)`,
+      [id, listingId, fileLinkId, sortOrder, altText],
+    );
+
+    const images = await getListingImages(listingId);
+    const image = images.find((item) => item.id === id);
+    if (!image) throw new Error('Bildverknüpfung wurde erstellt, konnte aber nicht geladen werden');
+    return image;
+  } catch (err) {
+    throw new Error(
+      `Bild konnte nicht verknüpft werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+export async function updateListingImageOrder(
+  images: Array<{ id: string; sort_order: number }>,
+): Promise<void> {
+  if (images.length === 0) return;
+  const db = getDatabase();
+
+  try {
+    for (const image of images) {
+      await db.execute('UPDATE listing_images SET sort_order = $1 WHERE id = $2', [
+        image.sort_order,
+        image.id,
+      ]);
+    }
+  } catch (err) {
+    throw new Error(
+      `Bildreihenfolge konnte nicht gespeichert werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+export async function updateListingImage(
+  id: string,
+  data: Partial<Pick<ListingImage, 'alt_text' | 'platforms'>>,
+): Promise<void> {
+  const db = getDatabase();
+  const setClauses: string[] = [];
+  const params: unknown[] = [];
+  let paramIndex = 1;
+
+  if ('alt_text' in data) {
+    setClauses.push(`alt_text = $${paramIndex}`);
+    params.push(data.alt_text ?? null);
+    paramIndex++;
+  }
+
+  if ('platforms' in data) {
+    setClauses.push(`platforms = $${paramIndex}`);
+    params.push(
+      data.platforms === undefined || data.platforms === null
+        ? null
+        : JSON.stringify(data.platforms),
+    );
+    paramIndex++;
+  }
+
+  if (setClauses.length === 0) return;
+
+  params.push(id);
+
+  try {
+    await db.execute(
+      `UPDATE listing_images SET ${setClauses.join(', ')} WHERE id = $${paramIndex}`,
+      params,
+    );
+  } catch (err) {
+    throw new Error(
+      `Bildverknüpfung konnte nicht aktualisiert werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+export async function removeListingImage(id: string): Promise<void> {
+  const db = getDatabase();
+
+  try {
+    await db.execute('DELETE FROM listing_images WHERE id = $1', [id]);
+  } catch (err) {
+    throw new Error(
+      `Bildverknüpfung konnte nicht entfernt werden: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
 }

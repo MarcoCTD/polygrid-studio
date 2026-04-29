@@ -1,9 +1,9 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { FileText, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { ListingsBulkToolbar, ListingsTable, ListingsToolbar } from './components';
+import { ListingsBulkToolbar, ListingsTable, ListingsToolbar, NewListingModal } from './components';
 import { softDeleteListings, updateListingsStatus, type ListingListItem } from './listingsService';
 import { useListingsStore, type ListingsFilterState } from './listingsStore';
 
@@ -21,6 +21,7 @@ function hasActiveFilters(filters: ListingsFilterState) {
 
 export function ListingsPage() {
   const navigate = useNavigate();
+  const [isNewListingOpen, setIsNewListingOpen] = useState(false);
   const {
     listings,
     isLoading,
@@ -120,6 +121,7 @@ export function ListingsPage() {
           filters={activeFilters}
           totalCount={listings.length}
           onSetFilter={setFilter}
+          onNewListing={() => setIsNewListingOpen(true)}
         />
       )}
 
@@ -134,7 +136,7 @@ export function ListingsPage() {
               Erstelle dein erstes Listing für ein Produkt.
             </p>
           </div>
-          <Button disabled title="Kommt in Sub-Session 5.9" className="gap-1.5">
+          <Button onClick={() => setIsNewListingOpen(true)} className="gap-1.5">
             <Plus size={14} />
             <span>Neues Listing</span>
           </Button>
@@ -150,6 +152,15 @@ export function ListingsPage() {
           onOpenListing={handleOpenListing}
         />
       )}
+
+      <NewListingModal
+        open={isNewListingOpen}
+        onOpenChange={setIsNewListingOpen}
+        onCreated={(listing) => {
+          void loadListings();
+          void navigate({ to: '/listings/$listingId', params: { listingId: listing.id } });
+        }}
+      />
     </div>
   );
 }

@@ -21,6 +21,7 @@ import {
   type MasterListingFormValues,
 } from './masterFormSchema';
 import type { Platform, SyncStatus } from './schemas';
+import { ImagesTab } from './components/ImagesTab';
 import { MasterTab } from './components/MasterTab';
 import { ListingEditorFooter, type SaveStatus } from './components/ListingEditorFooter';
 import { ListingPlaceholderTab } from './components/ListingPlaceholderTab';
@@ -161,7 +162,7 @@ export function ListingEditorPage() {
       ...listing,
       ...values,
       overrides: listing.overrides,
-      imageCount: 1,
+      imageCount: listing.images.length,
     };
 
     return {
@@ -224,7 +225,7 @@ export function ListingEditorPage() {
             <MasterTab listing={listing} form={form} />
           </TabsContent>
           <TabsContent value="images">
-            <ListingPlaceholderTab title="Bilder" subSession="5.4" />
+            <ImagesTab listing={listing} onImagesChanged={() => void loadListing()} />
           </TabsContent>
           <TabsContent value="variants">
             <ListingPlaceholderTab title="Varianten" subSession="5.5" />

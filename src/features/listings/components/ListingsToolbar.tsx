@@ -71,6 +71,7 @@ interface ListingsToolbarProps {
   filters: ListingsFilterState;
   totalCount: number;
   onSetFilter: <K extends keyof ListingsFilterState>(key: K, value: ListingsFilterState[K]) => void;
+  onNewListing: () => void;
 }
 
 interface ActiveBadge {
@@ -83,7 +84,12 @@ function toggleItem<T extends string>(items: T[], item: T): T[] {
   return items.includes(item) ? items.filter((value) => value !== item) : [...items, item];
 }
 
-export function ListingsToolbar({ filters, totalCount, onSetFilter }: ListingsToolbarProps) {
+export function ListingsToolbar({
+  filters,
+  totalCount,
+  onSetFilter,
+  onNewListing,
+}: ListingsToolbarProps) {
   const badges = buildBadges(filters, onSetFilter);
   const activeFilterCount = badges.length;
 
@@ -201,8 +207,7 @@ export function ListingsToolbar({ filters, totalCount, onSetFilter }: ListingsTo
           <Button
             variant="ghost"
             size="sm"
-            disabled
-            title="Kommt in Sub-Session 5.9"
+            onClick={onNewListing}
             className="gap-1.5 text-text-secondary"
           >
             <Plus size={14} />
