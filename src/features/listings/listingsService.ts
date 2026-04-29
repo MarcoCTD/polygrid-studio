@@ -36,6 +36,27 @@ export interface CreateListingInput extends ListingInsert {
 }
 
 export type UpdateListingInput = Partial<ListingInsert>;
+export type UpdateOverrideInput = Partial<
+  Pick<
+    ListingPlatformOverride,
+    | 'is_active'
+    | 'title_override'
+    | 'short_description_override'
+    | 'long_description_override'
+    | 'tags_override'
+    | 'price_override'
+    | 'platform_category_id'
+    | 'shipping_profile_id'
+    | 'return_policy_id'
+    | 'payment_policy_id'
+    | 'external_listing_id'
+    | 'external_listing_url'
+    | 'sync_status'
+    | 'sync_error_message'
+    | 'last_synced_at'
+    | 'platform_metadata'
+  >
+>;
 
 export interface ProductWithoutListingOption {
   id: string;
@@ -576,6 +597,116 @@ export async function updateListingsStatus(ids: string[], status: ListingStatus)
       `Listing-Status konnte nicht aktualisiert werden: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
+}
+
+export async function getOverride(
+  listingId: string,
+  platform: Platform,
+): Promise<ListingPlatformOverride | null> {
+  const db = getDatabase();
+
+  try {
+    const rows = await db.select<OverrideRow[]>(
+      'SELECT * FROM listing_platform_overrides WHERE listing_id = $1 AND platform = $2 LIMIT 1',
+      [listingId, platform],
+    );
+    const row = rows[0];
+    return row ? rowToOverride(row) : null;
+  } catch (err) {
+    throw new Error(
+      `Plattformdaten konnten nicht geladen werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+export async function upsertOverride(
+  listingId: string,
+  platform: Platform,
+  data: UpdateOverrideInput,
+): Promise<ListingPlatformOverride> {
+  const db = getDatabase();
+  const timestamp = now();
+
+  try {
+    const existing = await getOverride(listingId, platform);
+
+    if (!existing) {
+      await db.execute(
+        `INSERT INTO listing_platform_overrides (
+          id, listing_id, platform, is_active, title_override, short_description_override,
+          long_description_override, tags_override, price_override, platform_category_id,
+          shipping_profile_id, return_policy_id, payment_policy_id, external_listing_id,
+          external_listing_url, sync_status, sync_error_message, last_synced_at,
+          platform_metadata, created_at, updated_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+          $17, $18, $19, $20, $20
+        )`,
+        [
+          createId(),
+          listingId,
+          platform,
+          data.is_active ?? false,
+          data.title_override ?? null,
+          data.short_description_override ?? null,
+          data.long_description_override ?? null,
+          data.tags_override ? JSON.stringify(data.tags_override) : null,
+          data.price_override ?? null,
+          data.platform_category_id ?? null,
+          data.shipping_profile_id ?? null,
+          data.return_policy_id ?? null,
+          data.payment_policy_id ?? null,
+          data.external_listing_id ?? null,
+          data.external_listing_url ?? null,
+          data.sync_status ?? 'manual',
+          data.sync_error_message ?? null,
+          data.last_synced_at ?? null,
+          data.platform_metadata ? JSON.stringify(data.platform_metadata) : null,
+          timestamp,
+        ],
+      );
+    } else {
+      const setClauses = ['updated_at = $1'];
+      const params: unknown[] = [timestamp];
+      let paramIndex = 2;
+
+      for (const [key, value] of Object.entries(data)) {
+        setClauses.push(`${key} = $${paramIndex}`);
+        params.push(
+          Array.isArray(value) || (value && typeof value === 'object')
+            ? JSON.stringify(value)
+            : (value ?? null),
+        );
+        paramIndex++;
+      }
+
+      if (setClauses.length > 1) {
+        params.push(listingId, platform);
+        await db.execute(
+          `UPDATE listing_platform_overrides
+           SET ${setClauses.join(', ')}
+           WHERE listing_id = $${paramIndex} AND platform = $${paramIndex + 1}`,
+          params,
+        );
+      }
+    }
+
+    const override = await getOverride(listingId, platform);
+    if (!override) throw new Error('Override wurde gespeichert, konnte aber nicht geladen werden');
+    return override;
+  } catch (err) {
+    throw new Error(
+      `Plattformdaten konnten nicht gespeichert werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+export async function togglePlatformActive(
+  listingId: string,
+  platform: Platform,
+  isActive: boolean,
+): Promise<ListingPlatformOverride> {
+  return upsertOverride(listingId, platform, { is_active: isActive });
 }
 
 export async function softDeleteListing(id: string): Promise<void> {

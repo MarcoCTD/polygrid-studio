@@ -21,7 +21,10 @@ import {
   type MasterListingFormValues,
 } from './masterFormSchema';
 import type { Platform, SyncStatus } from './schemas';
+import { EbayTab } from './components/EbayTab';
+import { EtsyTab } from './components/EtsyTab';
 import { ImagesTab } from './components/ImagesTab';
+import { KleinanzeigenTab } from './components/KleinanzeigenTab';
 import { MasterTab } from './components/MasterTab';
 import { ListingEditorFooter, type SaveStatus } from './components/ListingEditorFooter';
 import { ListingPlaceholderTab } from './components/ListingPlaceholderTab';
@@ -232,13 +235,13 @@ export function ListingEditorPage() {
             <VariantsTab listing={listing} onVariantsChanged={() => void loadListing()} />
           </TabsContent>
           <TabsContent value="etsy">
-            <ListingPlaceholderTab title="Etsy" subSession="5.6" />
+            <EtsyTab listing={listing} onChanged={() => void loadListing()} />
           </TabsContent>
           <TabsContent value="ebay">
-            <ListingPlaceholderTab title="eBay" subSession="5.6" />
+            <EbayTab listing={listing} onChanged={() => void loadListing()} />
           </TabsContent>
           <TabsContent value="kleinanzeigen">
-            <ListingPlaceholderTab title="Kleinanzeigen" subSession="5.6" />
+            <KleinanzeigenTab listing={listing} onChanged={() => void loadListing()} />
           </TabsContent>
           <TabsContent value="preview">
             <ListingPlaceholderTab title="Vorschau" subSession="5.7" />

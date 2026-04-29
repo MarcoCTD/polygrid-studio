@@ -52,11 +52,14 @@ export {
   getListingImages,
   getListingVariants,
   getListings,
+  getOverride,
   getProductsWithoutListing,
   removeListingImage,
   setDefaultVariant,
   softDeleteListing,
   softDeleteListings,
+  togglePlatformActive,
+  upsertOverride,
   updateVariant,
   updateVariantOrder,
   updateListingImage,
@@ -75,6 +78,7 @@ export {
   type PlatformStatusFilter,
   type ProductWithoutListingOption,
   type UpdateListingInput,
+  type UpdateOverrideInput,
   type UpdateVariantInput,
 } from './listingsService';
 
@@ -92,16 +96,22 @@ export {
 } from './masterFormSchema';
 
 export {
+  EbayTab,
+  EtsyTab,
   ListingEditorFooter,
   ListingPlaceholderTab,
   ListingStatusBadge,
   ImagePickerDialog,
   ImagesTab,
+  KleinanzeigenTab,
   ListingsBulkToolbar,
   ListingsTable,
   ListingsToolbar,
   MasterTab,
   NewListingModal,
+  PlatformTabBase,
   PlatformStatusBadges,
   VariantsTab,
 } from './components';
+
+export { resolveListingForPlatform, type ResolvedListingForPlatform } from './utils';
