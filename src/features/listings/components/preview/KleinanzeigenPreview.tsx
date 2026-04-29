@@ -5,7 +5,7 @@ import { calculateCompleteness, type ListingDetail } from '../../listingsService
 import type { ListingPlatformOverride } from '../../schemas';
 import { resolveListingForPlatform } from '../../utils';
 import { PreviewDiagnostics } from './PreviewDiagnostics';
-import { formatCurrency, getCompletenessHints, truncateText } from './previewUtils';
+import { formatCurrency, truncateText } from './previewUtils';
 
 interface KleinanzeigenMetadata extends Record<string, unknown> {
   postal_code?: string | null;
@@ -23,10 +23,9 @@ export function KleinanzeigenPreview({ listing }: KleinanzeigenPreviewProps) {
   const resolved = resolveListingForPlatform(listing, override, 'kleinanzeigen');
   const metadata = getMetadata(override);
   const completeness = calculateCompleteness(
-    { ...listing, imageCount: listing.images.length },
+    { ...listing, imageCount: listing.images.length, variantCount: listing.variants.length },
     'kleinanzeigen',
   );
-  const hints = getCompletenessHints(listing, 'kleinanzeigen', completeness);
   const location = [metadata.postal_code, metadata.city].filter(Boolean).join(' ');
 
   return (
@@ -64,7 +63,6 @@ export function KleinanzeigenPreview({ listing }: KleinanzeigenPreviewProps) {
 
       <PreviewDiagnostics
         completeness={completeness}
-        hints={hints}
         counters={[
           {
             label: 'Titel',

@@ -12,6 +12,7 @@ import {
   calculateCompleteness,
   getListing,
   updateListing,
+  type CompletenessResult,
   type ListingDetail,
 } from './listingsService';
 import {
@@ -153,9 +154,13 @@ export function ListingEditorPage() {
     return () => unregisterShortcuts([shortcutId]);
   }, [handleSave, registerShortcuts, unregisterShortcuts]);
 
-  const completeness = useMemo(() => {
+  const completeness = useMemo<Record<Platform, CompletenessResult>>(() => {
     if (!listing) {
-      return { etsy: 'red', ebay: 'red', kleinanzeigen: 'red' } as const;
+      return {
+        etsy: { status: 'red', hints: ['Etsy: Listing nicht geladen'] },
+        ebay: { status: 'red', hints: ['eBay: Listing nicht geladen'] },
+        kleinanzeigen: { status: 'red', hints: ['Kleinanzeigen: Listing nicht geladen'] },
+      };
     }
 
     const values = {
@@ -167,6 +172,7 @@ export function ListingEditorPage() {
       ...values,
       overrides: listing.overrides,
       imageCount: listing.images.length,
+      variantCount: listing.variants.length,
     };
 
     return {

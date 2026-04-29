@@ -2,7 +2,7 @@ import { ArrowLeft, CheckCircle, CircleAlert, Loader2, Rocket, Save } from 'luci
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { PLATFORM_LABELS, PLATFORMS } from '../constants';
-import type { CompletenessStatus } from '../listingsService';
+import type { CompletenessResult, CompletenessStatus } from '../listingsService';
 import type { Platform } from '../schemas';
 
 export type SaveStatus = 'saved' | 'saving' | 'unsaved';
@@ -21,7 +21,7 @@ const COMPLETENESS_CLASSES: Record<CompletenessStatus, string> = {
 
 interface ListingEditorFooterProps {
   saveStatus: SaveStatus;
-  completeness: Record<Platform, CompletenessStatus>;
+  completeness: Record<Platform, CompletenessResult>;
   onBack: () => void;
   onSave: () => void;
 }
@@ -46,13 +46,16 @@ export function ListingEditorFooter({
       </div>
 
       <div className="flex items-center gap-2">
-        {PLATFORMS.map((platform) => (
-          <span
-            key={platform}
-            title={`${PLATFORM_LABELS[platform]}: ${completeness[platform]}`}
-            className={cn('size-2.5 rounded-full', COMPLETENESS_CLASSES[completeness[platform]])}
-          />
-        ))}
+        {PLATFORMS.map((platform) => {
+          const result = completeness[platform];
+          return (
+            <span
+              key={platform}
+              title={`${PLATFORM_LABELS[platform]}\n${result.hints.join('\n')}`}
+              className={cn('size-2.5 rounded-full', COMPLETENESS_CLASSES[result.status])}
+            />
+          );
+        })}
       </div>
 
       <div className="flex items-center gap-2">

@@ -4,7 +4,12 @@ import { FileText, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ListingsBulkToolbar, ListingsTable, ListingsToolbar, NewListingModal } from './components';
-import { softDeleteListings, updateListingsStatus, type ListingListItem } from './listingsService';
+import {
+  bulkSoftDelete,
+  bulkUpdatePrice,
+  bulkUpdateStatus,
+  type ListingListItem,
+} from './listingsService';
 import { useListingsStore, type ListingsFilterState } from './listingsStore';
 
 function hasActiveFilters(filters: ListingsFilterState) {
@@ -36,6 +41,7 @@ export function ListingsPage() {
   } = useListingsStore();
 
   const selectedIdList = Array.from(selectedIds);
+  const selectedListings = listings.filter((listing) => selectedIds.has(listing.id));
   const showFirstEmptyState =
     !isLoading && listings.length === 0 && !hasActiveFilters(activeFilters) && !error;
 
@@ -65,8 +71,8 @@ export function ListingsPage() {
 
   const handlePause = useCallback(async () => {
     try {
-      await updateListingsStatus(selectedIdList, 'paused');
-      toast.success('Listings pausiert');
+      await bulkUpdateStatus(selectedIdList, 'paused');
+      toast.success(`${selectedIdList.length} Listings pausiert`);
       await reloadAndClear();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Listings konnten nicht pausiert werden');
@@ -75,8 +81,8 @@ export function ListingsPage() {
 
   const handleActivate = useCallback(async () => {
     try {
-      await updateListingsStatus(selectedIdList, 'online');
-      toast.success('Listings aktiviert');
+      await bulkUpdateStatus(selectedIdList, 'ready');
+      toast.success(`${selectedIdList.length} Listings aktiviert`);
       await reloadAndClear();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Listings konnten nicht aktiviert werden');
@@ -84,16 +90,31 @@ export function ListingsPage() {
   }, [reloadAndClear, selectedIdList]);
 
   const handleDelete = useCallback(async () => {
-    if (!window.confirm('Ausgewählte Listings in den Papierkorb verschieben?')) return;
+    if (!window.confirm(`${selectedIdList.length} Listings löschen?`)) return;
 
     try {
-      await softDeleteListings(selectedIdList);
-      toast.success('Listings gelöscht');
+      await bulkSoftDelete(selectedIdList);
+      toast.success(`${selectedIdList.length} Listings gelöscht`);
       await reloadAndClear();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Listings konnten nicht gelöscht werden');
     }
   }, [reloadAndClear, selectedIdList]);
+
+  const handlePriceChange = useCallback(
+    async (changePercent: number) => {
+      try {
+        await bulkUpdatePrice(selectedIdList, changePercent);
+        toast.success(`${selectedIdList.length} Listing-Preise aktualisiert`);
+        await reloadAndClear();
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : 'Listing-Preise konnten nicht geändert werden',
+        );
+      }
+    },
+    [reloadAndClear, selectedIdList],
+  );
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-hidden p-6">
@@ -109,12 +130,12 @@ export function ListingsPage() {
 
       {selectedIds.size > 0 ? (
         <ListingsBulkToolbar
-          selectedCount={selectedIds.size}
+          selectedListings={selectedListings}
           onPause={handlePause}
           onActivate={handleActivate}
           onDelete={handleDelete}
           onClearSelection={clearSelection}
-          onPriceChange={() => toast.info('Preisänderung folgt in Sub-Session 5.8')}
+          onPriceChange={handlePriceChange}
         />
       ) : (
         <ListingsToolbar

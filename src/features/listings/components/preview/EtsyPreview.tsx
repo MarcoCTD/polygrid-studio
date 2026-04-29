@@ -8,12 +8,7 @@ import {
 } from '../../listingsService';
 import { resolveListingForPlatform } from '../../utils';
 import { PreviewDiagnostics } from './PreviewDiagnostics';
-import {
-  formatCurrency,
-  getCompletenessHints,
-  isImageForPlatform,
-  truncateText,
-} from './previewUtils';
+import { formatCurrency, isImageForPlatform, truncateText } from './previewUtils';
 
 interface EtsyPreviewProps {
   listing: ListingDetail;
@@ -26,10 +21,13 @@ export function EtsyPreview({ listing, images, isLoadingImages }: EtsyPreviewPro
   const resolved = resolveListingForPlatform(listing, override, 'etsy');
   const mainImage = images.find((image) => isImageForPlatform(image, 'etsy')) ?? images[0] ?? null;
   const completeness = calculateCompleteness(
-    { ...listing, imageCount: images.filter((image) => isImageForPlatform(image, 'etsy')).length },
+    {
+      ...listing,
+      imageCount: images.filter((image) => isImageForPlatform(image, 'etsy')).length,
+      variantCount: listing.variants.length,
+    },
     'etsy',
   );
-  const hints = getCompletenessHints(listing, 'etsy', completeness);
   const description =
     resolved.shortDescription ??
     truncateText(resolved.longDescription ?? resolved.description, 200);
@@ -86,7 +84,6 @@ export function EtsyPreview({ listing, images, isLoadingImages }: EtsyPreviewPro
 
       <PreviewDiagnostics
         completeness={completeness}
-        hints={hints}
         counters={[
           {
             label: 'Titel',

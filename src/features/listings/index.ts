@@ -42,6 +42,9 @@ export {
 } from './constants';
 
 export {
+  bulkSoftDelete,
+  bulkUpdatePrice,
+  bulkUpdateStatus,
   calculateCompleteness,
   addListingImage,
   createListing,
@@ -66,6 +69,7 @@ export {
   updateListingImageOrder,
   updateListing,
   updateListingsStatus,
+  type CompletenessResult,
   type CompletenessStatus,
   type CreateListingInput,
   type CreateVariantInput,

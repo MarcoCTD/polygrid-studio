@@ -167,6 +167,7 @@ export function ListingsTable({
             <PlatformStatusBadges
               overrides={row.original.overrides}
               masterStatus={row.original.status}
+              completeness={row.original.completeness}
             />
           ),
           enableSorting: false,

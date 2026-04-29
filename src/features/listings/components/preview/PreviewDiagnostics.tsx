@@ -1,24 +1,23 @@
 import { Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { CompletenessStatus } from '../../listingsService';
+import type { CompletenessResult, CompletenessStatus } from '../../listingsService';
 
 interface PreviewDiagnosticsProps {
-  completeness: CompletenessStatus;
-  hints: string[];
+  completeness: CompletenessResult;
   counters: Array<{ label: string; value: string; isOverLimit?: boolean }>;
 }
 
-export function PreviewDiagnostics({ completeness, hints, counters }: PreviewDiagnosticsProps) {
+export function PreviewDiagnostics({ completeness, counters }: PreviewDiagnosticsProps) {
   return (
     <div className="grid gap-4 rounded-lg border border-border-subtle bg-bg-primary p-4 dark:border-transparent md:grid-cols-[220px_1fr_240px]">
       <div className="flex items-center gap-2">
-        <Circle className={cn('size-3 fill-current', completenessClass(completeness))} />
+        <Circle className={cn('size-3 fill-current', completenessClass(completeness.status))} />
         <span className="text-sm font-medium text-text-primary">
-          Vollständigkeit: {completenessLabel(completeness)}
+          Vollständigkeit: {completenessLabel(completeness.status)}
         </span>
       </div>
       <ul className="space-y-1 text-sm text-text-secondary">
-        {hints.map((hint) => (
+        {completeness.hints.map((hint) => (
           <li key={hint}>{hint}</li>
         ))}
       </ul>

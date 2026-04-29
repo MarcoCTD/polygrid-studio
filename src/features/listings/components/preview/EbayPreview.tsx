@@ -4,7 +4,7 @@ import { calculateCompleteness, type ListingDetail } from '../../listingsService
 import type { ListingPlatformOverride } from '../../schemas';
 import { resolveListingForPlatform } from '../../utils';
 import { PreviewDiagnostics } from './PreviewDiagnostics';
-import { formatCurrency, getCompletenessHints, truncateText } from './previewUtils';
+import { formatCurrency, truncateText } from './previewUtils';
 
 interface ItemSpecific extends Record<string, unknown> {
   key: string;
@@ -27,10 +27,9 @@ export function EbayPreview({ listing }: EbayPreviewProps) {
     (item) => item.key.trim() || item.value.trim(),
   );
   const completeness = calculateCompleteness(
-    { ...listing, imageCount: listing.images.length },
+    { ...listing, imageCount: listing.images.length, variantCount: listing.variants.length },
     'ebay',
   );
-  const hints = getCompletenessHints(listing, 'ebay', completeness);
 
   return (
     <div className="space-y-5">
@@ -82,7 +81,6 @@ export function EbayPreview({ listing }: EbayPreviewProps) {
 
       <PreviewDiagnostics
         completeness={completeness}
-        hints={hints}
         counters={[
           {
             label: 'Titel',

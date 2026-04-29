@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { PLATFORM_LABELS, PLATFORMS } from '../constants';
+import type { CompletenessResult, CompletenessStatus } from '../listingsService';
 import type { ListingPlatformOverride, Platform, ListingStatus } from '../schemas';
 
 const PLATFORM_SHORT_LABELS: Record<Platform, string> = {
@@ -21,9 +22,16 @@ const STATUS_TEXT: Record<string, string> = {
   archived: 'archiviert',
 };
 
+const COMPLETENESS_CLASSES: Record<CompletenessStatus, string> = {
+  green: 'bg-emerald-500',
+  yellow: 'bg-amber-400',
+  red: 'bg-red-500',
+};
+
 interface PlatformStatusBadgesProps {
   overrides: ListingPlatformOverride[];
   masterStatus: ListingStatus;
+  completeness?: Record<Platform, CompletenessResult>;
 }
 
 function badgeClass(override: ListingPlatformOverride | undefined, masterStatus: ListingStatus) {
@@ -42,28 +50,48 @@ function tooltipText(
   platform: Platform,
   override: ListingPlatformOverride | undefined,
   masterStatus: ListingStatus,
+  completeness: CompletenessResult | undefined,
 ) {
-  if (!override) return `${PLATFORM_LABELS[platform]}: inaktiv`;
+  const hints = completeness?.hints.slice(0, 3) ?? [];
+  if (!override) {
+    return [`${PLATFORM_LABELS[platform]}: inaktiv`, ...hints].join('\n');
+  }
   const sync = STATUS_TEXT[override.sync_status] ?? override.sync_status;
   const status = STATUS_TEXT[masterStatus] ?? masterStatus;
-  return `${PLATFORM_LABELS[platform]}: ${override.is_active ? 'aktiv' : 'inaktiv'}, Sync ${sync}, Listing ${status}`;
+  return [
+    `${PLATFORM_LABELS[platform]}: ${override.is_active ? 'aktiv' : 'inaktiv'}, Sync ${sync}, Listing ${status}`,
+    ...hints,
+  ].join('\n');
 }
 
-export function PlatformStatusBadges({ overrides, masterStatus }: PlatformStatusBadgesProps) {
+export function PlatformStatusBadges({
+  overrides,
+  masterStatus,
+  completeness,
+}: PlatformStatusBadgesProps) {
   return (
     <div className="flex items-center gap-1">
       {PLATFORMS.map((platform) => {
         const override = overrides.find((entry) => entry.platform === platform);
+        const completenessResult = completeness?.[platform];
         return (
           <Badge
             key={platform}
             variant="outline"
-            title={tooltipText(platform, override, masterStatus)}
+            title={tooltipText(platform, override, masterStatus, completenessResult)}
             className={cn(
-              'h-5 min-w-7 border px-1.5 font-mono text-[10px]',
+              'h-5 min-w-7 gap-1 border px-1.5 font-mono text-[10px]',
               badgeClass(override, masterStatus),
             )}
           >
+            {completenessResult && (
+              <span
+                className={cn(
+                  'size-1.5 rounded-full',
+                  COMPLETENESS_CLASSES[completenessResult.status],
+                )}
+              />
+            )}
             {PLATFORM_SHORT_LABELS[platform]}
           </Badge>
         );

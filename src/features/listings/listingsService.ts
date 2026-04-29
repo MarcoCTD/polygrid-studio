@@ -14,9 +14,13 @@ import {
   type ListingVariant,
   type Platform,
 } from './schemas';
-import { PLATFORM_LIMITS, PLATFORMS } from './constants';
+import { PLATFORM_LABELS, PLATFORM_LIMITS, PLATFORMS } from './constants';
 
 export type CompletenessStatus = 'green' | 'yellow' | 'red';
+export interface CompletenessResult {
+  status: CompletenessStatus;
+  hints: string[];
+}
 export type PlatformStatusFilter =
   `${Platform}:${ListingStatus | 'manual' | 'pending' | 'synced' | 'error'}`;
 export type ListingCompletenessFilter = 'green' | 'yellow' | 'red';
@@ -81,7 +85,9 @@ export interface ListingListItem extends Listing {
   thumbnail_file_link_id: string | null;
   thumbnail_path: string | null;
   thumbnail_alt_text: string | null;
-  completeness: Record<Platform, CompletenessStatus>;
+  imageCount: number;
+  variantCount: number;
+  completeness: Record<Platform, CompletenessResult>;
 }
 
 export interface ListingDetail extends ListingListItem {
@@ -102,6 +108,8 @@ interface ListingBaseRow extends Record<string, unknown> {
   thumbnail_file_link_id: string | null;
   thumbnail_path: string | null;
   thumbnail_alt_text: string | null;
+  image_count: number | null;
+  variant_count: number | null;
 }
 
 interface OverrideRow extends Record<string, unknown> {
@@ -288,6 +296,8 @@ function rowToImageFileLink(row: ImageFileLinkRow): ImageFileLinkOption {
 
 function mapListItem(row: ListingBaseRow, overrides: ListingPlatformOverride[]): ListingListItem {
   const listing = rowToListing(row);
+  const imageCount = row.image_count ?? 0;
+  const variantCount = row.variant_count ?? 0;
   return {
     ...listing,
     product_name: row.product_name,
@@ -295,17 +305,13 @@ function mapListItem(row: ListingBaseRow, overrides: ListingPlatformOverride[]):
     thumbnail_file_link_id: row.thumbnail_file_link_id,
     thumbnail_path: row.thumbnail_path,
     thumbnail_alt_text: row.thumbnail_alt_text,
+    imageCount,
+    variantCount,
     completeness: {
-      etsy: calculateCompleteness(
-        { ...listing, overrides, imageCount: row.thumbnail_file_link_id ? 1 : 0 },
-        'etsy',
-      ),
-      ebay: calculateCompleteness(
-        { ...listing, overrides, imageCount: row.thumbnail_file_link_id ? 1 : 0 },
-        'ebay',
-      ),
+      etsy: calculateCompleteness({ ...listing, overrides, imageCount, variantCount }, 'etsy'),
+      ebay: calculateCompleteness({ ...listing, overrides, imageCount, variantCount }, 'ebay'),
       kleinanzeigen: calculateCompleteness(
-        { ...listing, overrides, imageCount: row.thumbnail_file_link_id ? 1 : 0 },
+        { ...listing, overrides, imageCount, variantCount },
         'kleinanzeigen',
       ),
     },
@@ -377,7 +383,9 @@ export async function getListings(filters: ListingFilters = {}): Promise<Listing
         p.name AS product_name,
         li.file_link_id AS thumbnail_file_link_id,
         fl.file_path AS thumbnail_path,
-        li.alt_text AS thumbnail_alt_text
+        li.alt_text AS thumbnail_alt_text,
+        (SELECT COUNT(*) FROM listing_images li_count WHERE li_count.listing_id = l.id) AS image_count,
+        (SELECT COUNT(*) FROM listing_variants lv_count WHERE lv_count.listing_id = l.id) AS variant_count
       FROM listings l
       LEFT JOIN products p ON p.id = l.product_id
       LEFT JOIN listing_images li ON li.listing_id = l.id AND li.sort_order = 0
@@ -402,7 +410,9 @@ export async function getListings(filters: ListingFilters = {}): Promise<Listing
 
     if (filters.completeness && filters.completeness.length > 0) {
       items = items.filter((item) =>
-        PLATFORMS.some((platform) => filters.completeness?.includes(item.completeness[platform])),
+        PLATFORMS.some((platform) =>
+          filters.completeness?.includes(item.completeness[platform].status),
+        ),
       );
     }
 
@@ -424,7 +434,9 @@ export async function getListing(id: string): Promise<ListingDetail | null> {
         p.name AS product_name,
         li.file_link_id AS thumbnail_file_link_id,
         fl.file_path AS thumbnail_path,
-        li.alt_text AS thumbnail_alt_text
+        li.alt_text AS thumbnail_alt_text,
+        (SELECT COUNT(*) FROM listing_images li_count WHERE li_count.listing_id = l.id) AS image_count,
+        (SELECT COUNT(*) FROM listing_variants lv_count WHERE lv_count.listing_id = l.id) AS variant_count
       FROM listings l
       LEFT JOIN products p ON p.id = l.product_id
       LEFT JOIN listing_images li ON li.listing_id = l.id AND li.sort_order = 0
@@ -599,6 +611,31 @@ export async function updateListingsStatus(ids: string[], status: ListingStatus)
   }
 }
 
+export async function bulkUpdateStatus(ids: string[], status: ListingStatus): Promise<void> {
+  return updateListingsStatus(ids, status);
+}
+
+export async function bulkUpdatePrice(ids: string[], changePercent: number): Promise<void> {
+  if (ids.length === 0) return;
+  const db = getDatabase();
+  const timestamp = now();
+  const multiplier = 1 + changePercent / 100;
+  const placeholders = ids.map((_, index) => `$${index + 3}`).join(', ');
+
+  try {
+    await db.execute(
+      `UPDATE listings
+       SET base_price = ROUND(base_price * $1, 2), updated_at = $2
+       WHERE id IN (${placeholders})`,
+      [multiplier, timestamp, ...ids],
+    );
+  } catch (err) {
+    throw new Error(
+      `Listing-Preise konnten nicht aktualisiert werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
 export async function getOverride(
   listingId: string,
   platform: Platform,
@@ -741,6 +778,10 @@ export async function softDeleteListings(ids: string[]): Promise<void> {
       `Listings konnten nicht gelöscht werden: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
+}
+
+export async function bulkSoftDelete(ids: string[]): Promise<void> {
+  return softDeleteListings(ids);
 }
 
 export async function getListingImages(listingId: string): Promise<ListingImageWithFile[]> {
@@ -1087,11 +1128,17 @@ export async function setDefaultVariant(id: string, listingId: string): Promise<
 }
 
 export function calculateCompleteness(
-  listing: Listing & { overrides?: ListingPlatformOverride[]; imageCount?: number },
+  listing: Listing & {
+    overrides?: ListingPlatformOverride[];
+    imageCount?: number;
+    variantCount?: number;
+  },
   platform: Platform,
-): CompletenessStatus {
+): CompletenessResult {
   const override = listing.overrides?.find((entry) => entry.platform === platform);
-  const title = override?.title_override?.trim() || listing.master_title.trim();
+  const titleOverride = override?.title_override?.trim() ?? '';
+  const masterTitle = listing.master_title.trim();
+  const title = titleOverride || masterTitle;
   const description =
     override?.long_description_override?.trim() ||
     override?.short_description_override?.trim() ||
@@ -1099,22 +1146,83 @@ export function calculateCompleteness(
     listing.master_short_description?.trim() ||
     '';
   const tags = override?.tags_override ?? listing.master_tags;
-  const hasRequiredFields =
-    title.length > 0 &&
-    description.length > 0 &&
-    listing.base_price >= 0 &&
-    Boolean(listing.product_id);
   const limit = PLATFORM_LIMITS[platform];
+  const redHints: string[] = [];
 
-  if (!hasRequiredFields || title.length > limit.maxTitleLength) {
-    return 'red';
+  if (!masterTitle) {
+    redHints.push(`${PLATFORM_LABELS[platform]}: Master-Titel fehlt`);
+  }
+
+  if (masterTitle.length > limit.maxTitleLength && !titleOverride) {
+    redHints.push(
+      `${PLATFORM_LABELS[platform]}: Master-Titel zu lang (${masterTitle.length}/${limit.maxTitleLength}), Override nötig`,
+    );
+  }
+
+  if (title.length > limit.maxTitleLength) {
+    redHints.push(
+      `${PLATFORM_LABELS[platform]}: Titel zu lang (${title.length}/${limit.maxTitleLength})`,
+    );
+  }
+
+  if (listing.base_price <= 0) {
+    redHints.push(`${PLATFORM_LABELS[platform]}: Basispreis fehlt`);
+  }
+
+  if (tags.length === 0) {
+    redHints.push(`${PLATFORM_LABELS[platform]}: Tags fehlen`);
+  }
+
+  if (redHints.length > 0) {
+    return { status: 'red', hints: redHints };
   }
 
   const hasImage = (listing.imageCount ?? 0) > 0;
   const hasPlatformCategory = Boolean(override?.platform_category_id?.trim());
-  const etsyTagsOk = platform !== 'etsy' || tags.length >= 5;
-  const overrideTitleOk =
-    listing.master_title.length <= limit.maxTitleLength || Boolean(override?.title_override);
+  const variantCount = listing.variantCount ?? 0;
+  const hints: string[] = [];
 
-  return hasImage && hasPlatformCategory && etsyTagsOk && overrideTitleOk ? 'green' : 'yellow';
+  if (!description.trim()) {
+    hints.push(`${PLATFORM_LABELS[platform]}: Beschreibung fehlt`);
+  }
+
+  if (platform === 'etsy' && tags.length < 5) {
+    hints.push(`${PLATFORM_LABELS[platform]}: mindestens 5 Tags empfohlen (${tags.length}/5)`);
+  }
+
+  if (!hasImage) {
+    hints.push(`${PLATFORM_LABELS[platform]}: mindestens 1 Bild fehlt`);
+  }
+
+  if (!hasPlatformCategory) {
+    hints.push(`${PLATFORM_LABELS[platform]}: Plattform-Kategorie fehlt`);
+  }
+
+  if (variantCount === 0) {
+    hints.push(`${PLATFORM_LABELS[platform]}: keine Varianten definiert`);
+  }
+
+  if (override?.is_active && !hasOverrideContent(override)) {
+    hints.push(`${PLATFORM_LABELS[platform]}: Plattform ist aktiv, aber ohne Override-Daten`);
+  }
+
+  if (hints.length > 0) {
+    return { status: 'yellow', hints };
+  }
+
+  return {
+    status: 'green',
+    hints: [`${PLATFORM_LABELS[platform]}: alle Pflichtfelder sind vollständig`],
+  };
+}
+
+function hasOverrideContent(override: ListingPlatformOverride): boolean {
+  return Boolean(
+    override.title_override?.trim() ||
+    override.short_description_override?.trim() ||
+    override.long_description_override?.trim() ||
+    (override.tags_override && override.tags_override.length > 0) ||
+    override.price_override !== null ||
+    override.platform_category_id?.trim(),
+  );
 }
