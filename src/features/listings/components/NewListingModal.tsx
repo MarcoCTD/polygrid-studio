@@ -30,9 +30,15 @@ interface NewListingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: (listing: ListingDetail) => void;
+  initialProductId?: string | null;
 }
 
-export function NewListingModal({ open, onOpenChange, onCreated }: NewListingModalProps) {
+export function NewListingModal({
+  open,
+  onOpenChange,
+  onCreated,
+  initialProductId = null,
+}: NewListingModalProps) {
   const [products, setProducts] = useState<ProductWithoutListingOption[]>([]);
   const [selectedProductId, setSelectedProductId] = useState('');
   const [language, setLanguage] = useState<'de' | 'en'>('de');
@@ -56,7 +62,11 @@ export function NewListingModal({ open, onOpenChange, onCreated }: NewListingMod
         .then((items) => {
           if (cancelled) return;
           setProducts(items);
-          setSelectedProductId(items[0]?.id ?? '');
+          setSelectedProductId(
+            initialProductId && items.some((item) => item.id === initialProductId)
+              ? initialProductId
+              : (items[0]?.id ?? ''),
+          );
           setLanguage('de');
           setInventoryMode('made_to_order');
           setPlatforms([...PLATFORMS]);
@@ -76,7 +86,7 @@ export function NewListingModal({ open, onOpenChange, onCreated }: NewListingMod
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [initialProductId, open]);
 
   function togglePlatform(platform: Platform) {
     setPlatforms((current) =>

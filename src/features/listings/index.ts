@@ -50,11 +50,13 @@ export {
   createListing,
   createVariant,
   deleteVariant,
+  duplicateListing,
   getAvailableListingImageFileLinks,
   getListing,
   getListingImages,
   getListingVariants,
   getListings,
+  getListingsForProduct,
   getOverride,
   getProductsWithoutListing,
   removeListingImage,
@@ -102,6 +104,7 @@ export {
 export {
   EbayTab,
   EtsyTab,
+  DuplicateListingModal,
   ListingEditorFooter,
   ListingPlaceholderTab,
   ListingStatusBadge,
@@ -116,6 +119,7 @@ export {
   PlatformTabBase,
   PlatformStatusBadges,
   PreviewTab,
+  ProductListingsTab,
   VariantsTab,
 } from './components';
 

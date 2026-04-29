@@ -1,3 +1,4 @@
+export { DuplicateListingModal } from './DuplicateListingModal';
 export { EbayTab } from './EbayTab';
 export { EtsyTab } from './EtsyTab';
 export { ImagePickerDialog } from './ImagePickerDialog';
@@ -14,4 +15,5 @@ export { NewListingModal } from './NewListingModal';
 export { PlatformTabBase } from './PlatformTabBase';
 export { PlatformStatusBadges } from './PlatformStatusBadges';
 export { PreviewTab } from './PreviewTab';
+export { ProductListingsTab } from './ProductListingsTab';
 export { VariantsTab } from './VariantsTab';

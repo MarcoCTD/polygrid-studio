@@ -72,6 +72,7 @@ interface ListingsToolbarProps {
   totalCount: number;
   onSetFilter: <K extends keyof ListingsFilterState>(key: K, value: ListingsFilterState[K]) => void;
   onNewListing: () => void;
+  onDuplicateListing: () => void;
 }
 
 interface ActiveBadge {
@@ -89,6 +90,7 @@ export function ListingsToolbar({
   totalCount,
   onSetFilter,
   onNewListing,
+  onDuplicateListing,
 }: ListingsToolbarProps) {
   const badges = buildBadges(filters, onSetFilter);
   const activeFilterCount = badges.length;
@@ -216,8 +218,7 @@ export function ListingsToolbar({
           <Button
             variant="ghost"
             size="sm"
-            disabled
-            title="Kommt in Sub-Session 5.9"
+            onClick={onDuplicateListing}
             className="gap-1.5 text-text-secondary"
           >
             <CopyPlus size={14} />

@@ -556,6 +556,146 @@ export async function getProductsWithoutListing(): Promise<ProductWithoutListing
   }
 }
 
+export async function getListingsForProduct(productId: string): Promise<ListingListItem[]> {
+  const db = getDatabase();
+
+  try {
+    const rows = await db.select<ListingBaseRow[]>(
+      `SELECT
+        l.*,
+        p.name AS product_name,
+        li.file_link_id AS thumbnail_file_link_id,
+        fl.file_path AS thumbnail_path,
+        li.alt_text AS thumbnail_alt_text,
+        (SELECT COUNT(*) FROM listing_images li_count WHERE li_count.listing_id = l.id) AS image_count,
+        (SELECT COUNT(*) FROM listing_variants lv_count WHERE lv_count.listing_id = l.id) AS variant_count
+      FROM listings l
+      LEFT JOIN products p ON p.id = l.product_id
+      LEFT JOIN listing_images li ON li.listing_id = l.id AND li.sort_order = 0
+      LEFT JOIN file_links fl ON fl.id = li.file_link_id
+      WHERE l.product_id = $1 AND l.deleted_at IS NULL
+      ORDER BY l.updated_at DESC`,
+      [productId],
+    );
+
+    const overridesByListing = await loadOverridesForListings(rows.map((row) => row.id));
+    return rows.map((row) => mapListItem(row, overridesByListing.get(row.id) ?? []));
+  } catch (err) {
+    throw new Error(
+      `Produkt-Listings konnten nicht geladen werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+export async function duplicateListing(
+  sourceId: string,
+  targetProductId: string,
+): Promise<ListingDetail> {
+  const source = await getListing(sourceId);
+  if (!source) throw new Error('Vorlagen-Listing nicht gefunden');
+
+  const db = getDatabase();
+  const timestamp = now();
+  const newListingId = createId();
+
+  try {
+    await db.execute(
+      `INSERT INTO listings (
+        id, product_id, master_title, master_short_description, master_long_description,
+        master_bullet_points, master_tags, base_price, currency, inventory_mode, stock_quantity,
+        sku_base, processing_time_min_days, processing_time_max_days, weight_grams,
+        dimension_length_cm, dimension_width_cm, dimension_height_cm, condition, language,
+        status, seo_notes, append_legal_texts, created_at, updated_at, deleted_at
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NULL, $11, $12, $13, $14,
+        $15, $16, $17, $18, $19, 'draft', $20, $21, $22, $22, NULL
+      )`,
+      [
+        newListingId,
+        targetProductId,
+        source.master_title,
+        source.master_short_description,
+        source.master_long_description,
+        JSON.stringify(source.master_bullet_points),
+        JSON.stringify(source.master_tags),
+        source.base_price,
+        source.currency,
+        source.inventory_mode,
+        source.sku_base,
+        source.processing_time_min_days,
+        source.processing_time_max_days,
+        source.weight_grams,
+        source.dimension_length_cm,
+        source.dimension_width_cm,
+        source.dimension_height_cm,
+        source.condition,
+        source.language,
+        source.seo_notes,
+        source.append_legal_texts,
+        timestamp,
+      ],
+    );
+
+    for (const override of source.overrides) {
+      await db.execute(
+        `INSERT INTO listing_platform_overrides (
+          id, listing_id, platform, is_active, title_override, short_description_override,
+          long_description_override, tags_override, price_override, platform_category_id,
+          shipping_profile_id, return_policy_id, payment_policy_id, external_listing_id,
+          external_listing_url, sync_status, sync_error_message, last_synced_at,
+          platform_metadata, created_at, updated_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NULL, NULL,
+          'manual', NULL, NULL, $14, $15, $15
+        )`,
+        [
+          createId(),
+          newListingId,
+          override.platform,
+          override.is_active,
+          override.title_override,
+          override.short_description_override,
+          override.long_description_override,
+          override.tags_override ? JSON.stringify(override.tags_override) : null,
+          override.price_override,
+          override.platform_category_id,
+          override.shipping_profile_id,
+          override.return_policy_id,
+          override.payment_policy_id,
+          override.platform_metadata ? JSON.stringify(override.platform_metadata) : null,
+          timestamp,
+        ],
+      );
+    }
+
+    for (const variant of source.variants) {
+      await db.execute(
+        `INSERT INTO listing_variants (
+          id, listing_id, name, sku_suffix, price, stock_quantity, color_hex, sort_order, is_default
+        ) VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8)`,
+        [
+          createId(),
+          newListingId,
+          variant.name,
+          variant.sku_suffix,
+          variant.price,
+          variant.color_hex,
+          variant.sort_order,
+          variant.is_default,
+        ],
+      );
+    }
+
+    const created = await getListing(newListingId);
+    if (!created) throw new Error('Listing wurde dupliziert, konnte aber nicht geladen werden');
+    return created;
+  } catch (err) {
+    throw new Error(
+      `Listing konnte nicht dupliziert werden: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
 export async function updateListing(id: string, data: UpdateListingInput): Promise<ListingDetail> {
   const db = getDatabase();
   const parsed = listingInsertSchema.partial().parse(data);

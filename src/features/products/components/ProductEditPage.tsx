@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { ArrowLeft, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { ProductListingsTab } from '@/features/listings';
 import type { Product, ProductUpdate } from '../schema';
 import { getProduct, duplicateProduct } from '../db';
 import { useAutoSave } from '../hooks/useAutoSave';
@@ -213,7 +214,7 @@ export function ProductEditPage() {
           </TabsContent>
 
           <TabsContent value="listings">
-            <PlaceholderTab type="listings" />
+            <ProductListingsTab product={product} />
           </TabsContent>
 
           <TabsContent value="costs">

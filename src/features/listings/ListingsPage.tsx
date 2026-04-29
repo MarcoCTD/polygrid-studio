@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { FileText, Plus } from 'lucide-react';
+import { CopyPlus, FileText, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { ListingsBulkToolbar, ListingsTable, ListingsToolbar, NewListingModal } from './components';
+import { useUIStore } from '@/stores';
+import {
+  DuplicateListingModal,
+  ListingsBulkToolbar,
+  ListingsTable,
+  ListingsToolbar,
+  NewListingModal,
+} from './components';
 import {
   bulkSoftDelete,
   bulkUpdatePrice,
@@ -26,7 +33,9 @@ function hasActiveFilters(filters: ListingsFilterState) {
 
 export function ListingsPage() {
   const navigate = useNavigate();
+  const { registerCommands, unregisterCommands } = useUIStore();
   const [isNewListingOpen, setIsNewListingOpen] = useState(false);
+  const [isDuplicateListingOpen, setIsDuplicateListingOpen] = useState(false);
   const {
     listings,
     isLoading,
@@ -56,6 +65,36 @@ export function ListingsPage() {
   useEffect(() => {
     if (error) toast.error(error);
   }, [error]);
+
+  useEffect(() => {
+    const commandIds = ['listings:new', 'listings:open-list', 'listings:duplicate'];
+
+    registerCommands([
+      {
+        id: 'listings:new',
+        label: 'Neues Listing',
+        icon: Plus,
+        category: 'action',
+        action: () => setIsNewListingOpen(true),
+      },
+      {
+        id: 'listings:open-list',
+        label: 'Listing-Liste öffnen',
+        icon: FileText,
+        category: 'navigation',
+        action: () => void navigate({ to: '/listings' }),
+      },
+      {
+        id: 'listings:duplicate',
+        label: 'Listing duplizieren',
+        icon: CopyPlus,
+        category: 'action',
+        action: () => setIsDuplicateListingOpen(true),
+      },
+    ]);
+
+    return () => unregisterCommands(commandIds);
+  }, [navigate, registerCommands, unregisterCommands]);
 
   const reloadAndClear = useCallback(async () => {
     clearSelection();
@@ -143,6 +182,7 @@ export function ListingsPage() {
           totalCount={listings.length}
           onSetFilter={setFilter}
           onNewListing={() => setIsNewListingOpen(true)}
+          onDuplicateListing={() => setIsDuplicateListingOpen(true)}
         />
       )}
 
@@ -177,6 +217,14 @@ export function ListingsPage() {
       <NewListingModal
         open={isNewListingOpen}
         onOpenChange={setIsNewListingOpen}
+        onCreated={(listing) => {
+          void loadListings();
+          void navigate({ to: '/listings/$listingId', params: { listingId: listing.id } });
+        }}
+      />
+      <DuplicateListingModal
+        open={isDuplicateListingOpen}
+        onOpenChange={setIsDuplicateListingOpen}
         onCreated={(listing) => {
           void loadListings();
           void navigate({ to: '/listings/$listingId', params: { listingId: listing.id } });
