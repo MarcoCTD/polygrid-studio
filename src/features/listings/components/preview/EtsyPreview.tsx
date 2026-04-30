@@ -1,4 +1,4 @@
-import { convertFileSrc } from '@tauri-apps/api/core';
+import { useEffect, useState } from 'react';
 import { Camera } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PLATFORM_LIMITS } from '../../constants';
@@ -8,6 +8,7 @@ import {
   type ListingImageWithFile,
 } from '../../listingsService';
 import { resolveListingForPlatform } from '../../utils';
+import { resolveImageSrc } from '../../utils/resolveImagePath';
 import { PreviewDiagnostics } from './PreviewDiagnostics';
 import { formatCurrency, isImageForPlatform, truncateText } from './previewUtils';
 
@@ -42,12 +43,7 @@ export function EtsyPreview({ listing, images, isLoadingImages }: EtsyPreviewPro
           {isLoadingImages ? (
             <span className="text-sm text-text-muted">Bild wird geladen...</span>
           ) : mainImage?.file_path ? (
-            <img
-              src={convertFileSrc(mainImage.file_path)}
-              alt={mainImage.alt_text ?? resolved.title}
-              className="h-full max-h-[440px] w-full object-cover"
-              draggable={false}
-            />
+            <EtsyPreviewImage image={mainImage} fallbackAlt={resolved.title} />
           ) : (
             <div className="flex flex-col items-center gap-2 text-text-muted">
               <Camera size={34} />
@@ -100,5 +96,48 @@ export function EtsyPreview({ listing, images, isLoadingImages }: EtsyPreviewPro
         ]}
       />
     </div>
+  );
+}
+
+function EtsyPreviewImage({
+  image,
+  fallbackAlt,
+}: {
+  image: ListingImageWithFile;
+  fallbackAlt: string;
+}) {
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveImageSrc(image.file_path)
+      .then((src) => {
+        if (!cancelled) setImageSrc(src);
+      })
+      .catch(() => {
+        if (!cancelled) setImageSrc(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [image.file_path]);
+
+  if (!imageSrc) {
+    return (
+      <div className="flex flex-col items-center gap-2 text-text-muted">
+        <Camera size={34} />
+        <span className="text-sm">Kein Hauptbild</span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imageSrc}
+      alt={image.alt_text ?? fallbackAlt}
+      className="h-full max-h-[440px] w-full object-cover"
+      draggable={false}
+    />
   );
 }

@@ -1,4 +1,3 @@
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { useEffect, useState } from 'react';
 import { ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
@@ -14,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { getAvailableListingImageFileLinks, type ImageFileLinkOption } from '../listingsService';
+import { resolveImageSrc } from '../utils/resolveImagePath';
 
 interface ImagePickerDialogProps {
   open: boolean;
@@ -94,40 +94,12 @@ export function ImagePickerDialog({
         ) : (
           <div className="grid max-h-[60vh] grid-cols-2 gap-3 overflow-auto pr-1 sm:grid-cols-3">
             {items.map((item) => (
-              <button
+              <ImagePickerItem
                 key={item.id}
-                type="button"
-                onClick={() => toggleSelected(item.id)}
-                className={cn(
-                  'flex min-h-36 flex-col rounded-lg border border-border-subtle bg-bg-elevated p-3 text-left transition-colors hover:bg-bg-hover',
-                  selectedIds.has(item.id) && 'border-pg-accent ring-2 ring-pg-accent/20',
-                )}
-              >
-                <div className="mb-3 flex h-20 items-center justify-center overflow-hidden rounded-md bg-bg-secondary">
-                  <img
-                    src={convertFileSrc(item.file_path)}
-                    alt={displayName(item)}
-                    className="size-full object-cover"
-                    draggable={false}
-                  />
-                </div>
-                <div className="flex items-start gap-2">
-                  <Checkbox checked={selectedIds.has(item.id)} />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-text-primary">
-                      {displayName(item)}
-                    </p>
-                    <p className="truncate text-xs text-text-muted" title={item.file_path}>
-                      {item.file_path}
-                    </p>
-                    {item.isProductFile && (
-                      <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
-                        Produktbild
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </button>
+                item={item}
+                isSelected={selectedIds.has(item.id)}
+                onToggle={() => toggleSelected(item.id)}
+              />
             ))}
           </div>
         )}
@@ -145,6 +117,71 @@ export function ImagePickerDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ImagePickerItem({
+  item,
+  isSelected,
+  onToggle,
+}: {
+  item: ImageFileLinkOption;
+  isSelected: boolean;
+  onToggle: () => void;
+}) {
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveImageSrc(item.file_path)
+      .then((src) => {
+        if (!cancelled) setImageSrc(src);
+      })
+      .catch(() => {
+        if (!cancelled) setImageSrc(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [item.file_path]);
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={cn(
+        'flex min-h-36 flex-col rounded-lg border border-border-subtle bg-bg-elevated p-3 text-left transition-colors hover:bg-bg-hover',
+        isSelected && 'border-pg-accent ring-2 ring-pg-accent/20',
+      )}
+    >
+      <div className="mb-3 flex h-20 items-center justify-center overflow-hidden rounded-md bg-bg-secondary">
+        {imageSrc ? (
+          <img
+            src={imageSrc}
+            alt={displayName(item)}
+            className="size-full object-cover"
+            draggable={false}
+          />
+        ) : (
+          <ImageIcon size={20} className="text-text-muted" />
+        )}
+      </div>
+      <div className="flex items-start gap-2">
+        <Checkbox checked={isSelected} />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-text-primary">{displayName(item)}</p>
+          <p className="truncate text-xs text-text-muted" title={item.file_path}>
+            {item.file_path}
+          </p>
+          {item.isProductFile && (
+            <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+              Produktbild
+            </span>
+          )}
+        </div>
+      </div>
+    </button>
   );
 }
 

@@ -1,4 +1,3 @@
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { useEffect, useMemo, useState } from 'react';
 import {
   closestCenter,
@@ -28,6 +27,7 @@ import {
   type ListingImageWithFile,
 } from '../listingsService';
 import type { Platform } from '../schemas';
+import { resolveImageSrc } from '../utils/resolveImagePath';
 import { ImagePickerDialog } from './ImagePickerDialog';
 
 interface ImagesTabProps {
@@ -238,10 +238,26 @@ function SortableImageCard({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: image.id,
   });
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveImageSrc(image.file_path)
+      .then((src) => {
+        if (!cancelled) setImageSrc(src);
+      })
+      .catch(() => {
+        if (!cancelled) setImageSrc(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [image.file_path]);
 
   function togglePlatform(platform: Platform) {
     const current = image.platforms ?? [...PLATFORMS];
@@ -278,12 +294,16 @@ function SortableImageCard({
       </div>
 
       <div className="mb-3 flex h-36 items-center justify-center rounded-md bg-bg-secondary">
-        <img
-          src={convertFileSrc(image.file_path)}
-          alt={image.alt_text ?? displayName(image)}
-          className="size-full rounded-md object-cover"
-          draggable={false}
-        />
+        {imageSrc ? (
+          <img
+            src={imageSrc}
+            alt={image.alt_text ?? displayName(image)}
+            className="size-full rounded-md object-cover"
+            draggable={false}
+          />
+        ) : (
+          <ImageIcon size={22} className="text-text-muted" />
+        )}
       </div>
 
       <div className="space-y-3">

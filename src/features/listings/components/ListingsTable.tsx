@@ -1,5 +1,4 @@
-import { convertFileSrc } from '@tauri-apps/api/core';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import {
   createColumnHelper,
@@ -16,6 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { formatEUR, formatRelativeDate } from '@/features/products/utils';
 import type { ListingListItem } from '../listingsService';
+import { resolveImageSrc } from '../utils/resolveImagePath';
 import { ListingStatusBadge } from './ListingStatusBadge';
 import { PlatformStatusBadges } from './PlatformStatusBadges';
 
@@ -120,18 +120,10 @@ export function ListingsTable({
           header: 'Bild',
           size: 60,
           cell: ({ row }) => (
-            <div className="flex size-12 items-center justify-center overflow-hidden rounded-md border border-border-subtle bg-bg-secondary">
-              {row.original.thumbnail_path ? (
-                <img
-                  src={convertFileSrc(row.original.thumbnail_path)}
-                  alt={row.original.thumbnail_alt_text ?? ''}
-                  className="size-full object-cover"
-                  draggable={false}
-                />
-              ) : (
-                <ImageIcon size={18} className="text-text-muted" />
-              )}
-            </div>
+            <ListingThumbnail
+              filePath={row.original.thumbnail_path}
+              altText={row.original.thumbnail_alt_text}
+            />
           ),
           enableSorting: false,
         }),
@@ -325,6 +317,64 @@ export function ListingsTable({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ListingThumbnail({
+  filePath,
+  altText,
+}: {
+  filePath: string | null;
+  altText: string | null;
+}) {
+  if (!filePath) {
+    return (
+      <div className="flex size-12 items-center justify-center overflow-hidden rounded-md border border-border-subtle bg-bg-secondary">
+        <ImageIcon size={18} className="text-text-muted" />
+      </div>
+    );
+  }
+
+  return <ResolvedListingThumbnail filePath={filePath} altText={altText} />;
+}
+
+function ResolvedListingThumbnail({
+  filePath,
+  altText,
+}: {
+  filePath: string;
+  altText: string | null;
+}) {
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveImageSrc(filePath)
+      .then((src) => {
+        if (!cancelled) setImageSrc(src);
+      })
+      .catch(() => {
+        if (!cancelled) setImageSrc(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filePath]);
+
+  return (
+    <div className="flex size-12 items-center justify-center overflow-hidden rounded-md border border-border-subtle bg-bg-secondary">
+      {imageSrc ? (
+        <img
+          src={imageSrc}
+          alt={altText ?? ''}
+          className="size-full object-cover"
+          draggable={false}
+        />
+      ) : (
+        <ImageIcon size={18} className="text-text-muted" />
+      )}
     </div>
   );
 }
