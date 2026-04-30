@@ -10,6 +10,7 @@ import migration0004 from '../../../drizzle/0004_little_princess_powerful.sql?ra
 import migration0005 from '../../../drizzle/0005_brown_amazoness.sql?raw';
 import migration0006 from '../../../drizzle/0006_familiar_wallflower.sql?raw';
 import migration0007 from '../../../drizzle/0007_listings_data_model_custom.sql?raw';
+import migration0008 from '../../../drizzle/0008_modul_08_orders_finance.sql?raw';
 
 export interface Migration {
   tag: string;
@@ -25,4 +26,5 @@ export const MIGRATIONS: Migration[] = [
   { tag: '0005_brown_amazoness', sql: migration0005 },
   { tag: '0006_familiar_wallflower', sql: migration0006 },
   { tag: '0007_listings_data_model_custom', sql: migration0007 },
+  { tag: '0008_modul_08_orders_finance', sql: migration0008 },
 ];

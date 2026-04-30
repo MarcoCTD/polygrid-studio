@@ -103,6 +103,8 @@ function rowToExpense(row: Record<string, unknown>): Expense {
     recurring_next_date: (row.recurring_next_date as string) ?? null,
     import_source: (row.import_source as Expense['import_source']) ?? 'manual',
     import_ref: (row.import_ref as string) ?? null,
+    tax_locked: Boolean(row.tax_locked),
+    bank_match_id: (row.bank_match_id as string) ?? null,
     notes: (row.notes as string) ?? null,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,

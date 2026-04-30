@@ -75,26 +75,30 @@ export async function initDatabase(): Promise<void> {
     ]);
   }
 
-  // Default-Settings einfuegen falls die Tabelle leer ist
-  const settingsCount = await db.select<{ count: number }[]>(
-    'SELECT COUNT(*) as count FROM app_settings',
-  );
+  // Default-Settings einfuegen, ohne bestehende Nutzerwerte zu ueberschreiben.
+  const now = new Date().toISOString();
+  const defaults: [string, string][] = [
+    ['theme', '"system"'],
+    ['accent_color', '"sap_blue"'],
+    ['sidebar_collapsed', 'false'],
+    ['receipt_number_prefix_format', '"YYYY-NNNN"'],
+    ['receipt_number_min_digits', '4'],
+    ['tax_lock_default_for_yearly_export', 'true'],
+    ['tax_lock_default_for_monthly_export', 'false'],
+    ['tax_status', '"kleinunternehmer_19_ustg"'],
+    ['bank_csv_format_default', '"n26"'],
+    ['bank_match_amount_tolerance_eur', '0.02'],
+    ['bank_match_time_window_days_orders', '14'],
+    ['bank_match_time_window_days_expenses', '7'],
+    ['payout_keywords_etsy', '["Etsy","Etsy Ireland","Etsy Inc"]'],
+    ['payout_keywords_ebay', '["eBay","Ebay Marketplaces"]'],
+  ];
 
-  if (settingsCount[0].count === 0) {
-    const now = new Date().toISOString();
-    const defaults: [string, string][] = [
-      ['theme', '"system"'],
-      ['accent_color', '"sap_blue"'],
-      ['sidebar_collapsed', 'false'],
-    ];
-
-    for (const [key, value] of defaults) {
-      await db.execute('INSERT INTO app_settings (key, value, updated_at) VALUES ($1, $2, $3)', [
-        key,
-        value,
-        now,
-      ]);
-    }
+  for (const [key, value] of defaults) {
+    await db.execute(
+      'INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES ($1, $2, $3)',
+      [key, value, now],
+    );
   }
 
   dbInstance = db;

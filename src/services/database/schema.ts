@@ -181,7 +181,65 @@ export const listingImages = sqliteTable(
 );
 
 // ============================================================
-// 4. expenses (Modul 04) – FK zu products (optional)
+// 4. import_batches (Modul 08) – Audit fuer CSV-Imports
+// ============================================================
+export const importBatches = sqliteTable(
+  'import_batches',
+  {
+    id: text('id').primaryKey(),
+    source: text('source').notNull(),
+    imported_at: text('imported_at').notNull(),
+    filename: text('filename'),
+    transaction_count: integer('transaction_count').notNull(),
+    matched_count: integer('matched_count').notNull(),
+    date_range_start: text('date_range_start'),
+    date_range_end: text('date_range_end'),
+  },
+  (table) => [
+    index('idx_import_batches_imported_at').on(table.imported_at),
+    index('idx_import_batches_source').on(table.source),
+  ],
+);
+
+// ============================================================
+// 4b. bank_transactions (Modul 08) – N26-Bankimport
+// ============================================================
+export const bankTransactions = sqliteTable(
+  'bank_transactions',
+  {
+    id: text('id').primaryKey(),
+    transaction_date: text('transaction_date').notNull(),
+    value_date: text('value_date'),
+    amount: real('amount').notNull(),
+    description: text('description').notNull(),
+    counterparty_name: text('counterparty_name'),
+    counterparty_iban: text('counterparty_iban'),
+    transaction_type: text('transaction_type'),
+    // SQLite-FKs fuer matched_order_id/matched_expense_id liegen in der SQL-Migration.
+    // Im Drizzle-Schema bleibt dieser Rueckverweis bewusst ohne .references(),
+    // damit der orders/expenses <-> bank_transactions Zyklus typisierbar bleibt.
+    matched_order_id: text('matched_order_id'),
+    matched_expense_id: text('matched_expense_id'),
+    match_confidence: text('match_confidence'),
+    is_payout: integer('is_payout', { mode: 'boolean' }).notNull().default(false),
+    import_batch_id: text('import_batch_id')
+      .notNull()
+      .references(() => importBatches.id),
+    ignored: integer('ignored', { mode: 'boolean' }).notNull().default(false),
+    notes: text('notes'),
+    created_at: text('created_at').notNull(),
+  },
+  (table) => [
+    index('idx_bank_transactions_transaction_date').on(table.transaction_date),
+    index('idx_bank_transactions_amount').on(table.amount),
+    index('idx_bank_transactions_import_batch_id').on(table.import_batch_id),
+    index('idx_bank_transactions_match_confidence').on(table.match_confidence),
+    index('idx_bank_transactions_is_payout').on(table.is_payout),
+  ],
+);
+
+// ============================================================
+// 5. expenses (Modul 04) – FK zu products (optional)
 // ============================================================
 export const expenses = sqliteTable(
   'expenses',
@@ -206,6 +264,8 @@ export const expenses = sqliteTable(
     recurring_next_date: text('recurring_next_date'),
     import_source: text('import_source').notNull().default('manual'),
     import_ref: text('import_ref'),
+    tax_locked: integer('tax_locked', { mode: 'boolean' }).notNull().default(false),
+    bank_match_id: text('bank_match_id').references(() => bankTransactions.id),
     notes: text('notes'),
     created_at: text('created_at').notNull(),
     updated_at: text('updated_at').notNull(),
@@ -217,16 +277,18 @@ export const expenses = sqliteTable(
     index('idx_expenses_vendor').on(table.vendor),
     index('idx_expenses_product_id').on(table.product_id),
     index('idx_expenses_order_id').on(table.order_id),
+    index('idx_expenses_tax_locked').on(table.tax_locked),
   ],
 );
 
 // ============================================================
-// 5. orders (Modul 08) – FK zu products (optional)
+// 6. orders (Modul 08) – FK zu products (optional)
 // ============================================================
 export const orders = sqliteTable(
   'orders',
   {
     id: text('id').primaryKey(),
+    receipt_number: text('receipt_number').notNull(),
     external_order_id: text('external_order_id'),
     customer_name: text('customer_name'),
     platform: text('platform').notNull(),
@@ -234,28 +296,62 @@ export const orders = sqliteTable(
     variant: text('variant'),
     quantity: integer('quantity').notNull().default(1),
     sale_price: real('sale_price').notNull(),
+    shipping_revenue: real('shipping_revenue'),
     shipping_cost: real('shipping_cost'),
     material_cost: real('material_cost'),
     platform_fee: real('platform_fee'),
+    payout_amount: real('payout_amount'),
     status: text('status').notNull(),
     payment_status: text('payment_status').notNull(),
+    payment_received_date: text('payment_received_date'),
     shipping_status: text('shipping_status'),
     tracking_number: text('tracking_number'),
     order_date: text('order_date').notNull(),
     notes: text('notes'),
+    tax_locked: integer('tax_locked', { mode: 'boolean' }).notNull().default(false),
+    bank_match_id: text('bank_match_id').references(() => bankTransactions.id),
     created_at: text('created_at').notNull(),
     updated_at: text('updated_at').notNull(),
     deleted_at: text('deleted_at'),
   },
   (table) => [
+    uniqueIndex('idx_orders_receipt_number_unique').on(table.receipt_number),
     index('idx_orders_status').on(table.status),
     index('idx_orders_platform').on(table.platform),
     index('idx_orders_order_date').on(table.order_date),
+    index('idx_orders_payment_received_date').on(table.payment_received_date),
+    index('idx_orders_tax_locked').on(table.tax_locked),
   ],
 );
 
 // ============================================================
-// 6. tasks (Modul 09) – FKs zu products, orders, listings
+// 6b. bank_payout_orders (Modul 08) – Sammelauszahlungen
+// ============================================================
+export const bankPayoutOrders = sqliteTable(
+  'bank_payout_orders',
+  {
+    id: text('id').primaryKey(),
+    bank_transaction_id: text('bank_transaction_id')
+      .notNull()
+      .references(() => bankTransactions.id),
+    order_id: text('order_id')
+      .notNull()
+      .references(() => orders.id),
+    allocated_amount: real('allocated_amount').notNull(),
+    created_at: text('created_at').notNull(),
+  },
+  (table) => [
+    index('idx_bank_payout_orders_bank_transaction_id').on(table.bank_transaction_id),
+    index('idx_bank_payout_orders_order_id').on(table.order_id),
+    uniqueIndex('idx_bank_payout_orders_transaction_order_unique').on(
+      table.bank_transaction_id,
+      table.order_id,
+    ),
+  ],
+);
+
+// ============================================================
+// 7. tasks (Modul 09) – FKs zu products, orders, listings
 // ============================================================
 export const tasks = sqliteTable(
   'tasks',
@@ -285,7 +381,7 @@ export const tasks = sqliteTable(
 );
 
 // ============================================================
-// 7. file_links (Modul 03) – polymorphe Referenzen
+// 8. file_links (Modul 03) – polymorphe Referenzen
 // ============================================================
 export const fileLinks = sqliteTable(
   'file_links',
@@ -311,7 +407,7 @@ export const fileLinks = sqliteTable(
 );
 
 // ============================================================
-// 8. file_operations (Modul 03) – Operations-Log fuer Dateiaktionen
+// 9. file_operations (Modul 03) – Operations-Log fuer Dateiaktionen
 // ============================================================
 export const fileOperations = sqliteTable(
   'file_operations',
@@ -333,7 +429,7 @@ export const fileOperations = sqliteTable(
 );
 
 // ============================================================
-// 9. templates (Modul 07) – keine FKs
+// 10. templates (Modul 07) – keine FKs
 // ============================================================
 export const templates = sqliteTable(
   'templates',
@@ -355,7 +451,7 @@ export const templates = sqliteTable(
 );
 
 // ============================================================
-// 10. ai_jobs (Modul 06) – keine FKs
+// 11. ai_jobs (Modul 06) – keine FKs
 // ============================================================
 export const aiJobs = sqliteTable(
   'ai_jobs',
@@ -382,7 +478,7 @@ export const aiJobs = sqliteTable(
 );
 
 // ============================================================
-// 11. kpi_records (Modul 10) – keine FKs
+// 12. kpi_records (Modul 10) – keine FKs
 // ============================================================
 export const kpiRecords = sqliteTable(
   'kpi_records',

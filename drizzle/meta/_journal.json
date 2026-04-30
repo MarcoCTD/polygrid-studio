@@ -57,6 +57,13 @@
       "when": 1777386143746,
       "tag": "0007_listings_data_model_custom",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1777546996162,
+      "tag": "0008_modul_08_orders_finance",
+      "breakpoints": true
     }
   ]
 }

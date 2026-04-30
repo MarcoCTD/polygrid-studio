@@ -39,6 +39,8 @@ export const expenseSchema = z.object({
   recurring_next_date: isoDateString.nullable(),
   import_source: importSourceEnum,
   import_ref: nullableText,
+  tax_locked: z.boolean(),
+  bank_match_id: z.string().uuid().nullable(),
   notes: nullableText,
   created_at: z.string(),
   updated_at: z.string(),
