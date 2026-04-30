@@ -1,3 +1,4 @@
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import {
@@ -122,9 +123,10 @@ export function ListingsTable({
             <div className="flex size-12 items-center justify-center overflow-hidden rounded-md border border-border-subtle bg-bg-secondary">
               {row.original.thumbnail_path ? (
                 <img
-                  src={row.original.thumbnail_path}
+                  src={convertFileSrc(row.original.thumbnail_path)}
                   alt={row.original.thumbnail_alt_text ?? ''}
                   className="size-full object-cover"
+                  draggable={false}
                 />
               ) : (
                 <ImageIcon size={18} className="text-text-muted" />

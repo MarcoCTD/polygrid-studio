@@ -1,3 +1,4 @@
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { useEffect, useMemo, useState } from 'react';
 import {
   closestCenter,
@@ -277,12 +278,12 @@ function SortableImageCard({
       </div>
 
       <div className="mb-3 flex h-36 items-center justify-center rounded-md bg-bg-secondary">
-        <div className="min-w-0 px-3 text-center">
-          <ImageIcon size={26} className="mx-auto mb-2 text-text-muted" />
-          <p className="truncate text-xs text-text-secondary" title={image.file_path}>
-            {displayName(image)}
-          </p>
-        </div>
+        <img
+          src={convertFileSrc(image.file_path)}
+          alt={image.alt_text ?? displayName(image)}
+          className="size-full rounded-md object-cover"
+          draggable={false}
+        />
       </div>
 
       <div className="space-y-3">

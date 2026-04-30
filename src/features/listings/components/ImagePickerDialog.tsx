@@ -1,3 +1,4 @@
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { useEffect, useState } from 'react';
 import { ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
@@ -102,8 +103,13 @@ export function ImagePickerDialog({
                   selectedIds.has(item.id) && 'border-pg-accent ring-2 ring-pg-accent/20',
                 )}
               >
-                <div className="mb-3 flex h-20 items-center justify-center rounded-md bg-bg-secondary">
-                  <ImageIcon size={24} className="text-text-muted" />
+                <div className="mb-3 flex h-20 items-center justify-center overflow-hidden rounded-md bg-bg-secondary">
+                  <img
+                    src={convertFileSrc(item.file_path)}
+                    alt={displayName(item)}
+                    className="size-full object-cover"
+                    draggable={false}
+                  />
                 </div>
                 <div className="flex items-start gap-2">
                   <Checkbox checked={selectedIds.has(item.id)} />

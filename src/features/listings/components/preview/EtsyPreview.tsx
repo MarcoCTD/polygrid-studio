@@ -1,3 +1,4 @@
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { Camera } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PLATFORM_LIMITS } from '../../constants';
@@ -42,9 +43,10 @@ export function EtsyPreview({ listing, images, isLoadingImages }: EtsyPreviewPro
             <span className="text-sm text-text-muted">Bild wird geladen...</span>
           ) : mainImage?.file_path ? (
             <img
-              src={mainImage.file_path}
+              src={convertFileSrc(mainImage.file_path)}
               alt={mainImage.alt_text ?? resolved.title}
               className="h-full max-h-[440px] w-full object-cover"
+              draggable={false}
             />
           ) : (
             <div className="flex flex-col items-center gap-2 text-text-muted">
