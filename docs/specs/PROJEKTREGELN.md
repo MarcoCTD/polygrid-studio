@@ -1,13 +1,15 @@
 # PolyGrid Studio Business OS
 
 Projektregeln und Entwicklungsleitfaden
-Version 1.2 | April 2026 | Verbindlich für alle Entwicklungs-KIs
+Version 1.3 | April 2026 | Verbindlich für alle Entwicklungs-KIs
 
-> **Änderungen in v1.2 gegenüber v1.0:**
+> **Änderungen in v1.3 gegenüber v1.2:**
 >
-> - Modul 12 (Platform Sync) hinzugefügt
-> - Aktueller Entwicklungsstand auf Module 01–04 abgeschlossen aktualisiert
-> - Tooling-Workflow um Codex-Integration ergänzt
+> - Modul 05 (Listing-Verwaltung) als abgeschlossen markiert
+> - Modul 08 (Auftragsverwaltung) auf Modul 06 vorgezogen wegen EÜR-Bedarf
+> - Modul 08 Spec um EÜR-Export, N26-CSV-Bankimport und Tax-Lock erweitert
+> - Geschäftliche Eckdaten ergänzt (Kleinunternehmer §19 UStG)
+> - Tooling-Workflow präzisiert (Codex-Prompts pro Sub-Session)
 
 ---
 
@@ -17,7 +19,25 @@ PolyGrid Studio Business OS ist eine plattformübergreifende Desktop-Anwendung (
 
 ---
 
-## 2. Tech-Stack (verbindlich)
+## 2. Geschäftliche Eckdaten
+
+| Punkt                       | Wert                                                |
+| --------------------------- | --------------------------------------------------- |
+| Unternehmensform            | Einzelunternehmen                                   |
+| Steuerstatus                | Kleinunternehmer nach §19 UStG                      |
+| USt.-Verarbeitung           | Keine (brutto = netto)                              |
+| Buchführung                 | Einnahmen-Überschuss-Rechnung (EÜR)                 |
+| Steuerberater-Software      | Keine (selbst gemacht)                              |
+| Bestandsbewertung Material  | Sofortaufwand im Kaufmonat (Standard EÜR)           |
+| Bankkonto                   | N26 (privat)                                        |
+| Plattformen                 | Etsy, eBay (Kleinanzeigen optional)                 |
+| Aufbewahrungspflicht        | 10 Jahre für steuerrelevante Daten                  |
+
+Diese Eckdaten beeinflussen das Datenmodell (kein USt.-Tracking, Tax-Lock-Mechanismus) und die EÜR-Export-Logik.
+
+---
+
+## 3. Tech-Stack (verbindlich)
 
 | Schicht                   | Technologie                               | Hinweis                          |
 | ------------------------- | ----------------------------------------- | -------------------------------- |
@@ -31,32 +51,36 @@ PolyGrid Studio Business OS ist eine plattformübergreifende Desktop-Anwendung (
 | Datenbank                 | SQLite via Tauri SQL Plugin               | Drizzle ORM                      |
 | Build                     | Vite                                      |                                  |
 | Charts                    | Recharts                                  | Für Modul 04, 10                 |
+| Drag-and-Drop             | dnd-kit                                   | Für Listing-Editor und Kanban    |
+| CSV-Parsing               | papaparse                                 | Für Modul 04 und 08              |
+| Excel-Export              | exceljs                                   | Für Modul 08 (EÜR-Export)        |
 | KI (optional)             | Ollama / Claude API / OpenAI              | Provider-Pattern                 |
 | Plattform-Sync (Modul 12) | Etsy Open API v3, eBay Sell Inventory API | OAuth 2.0, Provider-Pattern      |
 
 ---
 
-## 3. Architekturprinzipien
+## 4. Architekturprinzipien
 
 - **Offline-First**: Alle Kernfeatures funktionieren ohne Internet. KI-Buttons und Sync-Buttons werden bei fehlender Verbindung deaktiviert.
-- **Datenportabilität**: Kein Vendor Lock-in. SQLite ermöglicht einfache Backups. Alle Daten exportierbar als CSV/JSON.
+- **Datenportabilität**: Kein Vendor Lock-in. SQLite ermöglicht einfache Backups. Alle Daten exportierbar als CSV/JSON/Excel.
 - **Sicherheit by Default**: Kein Löschen ohne Bestätigung. Soft-Delete mit 30-Tage-Papierkorb. API-Keys und OAuth-Tokens im OS-Keychain.
+- **Steuerliche Integrität**: Steuerrelevante Datensätze (Aufträge, Ausgaben) können nach EÜR-Export gesperrt werden (Tax-Lock). Belegnummern sind lückenlos und werden nie wiederverwendet.
 - **Progressive Enhancement**: Jedes Modul funktioniert eigenständig. Abhängigkeiten zwischen Modulen sind optional.
 - **Single Source of Truth**: PolyGrid ist die zentrale Datenhaltung. Plattformen (Etsy, eBay) sind nachgeschaltete Ziele, nicht parallele Datenquellen.
-- **Erweiterbarkeit**: Architektur muss spätere API-Integrationen ermöglichen (Versanddienstleister, Einkaufs-APIs, weitere Plattformen).
+- **Erweiterbarkeit**: Architektur muss spätere API-Integrationen ermöglichen (Versanddienstleister, Banking-API, weitere Plattformen).
 
 ---
 
-## 4. Entwicklungsregeln für KI-Assistenten
+## 5. Entwicklungsregeln für KI-Assistenten
 
-### 4.1 Modulare Entwicklung
+### 5.1 Modulare Entwicklung
 
 - Immer nur EIN Modul pro Entwicklungssession bearbeiten.
 - Jedes Modul hat ein eigenes Anforderungsdokument. Nur dieses Dokument ist relevant für die aktuelle Session.
 - Vor dem Start eines neuen Moduls muss das vorherige Modul lauffähig und getestet sein.
 - Keine Vorgriffe auf spätere Module. Wenn ein Feature noch nicht spezifiziert ist, Stub mit Tooltip einbauen.
 
-### 4.2 Code-Qualität
+### 5.2 Code-Qualität
 
 - TypeScript strict mode ist Pflicht.
 - Alle Datenmodelle als Zod-Schemas definieren (Single Source of Truth, Drizzle leitet daraus ab).
@@ -65,7 +89,7 @@ PolyGrid Studio Business OS ist eine plattformübergreifende Desktop-Anwendung (
 - Jede Dateioperation, KI-Anfrage und Plattform-API-Anfrage muss try/catch haben.
 - ESLint + Prettier müssen konfiguriert sein und ohne Fehler durchlaufen.
 
-### 4.3 Was eine KI NICHT tun darf
+### 5.3 Was eine KI NICHT tun darf
 
 - Bibliotheken austauschen (z.B. Zustand gegen Redux ersetzen) ohne explizite Freigabe.
 - Die Ordnerstruktur verändern.
@@ -73,74 +97,97 @@ PolyGrid Studio Business OS ist eine plattformübergreifende Desktop-Anwendung (
 - Datenbank-Schema ändern, das in einem anderen Modul definiert wurde.
 - Platzhalter-Code schreiben, der nicht kompiliert (`// TODO` reicht nicht, es muss zumindest ein leeres Interface/Stub sein).
 - Echte API-Calls an Etsy oder eBay implementieren außerhalb von Modul 12.
+- Tax-Lock-Mechanismus umgehen (locked Datensätze dürfen nicht editiert oder hard-gelöscht werden).
 
 ---
 
-## 5. Modulreihenfolge (verbindlich)
+## 6. Modulreihenfolge (aktualisiert v1.3)
 
-| #   | Modul              | Inhalt                                                        | Abhängigkeiten                            |
-| --- | ------------------ | ------------------------------------------------------------- | ----------------------------------------- |
-| 1   | Foundation         | App Shell, Sidebar, Routing, Theme, DB-Setup, Command Palette | Keine                                     |
-| 2   | Produktverwaltung  | CRUD, Tabelle, Detail-Panel, Margenrechner                    | Foundation                                |
-| 3   | Dateimanager       | OneDrive-Integration, Ordnerstruktur, Tauri-Commands          | Foundation                                |
-| 4   | Ausgabenverwaltung | CRUD, Kategorisierung, Belegverknüpfung, CSV-Export/Import    | Foundation, (Produkte optional)           |
-| 5   | Listing-Verwaltung | Master+Overrides, Editor, Bilder, Sync-Stubs                  | Foundation, Produkte, Dateimanager        |
-| 6   | KI-Architektur     | Provider-Pattern, Listing Assistant, Expense Assistant        | Foundation, Listings, Ausgaben            |
-| 7   | Vorlagenbibliothek | CRUD, Platzhaltervariablen, Kategorien                        | Foundation                                |
-| 8   | Auftragsverwaltung | CRUD, Kanban-Board, Status-Workflow                           | Foundation, Produkte                      |
-| 9   | Aufgaben-Modul     | CRUD, Wochenansicht, Verknüpfungen                            | Foundation, (Produkte, Aufträge optional) |
-| 10  | Analysen/Dashboard | KPI-Karten, Charts, Widgets                                   | Alle vorherigen Module                    |
-| 11  | Settings           | Wächst mit jedem Modul, eigenes Dokument                      | Parallel                                  |
-| 12  | Platform Sync      | Etsy + eBay API-Anbindung, OAuth, Push/Pull                   | Listings, Aufträge, Settings              |
+Die ursprüngliche Reihenfolge wurde geändert: Modul 08 wird vor Modul 06 implementiert, weil das EÜR-Tracking dringend für die Steuererklärung benötigt wird. Modul 08 hängt nur von Foundation und Modul 02 ab — beide sind abgeschlossen.
+
+| #   | Modul              | Inhalt                                                        | Abhängigkeiten                            | Reihenfolge |
+| --- | ------------------ | ------------------------------------------------------------- | ----------------------------------------- | ----------- |
+| 1   | Foundation         | App Shell, Sidebar, Routing, Theme, DB-Setup, Command Palette | Keine                                     | ✅ 1        |
+| 2   | Produktverwaltung  | CRUD, Tabelle, Detail-Panel, Margenrechner                    | Foundation                                | ✅ 2        |
+| 3   | Dateimanager       | OneDrive-Integration, Ordnerstruktur, Tauri-Commands          | Foundation                                | ✅ 3        |
+| 4   | Ausgabenverwaltung | CRUD, Kategorisierung, Belegverknüpfung, CSV-Export/Import    | Foundation, (Produkte optional)           | ✅ 4        |
+| 5   | Listing-Verwaltung | Master+Overrides, Editor, Bilder, Sync-Stubs                  | Foundation, Produkte, Dateimanager        | ✅ 5        |
+| **8** | **Auftragsverwaltung + EÜR** | **CRUD, Kanban, EÜR-Export, N26-Bankimport**       | **Foundation, Produkte, Ausgaben**        | **🔄 6**    |
+| 6   | KI-Architektur     | Provider-Pattern, Listing Assistant, Expense Assistant        | Foundation, Listings, Ausgaben            | ⏳ 7        |
+| 9   | Aufgaben-Modul     | CRUD, Wochenansicht, Verknüpfungen                            | Foundation, (Produkte, Aufträge optional) | ⏳ 8        |
+| 7   | Vorlagenbibliothek | CRUD, Platzhaltervariablen, Kategorien                        | Foundation, KI                            | ⏳ 9        |
+| 10  | Analysen/Dashboard | KPI-Karten, Charts, Widgets                                   | Alle vorherigen Module                    | ⏳ 10       |
+| 11  | Settings           | Wächst mit jedem Modul, eigenes Dokument                      | Parallel                                  | ⏳ 11       |
+| 12  | Platform Sync      | Etsy + eBay API-Anbindung, OAuth, Push/Pull                   | Listings, Aufträge, Settings              | 📋 Post-MVP |
 
 ---
 
-## 6. Aktueller Entwicklungsstand
+## 7. Aktueller Entwicklungsstand
 
-| Modul              | Status                 | Bemerkung                                                             |
-| ------------------ | ---------------------- | --------------------------------------------------------------------- |
-| Foundation         | ✅ Abgeschlossen       | Auf main gemergt                                                      |
-| Produktverwaltung  | ✅ Abgeschlossen       | Auf main gemergt                                                      |
-| Dateimanager       | ✅ Abgeschlossen       | Auf main gemergt                                                      |
-| Ausgabenverwaltung | ✅ Abgeschlossen       | Auf main gemergt, inkl. CSV-Import/Export und wiederkehrende Ausgaben |
-| Listing-Verwaltung | ✅ Abgeschlossen       | Auf main gemergt                                                      |
-| KI-Architektur     | ⏳ Nicht begonnen      |                                                                       |
-| Vorlagenbibliothek | ⏳ Nicht begonnen      |                                                                       |
-| Auftragsverwaltung | ⏳ Nicht begonnen      |                                                                       |
-| Aufgaben-Modul     | ⏳ Nicht begonnen      |                                                                       |
-| Analysen/Dashboard | ⏳ Nicht begonnen      |                                                                       |
-| Settings           | ⏳ Wächst mit Modulen  |                                                                       |
-| Platform Sync      | 📋 Stub-Spec vorhanden | Implementierung nach Modul 11                                         |
+| Modul              | Status                 | Bemerkung                                                              |
+| ------------------ | ---------------------- | ---------------------------------------------------------------------- |
+| Foundation         | ✅ Abgeschlossen       | Auf main gemergt                                                       |
+| Produktverwaltung  | ✅ Abgeschlossen       | Auf main gemergt                                                       |
+| Dateimanager       | ✅ Abgeschlossen       | Auf main gemergt                                                       |
+| Ausgabenverwaltung | ✅ Abgeschlossen       | Auf main gemergt, inkl. CSV-Import/Export und wiederkehrende Ausgaben  |
+| Listing-Verwaltung | ✅ Abgeschlossen       | Auf main gemergt, Master+Overrides-Konzept                             |
+| Auftragsverwaltung | 🔄 In Arbeit            | Vorgezogen wegen EÜR-Bedarf, inkl. EÜR-Export und N26-Bankimport       |
+| KI-Architektur     | ⏳ Nicht begonnen      |                                                                        |
+| Aufgaben-Modul     | ⏳ Nicht begonnen      |                                                                        |
+| Vorlagenbibliothek | ⏳ Nicht begonnen      |                                                                        |
+| Analysen/Dashboard | ⏳ Nicht begonnen      |                                                                        |
+| Settings           | ⏳ Wächst mit Modulen  |                                                                        |
+| Platform Sync      | 📋 Stub-Spec vorhanden | Implementierung nach Modul 11                                          |
 
 _Dieses Dokument wird nach Abschluss jedes Moduls aktualisiert._
 
 ---
 
-## 7. Tooling-Workflow
+## 8. Tooling-Workflow
 
 - **Claude.ai Project**: Strategie, Spec-Review, Architektur-Entscheidungen, Codex-Prompt-Erstellung
 - **Codex (OpenAI) im VS Code Terminal**: Implementierung mit direktem Repo-Zugriff
 - **AGENTS.md im Repo-Root**: Konfiguration für Codex (Modul-Constraints, Tech-Stack-Regeln)
-- **Pro Modul**:
-  1. Spec-Review in Claude.ai → offene Fragen klären
-  2. Entscheidungsdokument erstellen (`docs/decisions/MODUL_XX_DECISIONS.md`)
-  3. Sub-Sessions aufteilen (jede endet mit `npm run tauri dev` + Git Commit)
-  4. Pro Sub-Session: Codex-Prompt → Codex liefert Dateiliste → Review in Claude.ai → Go → Codex implementiert
-- **Branching**: Feature-Branch pro Modul (`feat/modul-XX-name`), nach Abschluss in main mergen
-- **Gate-Regel**: Jede Sub-Session muss mit grünem Build und Git-Commit enden, bevor die nächste startet
+
+### 8.1 Pro-Modul-Workflow
+
+1. **Spec-Review** in Claude.ai → offene Fragen klären
+2. **Entscheidungsdokument** erstellen (`docs/specs/MODUL_XX_ENTSCHEIDUNGEN.md`)
+3. **Sub-Sessions** aufteilen (jede endet mit `npm run tauri dev` + Git Commit)
+4. **Pro Sub-Session**:
+   - Codex-Prompt in Claude.ai erstellt
+   - Pflichtlektüre definiert (Spec + Entscheidungsdokument + DATABASE_SCHEMA + relevante Module)
+   - Codex liefert Dateiliste der geplanten Änderungen
+   - Review in Claude.ai → Go/No-Go
+   - Codex implementiert
+   - Build-Check: `npm run tauri dev` muss grün sein
+   - Git Commit mit konventioneller Message
+
+### 8.2 Branching
+
+- Feature-Branch pro Modul: `feat/modul-XX-name`
+- Sub-Session-Commits direkt auf Feature-Branch
+- Nach Abschluss aller Sub-Sessions: PR-Review und Merge auf main
+- Tag bei Merge: `module-XX-complete`
+
+### 8.3 Gate-Regel
+
+Jede Sub-Session muss mit grünem Build und Git-Commit enden, bevor die nächste startet. Halbfertiger Code wird nicht in den nächsten Schritt mitgenommen.
 
 ---
 
-## 8. Zukunftsvision (Post-MVP)
+## 9. Zukunftsvision (Post-MVP)
 
 Die Architektur muss folgende spätere Erweiterungen ermöglichen, ohne Umbau der Kernstruktur:
 
-- Modul 12 (Platform Sync): Etsy- und eBay-API-Anbindung mit Push/Pull
-- Versanddienstleister-APIs: DHL, Hermes, etc. für automatische Etikettenerstellung
-- Einkaufs-Tracking: AliExpress oder ähnliche APIs für automatische Ausgabenerfassung
-- Lokale KI via Ollama für kostenlose Klassifikation und einfache Textgenerierung
-- Web-Version und Mobile Companion App
-- Multi-User mit Rollenkonzept
+- **Modul 12 (Platform Sync)**: Etsy- und eBay-API-Anbindung mit Push/Pull
+- **Modul 13 (Banking-API)**: PSD2/FinTS-Integration für Live-Banking statt CSV-Import
+- **Versanddienstleister-APIs**: DHL, Hermes etc. für automatische Etikettenerstellung
+- **Einkaufs-Tracking**: AliExpress oder ähnliche APIs für automatische Ausgabenerfassung
+- **Lokale KI via Ollama** für kostenlose Klassifikation und einfache Textgenerierung
+- **Web-Version und Mobile Companion App**
+- **Multi-User mit Rollenkonzept**
+- **DATEV-Export** falls später ein Steuerberater hinzukommt
 
 ---
 
