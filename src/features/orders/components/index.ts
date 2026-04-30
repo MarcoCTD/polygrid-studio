@@ -1,7 +1,7 @@
 export { KanbanBoard } from './KanbanBoard';
 export { KanbanCard } from './KanbanCard';
 export { NewOrderModal } from './NewOrderModal';
-export { OrderDetailPlaceholder } from './OrderDetailPlaceholder';
+export { OrderDetailPanel } from './OrderDetailPanel';
 export {
   OrderPlatformIcon,
   OrderStatusBadge,

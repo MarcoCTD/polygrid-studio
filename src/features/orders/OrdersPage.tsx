@@ -8,7 +8,7 @@ import { createOrderCommands, ORDER_COMMAND_IDS } from './commands';
 import {
   KanbanBoard,
   NewOrderModal,
-  OrderDetailPlaceholder,
+  OrderDetailPanel,
   OrdersTable,
   OrdersToolbar,
   type OrdersFilterState,
@@ -112,7 +112,13 @@ export function OrdersPage() {
   }, [registerCommands, router, unregisterCommands]);
 
   function openOrder(order: OrderListItem) {
-    openDetailPanel(<OrderDetailPlaceholder order={order} onClose={closeDetailPanel} />);
+    openDetailPanel(
+      <OrderDetailPanel
+        order={order}
+        onClose={closeDetailPanel}
+        onChanged={() => void loadOrders()}
+      />,
+    );
   }
 
   return (

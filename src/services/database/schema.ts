@@ -351,6 +351,27 @@ export const bankPayoutOrders = sqliteTable(
 );
 
 // ============================================================
+// 6c. order_events (Modul 08) – Timeline
+// ============================================================
+export const orderEvents = sqliteTable(
+  'order_events',
+  {
+    id: text('id').primaryKey(),
+    order_id: text('order_id')
+      .notNull()
+      .references(() => orders.id),
+    event_type: text('event_type').notNull(),
+    from_value: text('from_value'),
+    to_value: text('to_value'),
+    created_at: text('created_at').notNull(),
+  },
+  (table) => [
+    index('idx_order_events_order_id').on(table.order_id),
+    index('idx_order_events_created_at').on(table.created_at),
+  ],
+);
+
+// ============================================================
 // 7. tasks (Modul 09) – FKs zu products, orders, listings
 // ============================================================
 export const tasks = sqliteTable(

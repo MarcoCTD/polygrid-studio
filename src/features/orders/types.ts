@@ -14,6 +14,7 @@ export const OrderStatusEnum = z.enum([
 export const PaymentStatusEnum = z.enum(['pending', 'paid', 'refunded', 'disputed']);
 export const ShippingStatusEnum = z.enum(['not_shipped', 'shipped', 'delivered', 'returned']);
 export const OrderPlatformEnum = z.enum(['etsy', 'ebay', 'kleinanzeigen', 'direkt']);
+export const OrderEventTypeEnum = z.enum(['status_change', 'note_added', 'tracking_added']);
 
 const uuid = z.string().uuid();
 const nullableUuid = uuid.nullable();
@@ -114,13 +115,24 @@ export const UpdateOrderSchema = NewOrderSchema.partial()
     }
   });
 
+export const OrderEventSchema = z.object({
+  id: uuid,
+  order_id: uuid,
+  event_type: OrderEventTypeEnum,
+  from_value: nullableText,
+  to_value: nullableText,
+  created_at: z.string().min(1),
+});
+
 export type OrderStatus = z.infer<typeof OrderStatusEnum>;
 export type PaymentStatus = z.infer<typeof PaymentStatusEnum>;
 export type ShippingStatus = z.infer<typeof ShippingStatusEnum>;
 export type OrderPlatform = z.infer<typeof OrderPlatformEnum>;
+export type OrderEventType = z.infer<typeof OrderEventTypeEnum>;
 export type Order = z.infer<typeof OrderSchema>;
 export type NewOrder = z.infer<typeof NewOrderSchema>;
 export type UpdateOrder = z.infer<typeof UpdateOrderSchema>;
+export type OrderEvent = z.infer<typeof OrderEventSchema>;
 
 export type NewOrderInput = NewOrder;
 export type UpdateOrderInput = Omit<UpdateOrder, 'id' | 'tax_locked'>;
