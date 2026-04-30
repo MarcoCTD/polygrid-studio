@@ -204,6 +204,9 @@ export function ListingsTable({
     [allListingIds, onClearSelection, onOpenListing, onSelectAll, onToggleSelected, selectedIds],
   );
 
+  // TanStack Table exposes callback-heavy APIs that trigger the React Compiler lint rule.
+  // The table instance follows the documented TanStack pattern and is intentionally local.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: listings,
     columns,

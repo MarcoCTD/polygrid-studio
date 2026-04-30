@@ -4,6 +4,7 @@ Projektregeln und Entwicklungsleitfaden
 Version 1.2 | April 2026 | Verbindlich für alle Entwicklungs-KIs
 
 > **Änderungen in v1.2 gegenüber v1.0:**
+>
 > - Modul 12 (Platform Sync) hinzugefügt
 > - Aktueller Entwicklungsstand auf Module 01–04 abgeschlossen aktualisiert
 > - Tooling-Workflow um Codex-Integration ergänzt
@@ -18,20 +19,20 @@ PolyGrid Studio Business OS ist eine plattformübergreifende Desktop-Anwendung (
 
 ## 2. Tech-Stack (verbindlich)
 
-| Schicht | Technologie | Hinweis |
-|---------|-------------|---------|
-| Runtime | Tauri 2.x (Rust) | Kein Electron |
-| Frontend | React 19 / TypeScript | Strict Mode |
-| UI | shadcn/ui + Tailwind CSS | Keine externen Themes |
-| State | Zustand | Kein Redux, kein Context-Overuse |
-| Tabellen | TanStack Table v8 | Mit Virtualisierung |
-| Formulare | React Hook Form + Zod | Zod als Single Source of Truth |
-| Routing | TanStack Router | Type-safe |
-| Datenbank | SQLite via Tauri SQL Plugin | Drizzle ORM |
-| Build | Vite | |
-| Charts | Recharts | Für Modul 04, 10 |
-| KI (optional) | Ollama / Claude API / OpenAI | Provider-Pattern |
-| Plattform-Sync (Modul 12) | Etsy Open API v3, eBay Sell Inventory API | OAuth 2.0, Provider-Pattern |
+| Schicht                   | Technologie                               | Hinweis                          |
+| ------------------------- | ----------------------------------------- | -------------------------------- |
+| Runtime                   | Tauri 2.x (Rust)                          | Kein Electron                    |
+| Frontend                  | React 19 / TypeScript                     | Strict Mode                      |
+| UI                        | shadcn/ui + Tailwind CSS                  | Keine externen Themes            |
+| State                     | Zustand                                   | Kein Redux, kein Context-Overuse |
+| Tabellen                  | TanStack Table v8                         | Mit Virtualisierung              |
+| Formulare                 | React Hook Form + Zod                     | Zod als Single Source of Truth   |
+| Routing                   | TanStack Router                           | Type-safe                        |
+| Datenbank                 | SQLite via Tauri SQL Plugin               | Drizzle ORM                      |
+| Build                     | Vite                                      |                                  |
+| Charts                    | Recharts                                  | Für Modul 04, 10                 |
+| KI (optional)             | Ollama / Claude API / OpenAI              | Provider-Pattern                 |
+| Plattform-Sync (Modul 12) | Etsy Open API v3, eBay Sell Inventory API | OAuth 2.0, Provider-Pattern      |
 
 ---
 
@@ -77,41 +78,41 @@ PolyGrid Studio Business OS ist eine plattformübergreifende Desktop-Anwendung (
 
 ## 5. Modulreihenfolge (verbindlich)
 
-| # | Modul | Inhalt | Abhängigkeiten |
-|---|-------|--------|----------------|
-| 1 | Foundation | App Shell, Sidebar, Routing, Theme, DB-Setup, Command Palette | Keine |
-| 2 | Produktverwaltung | CRUD, Tabelle, Detail-Panel, Margenrechner | Foundation |
-| 3 | Dateimanager | OneDrive-Integration, Ordnerstruktur, Tauri-Commands | Foundation |
-| 4 | Ausgabenverwaltung | CRUD, Kategorisierung, Belegverknüpfung, CSV-Export/Import | Foundation, (Produkte optional) |
-| 5 | Listing-Verwaltung | Master+Overrides, Editor, Bilder, Sync-Stubs | Foundation, Produkte, Dateimanager |
-| 6 | KI-Architektur | Provider-Pattern, Listing Assistant, Expense Assistant | Foundation, Listings, Ausgaben |
-| 7 | Vorlagenbibliothek | CRUD, Platzhaltervariablen, Kategorien | Foundation |
-| 8 | Auftragsverwaltung | CRUD, Kanban-Board, Status-Workflow | Foundation, Produkte |
-| 9 | Aufgaben-Modul | CRUD, Wochenansicht, Verknüpfungen | Foundation, (Produkte, Aufträge optional) |
-| 10 | Analysen/Dashboard | KPI-Karten, Charts, Widgets | Alle vorherigen Module |
-| 11 | Settings | Wächst mit jedem Modul, eigenes Dokument | Parallel |
-| 12 | Platform Sync | Etsy + eBay API-Anbindung, OAuth, Push/Pull | Listings, Aufträge, Settings |
+| #   | Modul              | Inhalt                                                        | Abhängigkeiten                            |
+| --- | ------------------ | ------------------------------------------------------------- | ----------------------------------------- |
+| 1   | Foundation         | App Shell, Sidebar, Routing, Theme, DB-Setup, Command Palette | Keine                                     |
+| 2   | Produktverwaltung  | CRUD, Tabelle, Detail-Panel, Margenrechner                    | Foundation                                |
+| 3   | Dateimanager       | OneDrive-Integration, Ordnerstruktur, Tauri-Commands          | Foundation                                |
+| 4   | Ausgabenverwaltung | CRUD, Kategorisierung, Belegverknüpfung, CSV-Export/Import    | Foundation, (Produkte optional)           |
+| 5   | Listing-Verwaltung | Master+Overrides, Editor, Bilder, Sync-Stubs                  | Foundation, Produkte, Dateimanager        |
+| 6   | KI-Architektur     | Provider-Pattern, Listing Assistant, Expense Assistant        | Foundation, Listings, Ausgaben            |
+| 7   | Vorlagenbibliothek | CRUD, Platzhaltervariablen, Kategorien                        | Foundation                                |
+| 8   | Auftragsverwaltung | CRUD, Kanban-Board, Status-Workflow                           | Foundation, Produkte                      |
+| 9   | Aufgaben-Modul     | CRUD, Wochenansicht, Verknüpfungen                            | Foundation, (Produkte, Aufträge optional) |
+| 10  | Analysen/Dashboard | KPI-Karten, Charts, Widgets                                   | Alle vorherigen Module                    |
+| 11  | Settings           | Wächst mit jedem Modul, eigenes Dokument                      | Parallel                                  |
+| 12  | Platform Sync      | Etsy + eBay API-Anbindung, OAuth, Push/Pull                   | Listings, Aufträge, Settings              |
 
 ---
 
 ## 6. Aktueller Entwicklungsstand
 
-| Modul | Status | Bemerkung |
-|-------|--------|-----------|
-| Foundation | ✅ Abgeschlossen | Auf main gemergt |
-| Produktverwaltung | ✅ Abgeschlossen | Auf main gemergt |
-| Dateimanager | ✅ Abgeschlossen | Auf main gemergt |
-| Ausgabenverwaltung | ✅ Abgeschlossen | Auf main gemergt, inkl. CSV-Import/Export und wiederkehrende Ausgaben |
-| Listing-Verwaltung | 🔧 In Arbeit | Branch: `feat/modul-05-listing-verwaltung` |
-| KI-Architektur | ⏳ Nicht begonnen | |
-| Vorlagenbibliothek | ⏳ Nicht begonnen | |
-| Auftragsverwaltung | ⏳ Nicht begonnen | |
-| Aufgaben-Modul | ⏳ Nicht begonnen | |
-| Analysen/Dashboard | ⏳ Nicht begonnen | |
-| Settings | ⏳ Wächst mit Modulen | |
-| Platform Sync | 📋 Stub-Spec vorhanden | Implementierung nach Modul 11 |
+| Modul              | Status                 | Bemerkung                                                             |
+| ------------------ | ---------------------- | --------------------------------------------------------------------- |
+| Foundation         | ✅ Abgeschlossen       | Auf main gemergt                                                      |
+| Produktverwaltung  | ✅ Abgeschlossen       | Auf main gemergt                                                      |
+| Dateimanager       | ✅ Abgeschlossen       | Auf main gemergt                                                      |
+| Ausgabenverwaltung | ✅ Abgeschlossen       | Auf main gemergt, inkl. CSV-Import/Export und wiederkehrende Ausgaben |
+| Listing-Verwaltung | ✅ Abgeschlossen       | Auf main gemergt                                                      |
+| KI-Architektur     | ⏳ Nicht begonnen      |                                                                       |
+| Vorlagenbibliothek | ⏳ Nicht begonnen      |                                                                       |
+| Auftragsverwaltung | ⏳ Nicht begonnen      |                                                                       |
+| Aufgaben-Modul     | ⏳ Nicht begonnen      |                                                                       |
+| Analysen/Dashboard | ⏳ Nicht begonnen      |                                                                       |
+| Settings           | ⏳ Wächst mit Modulen  |                                                                       |
+| Platform Sync      | 📋 Stub-Spec vorhanden | Implementierung nach Modul 11                                         |
 
-*Dieses Dokument wird nach Abschluss jedes Moduls aktualisiert.*
+_Dieses Dokument wird nach Abschluss jedes Moduls aktualisiert._
 
 ---
 
