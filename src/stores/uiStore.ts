@@ -34,6 +34,8 @@ interface UIState {
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebar: () => void;
   setOpenOrdersCount: (count: number) => void;
+  ordersViewMode: 'table' | 'kanban';
+  setOrdersViewMode: (mode: 'table' | 'kanban') => void;
 
   // Theme (Default: system, bis DB geladen)
   theme: Theme;
@@ -77,6 +79,8 @@ export const useUIStore = create<UIState>((set) => ({
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   setOpenOrdersCount: (count) => set({ openOrdersCount: count }),
+  ordersViewMode: 'table',
+  setOrdersViewMode: (mode) => set({ ordersViewMode: mode }),
 
   // Theme
   theme: 'system',

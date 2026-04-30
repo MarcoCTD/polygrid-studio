@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from '@tanstack/react-router';
-import { Plus, Table2 } from 'lucide-react';
+import { KanbanSquare, Plus, Table2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useUIStore } from '@/stores';
 import { createOrderCommands, ORDER_COMMAND_IDS } from './commands';
 import {
+  KanbanBoard,
   NewOrderModal,
   OrderDetailPlaceholder,
   OrdersTable,
@@ -39,12 +40,12 @@ function monthRange(month: string): { dateFrom: string; dateTo: string } {
   };
 }
 
-function filtersToService(filters: OrdersFilterState): OrderFilters {
+function filtersToService(filters: OrdersFilterState, viewMode: 'table' | 'kanban'): OrderFilters {
   const range = filters.month ? monthRange(filters.month) : currentYearRange();
   return {
     status: filters.statuses.length > 0 ? filters.statuses : undefined,
     platform: filters.platforms.length > 0 ? filters.platforms : undefined,
-    showDeleted: filters.showDeleted,
+    showDeleted: viewMode === 'table' ? filters.showDeleted : false,
     ...range,
   };
 }
@@ -56,6 +57,8 @@ export function OrdersPage() {
   const openDetailPanel = useUIStore((state) => state.openDetailPanel);
   const closeDetailPanel = useUIStore((state) => state.closeDetailPanel);
   const setOpenOrdersCount = useUIStore((state) => state.setOpenOrdersCount);
+  const ordersViewMode = useUIStore((state) => state.ordersViewMode);
+  const setOrdersViewMode = useUIStore((state) => state.setOrdersViewMode);
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newOrderOpen, setNewOrderOpen] = useState(false);
@@ -66,7 +69,10 @@ export function OrdersPage() {
     showDeleted: false,
   });
 
-  const serviceFilters = useMemo(() => filtersToService(filters), [filters]);
+  const serviceFilters = useMemo(
+    () => filtersToService(filters, ordersViewMode),
+    [filters, ordersViewMode],
+  );
 
   const refreshOpenOrdersCount = useCallback(async () => {
     try {
@@ -115,16 +121,27 @@ export function OrdersPage() {
         <div>
           <h1 className="text-2xl font-semibold text-text-primary">Aufträge</h1>
           <p className="mt-1 text-sm text-text-secondary">
-            Tabellenansicht für Auftragsanlage, Filterung und Soft-Delete.
+            Auftragsstatus per Kanban steuern oder in der Tabelle filtern und bearbeiten.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" className="gap-2">
+          <Button
+            variant={ordersViewMode === 'table' ? 'secondary' : 'outline'}
+            size="sm"
+            className="gap-2"
+            onClick={() => setOrdersViewMode('table')}
+          >
             <Table2 className="size-4" />
             Tabelle
           </Button>
-          <Button variant="outline" size="sm" disabled title="Kommt in Sub-Session 8.3">
+          <Button
+            variant={ordersViewMode === 'kanban' ? 'secondary' : 'outline'}
+            size="sm"
+            className="gap-2"
+            onClick={() => setOrdersViewMode('kanban')}
+          >
+            <KanbanSquare className="size-4" />
             Kanban
           </Button>
           <Button size="sm" className="gap-2" onClick={() => setNewOrderOpen(true)}>
@@ -135,12 +152,21 @@ export function OrdersPage() {
       </header>
 
       <OrdersToolbar filters={filters} onFiltersChange={setFilters} />
-      <OrdersTable
-        orders={orders}
-        isLoading={isLoading}
-        onOpenOrder={openOrder}
-        onChanged={() => void loadOrders()}
-      />
+      {ordersViewMode === 'kanban' ? (
+        <KanbanBoard
+          orders={orders}
+          isLoading={isLoading}
+          onOpenOrder={openOrder}
+          onChanged={() => void loadOrders()}
+        />
+      ) : (
+        <OrdersTable
+          orders={orders}
+          isLoading={isLoading}
+          onOpenOrder={openOrder}
+          onChanged={() => void loadOrders()}
+        />
+      )}
 
       <NewOrderModal
         open={newOrderOpen}
