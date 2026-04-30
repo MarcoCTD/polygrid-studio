@@ -95,8 +95,12 @@ function NavButton({
 export function Sidebar() {
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
+  const openOrdersCount = useUIStore((s) => s.openOrdersCount);
   const matches = useMatches();
   const currentPath = matches[matches.length - 1]?.fullPath ?? '/';
+  const navItems = mainNavItems.map((item) =>
+    item.route === '/orders' ? { ...item, badge: openOrdersCount } : item,
+  );
 
   return (
     <aside
@@ -118,7 +122,7 @@ export function Sidebar() {
 
       {/* Hauptnavigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {mainNavItems.map((item) => (
+        {navItems.map((item) => (
           <NavButton
             key={item.route}
             item={item}

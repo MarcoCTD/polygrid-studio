@@ -30,8 +30,10 @@ export interface Shortcut {
 interface UIState {
   // Sidebar
   sidebarCollapsed: boolean;
+  openOrdersCount: number;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebar: () => void;
+  setOpenOrdersCount: (count: number) => void;
 
   // Theme (Default: system, bis DB geladen)
   theme: Theme;
@@ -71,8 +73,10 @@ interface UIState {
 export const useUIStore = create<UIState>((set) => ({
   // Sidebar
   sidebarCollapsed: false,
+  openOrdersCount: 0,
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  setOpenOrdersCount: (count) => set({ openOrdersCount: count }),
 
   // Theme
   theme: 'system',

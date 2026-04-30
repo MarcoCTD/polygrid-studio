@@ -121,3 +121,19 @@ export type OrderPlatform = z.infer<typeof OrderPlatformEnum>;
 export type Order = z.infer<typeof OrderSchema>;
 export type NewOrder = z.infer<typeof NewOrderSchema>;
 export type UpdateOrder = z.infer<typeof UpdateOrderSchema>;
+
+export type NewOrderInput = NewOrder;
+export type UpdateOrderInput = Omit<UpdateOrder, 'id' | 'tax_locked'>;
+
+export interface OrderFilters {
+  status?: OrderStatus[];
+  platform?: OrderPlatform[];
+  dateFrom?: string;
+  dateTo?: string;
+  showDeleted?: boolean;
+  taxLocked?: boolean;
+}
+
+export interface OrderListItem extends Order {
+  product_name: string | null;
+}
