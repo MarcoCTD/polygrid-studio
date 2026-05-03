@@ -17,6 +17,8 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { formatEUR } from '@/features/products/utils';
+import { ManualBankMatchDialog, StatusUpdateSuggestionDialog } from '@/features/finance/components';
+import type { ConfirmMatchResult } from '@/features/finance/services';
 import { cn } from '@/lib/utils';
 import {
   getBankTransactionMatch,
@@ -118,6 +120,8 @@ export function OrderDetailPanel({ order, onClose, onChanged }: OrderDetailPanel
   const [currentOrder, setCurrentOrder] = useState<OrderListItem>(order);
   const [events, setEvents] = useState<OrderEvent[]>([]);
   const [bankMatch, setBankMatch] = useState<BankTransactionMatch | null>(null);
+  const [manualMatchOpen, setManualMatchOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<ConfirmMatchResult | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const form = useForm<UpdateOrderInput>({
@@ -233,6 +237,22 @@ export function OrderDetailPanel({ order, onClose, onChanged }: OrderDetailPanel
     }
   }
 
+  async function handleManualMatched(result: ConfirmMatchResult) {
+    const refreshed = await getBankTransactionMatch(result.transactionId);
+    setCurrentOrder({
+      ...currentOrder,
+      bank_match_id: result.transactionId,
+      payment_received_date: refreshed?.transaction_date ?? currentOrder.payment_received_date,
+      payment_status: 'paid',
+    });
+    setBankMatch(refreshed);
+    onChanged();
+    if (result.suggestPaidStatus) {
+      setPendingStatus(result);
+    }
+    toast.success('Banktransaktion verknüpft');
+  }
+
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-border-subtle p-4">
@@ -306,10 +326,45 @@ export function OrderDetailPanel({ order, onClose, onChanged }: OrderDetailPanel
               bankMatch={bankMatch}
               hasMatch={currentOrder.bank_match_id !== null}
               onUnlink={() => void unlinkBankMatch()}
+              onManualMatch={() => setManualMatchOpen(true)}
             />
           </TabsContent>
         </div>
       </Tabs>
+
+      <ManualBankMatchDialog
+        open={manualMatchOpen}
+        orderId={currentOrder.id}
+        onOpenChange={setManualMatchOpen}
+        onMatched={(result) => {
+          void handleManualMatched(result).catch((error) => {
+            toast.error(
+              error instanceof Error ? error.message : 'Bank-Match konnte nicht geladen werden',
+            );
+          });
+        }}
+      />
+      <StatusUpdateSuggestionDialog
+        open={pendingStatus !== null}
+        receiptNumber={pendingStatus?.receiptNumber ?? null}
+        onOpenChange={(open) => {
+          if (!open) setPendingStatus(null);
+        }}
+        onDecline={() => setPendingStatus(null)}
+        onConfirm={() => {
+          if (!pendingStatus?.orderId) return;
+          void updateOrder(pendingStatus.orderId, { status: 'paid' })
+            .then((updated) => {
+              setCurrentOrder({ ...updated, product_name: currentOrder.product_name });
+              setPendingStatus(null);
+              onChanged();
+              toast.success('Auftrag auf bezahlt gesetzt');
+            })
+            .catch((error) => {
+              toast.error(error instanceof Error ? error.message : 'Status konnte nicht gesetzt werden');
+            });
+        }}
+      />
     </div>
   );
 }
@@ -593,10 +648,12 @@ function BankMatchTab({
   bankMatch,
   hasMatch,
   onUnlink,
+  onManualMatch,
 }: {
   bankMatch: BankTransactionMatch | null;
   hasMatch: boolean;
   onUnlink: () => void;
+  onManualMatch: () => void;
 }) {
   if (hasMatch && bankMatch) {
     return (
@@ -628,10 +685,10 @@ function BankMatchTab({
       <div>
         <p className="font-medium text-text-primary">Noch kein Bank-Match</p>
         <p className="mt-1 text-sm text-text-secondary">
-          Banktransaktionen werden in Sub-Session 8.6 importiert und verknüpft.
+          Verknüpfe eine importierte N26-Banktransaktion manuell mit diesem Auftrag.
         </p>
       </div>
-      <Button type="button" variant="outline" disabled title="Bankimport folgt in Sub-Session 8.6">
+      <Button type="button" variant="outline" onClick={onManualMatch}>
         Manuell verknüpfen
       </Button>
     </div>

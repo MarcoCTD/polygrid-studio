@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BanktransaktionenPlaceholder, BeleguebersichtPanel, EuerExportPanel } from './components';
+import { BanktransaktionenPanel, BeleguebersichtPanel, EuerExportPanel } from './components';
 
 export function FinancePage() {
   return (
@@ -23,7 +23,7 @@ export function FinancePage() {
             <EuerExportPanel />
           </TabsContent>
           <TabsContent value="bank">
-            <BanktransaktionenPlaceholder />
+            <BanktransaktionenPanel />
           </TabsContent>
           <TabsContent value="receipts">
             <BeleguebersichtPanel />
