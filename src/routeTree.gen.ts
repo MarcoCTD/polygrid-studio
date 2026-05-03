@@ -11,6 +11,7 @@ import { TemplatesPage } from '@/features/templates';
 import { FilesPage } from '@/features/files';
 import { TasksPage } from '@/features/tasks';
 import { AnalyticsPage } from '@/features/analytics';
+import { FinancePage } from '@/features/finance';
 import { AIAssistantPage } from '@/features/ai-assistant';
 import { SettingsPage } from '@/features/settings';
 
@@ -86,6 +87,12 @@ const analyticsRoute = createRoute({
   component: AnalyticsPage,
 });
 
+const financeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/finance',
+  component: FinancePage,
+});
+
 const aiRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/ai',
@@ -111,6 +118,7 @@ export const routeTree = rootRoute.addChildren([
   filesRoute,
   tasksRoute,
   analyticsRoute,
+  financeRoute,
   aiRoute,
   settingsRoute,
 ]);

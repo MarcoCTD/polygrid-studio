@@ -11,6 +11,7 @@ import {
   FolderOpen,
   CheckSquare,
   BarChart3,
+  Wallet,
   Sparkles,
   Settings,
   PanelLeftClose,
@@ -35,6 +36,7 @@ const mainNavItems: NavItem[] = [
   { label: 'Dateien', icon: FolderOpen, route: '/files' },
   { label: 'Aufgaben', icon: CheckSquare, route: '/tasks' },
   { label: 'Analysen', icon: BarChart3, route: '/analytics' },
+  { label: 'Finanzen', icon: Wallet, route: '/finance' },
 ];
 
 const bottomNavItems: NavItem[] = [
