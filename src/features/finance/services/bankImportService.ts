@@ -109,6 +109,11 @@ interface BankTransactionInput {
   transaction_type: string | null;
 }
 
+interface BankTransactionMapResult {
+  transaction: BankTransactionInput | null;
+  skipReason: string | null;
+}
+
 type Row = Record<string, unknown>;
 
 const REQUIRED_FIELDS: readonly BankField[] = ['transaction_date', 'amount', 'description'];
@@ -137,6 +142,20 @@ const FIELD_ALIASES: Record<Exclude<BankField, 'ignore'>, readonly string[]> = {
   amount: ['amount eur', 'amount (eur)', 'betrag', 'betrag eur', 'amount'],
 };
 
+const N26_STANDARD_MAPPING: Record<string, BankField> = {
+  'Booking Date': 'transaction_date',
+  'Value Date': 'value_date',
+  'Partner Name': 'counterparty_name',
+  'Partner Iban': 'counterparty_iban',
+  Type: 'transaction_type',
+  'Payment Reference': 'description',
+  'Account Name': 'ignore',
+  'Amount (EUR)': 'amount',
+  'Original Amount': 'ignore',
+  'Original Currency': 'ignore',
+  'Exchange Rate': 'ignore',
+};
+
 const ORDER_MATCH_STATUSES: OrderStatus[] = ['ordered', 'paid', 'shipped'];
 
 function now(): string {
@@ -162,16 +181,15 @@ function nullableText(value: string | null | undefined): string | null {
   return normalized ? normalized : null;
 }
 
-function parseAmount(value: string): number | null {
-  const normalized = value.trim().replace(/[^\d,.-]/g, '');
-  if (!normalized) return null;
+function parseAmount(value: string | null | undefined): number {
+  const normalized = (value ?? '').trim().replace(/[^\d,.-]/g, '');
+  if (!normalized) return 0;
   const comma = normalized.lastIndexOf(',');
   const dot = normalized.lastIndexOf('.');
   const decimal = comma > dot ? ',' : '.';
   const prepared =
     decimal === ',' ? normalized.replace(/\./g, '').replace(',', '.') : normalized.replace(/,/g, '');
-  const parsed = Number(prepared);
-  return Number.isFinite(parsed) ? parsed : null;
+  return Number.parseFloat(prepared);
 }
 
 function parseDateToISO(value: string): string | null {
@@ -272,6 +290,16 @@ export function isN26Csv(headers: string[]): boolean {
 }
 
 export function autoMapBankColumns(headers: string[]): BankColumnMapping {
+  if (isN26Csv(headers)) {
+    return headers.reduce<BankColumnMapping>((mapping, header) => {
+      const standardHeader = N26_HEADERS.find(
+        (n26Header) => normalizeToken(n26Header) === normalizeToken(header),
+      );
+      mapping[header] = standardHeader ? N26_STANDARD_MAPPING[standardHeader] : 'ignore';
+      return mapping;
+    }, {});
+  }
+
   return headers.reduce<BankColumnMapping>((mapping, header) => {
     mapping[header] = detectFieldForHeader(header);
     return mapping;
@@ -287,7 +315,7 @@ export function mapRowToBankTransaction(
   row: string[],
   mapping: BankColumnMapping,
   rowNumber: number,
-): BankTransactionInput {
+): BankTransactionMapResult {
   const values: Partial<Record<BankField, string>> = {};
   Object.values(mapping).forEach((field, index) => {
     if (field !== 'ignore' && values[field] === undefined) {
@@ -297,21 +325,36 @@ export function mapRowToBankTransaction(
 
   const transactionDate = parseDateToISO(values.transaction_date ?? '');
   const valueDate = values.value_date ? parseDateToISO(values.value_date) : null;
-  const amount = parseAmount(values.amount ?? '');
+  const amount = parseAmount(values.amount);
   const description = normalizeText(values.description);
 
-  if (!transactionDate) throw new Error(`Zeile ${rowNumber}: Buchungsdatum ist ungültig`);
-  if (amount === null) throw new Error(`Zeile ${rowNumber}: Betrag ist ungültig`);
-  if (!description) throw new Error(`Zeile ${rowNumber}: Verwendungszweck fehlt`);
+  if (!transactionDate) {
+    return { transaction: null, skipReason: `Zeile ${rowNumber}: übersprungen (kein Buchungsdatum)` };
+  }
+  if (Number.isNaN(amount)) {
+    return { transaction: null, skipReason: `Zeile ${rowNumber}: übersprungen (kein Betrag)` };
+  }
+  if (amount === 0) {
+    return { transaction: null, skipReason: `Zeile ${rowNumber}: übersprungen (Betrag 0)` };
+  }
+  if (!description) {
+    return {
+      transaction: null,
+      skipReason: `Zeile ${rowNumber}: übersprungen (kein Verwendungszweck)`,
+    };
+  }
 
   return {
-    transaction_date: transactionDate,
-    value_date: valueDate,
-    amount,
-    description,
-    counterparty_name: nullableText(values.counterparty_name),
-    counterparty_iban: nullableText(values.counterparty_iban),
-    transaction_type: nullableText(values.transaction_type),
+    transaction: {
+      transaction_date: transactionDate,
+      value_date: valueDate,
+      amount,
+      description,
+      counterparty_name: nullableText(values.counterparty_name),
+      counterparty_iban: nullableText(values.counterparty_iban),
+      transaction_type: nullableText(values.transaction_type),
+    },
+    skipReason: null,
   };
 }
 
@@ -323,11 +366,13 @@ export async function importBankCsv(input: BankImportInput): Promise<BankImportR
   const mappedRows: BankTransactionInput[] = [];
 
   for (const [index, row] of input.csv.rows.entries()) {
-    try {
-      mappedRows.push(mapRowToBankTransaction(row, input.mapping, index + 2));
-    } catch (error) {
-      result.errors.push(error instanceof Error ? error.message : String(error));
+    const mapped = mapRowToBankTransaction(row, input.mapping, index + 2);
+    if (mapped.transaction) {
+      mappedRows.push(mapped.transaction);
+      continue;
     }
+    result.skipped++;
+    if (mapped.skipReason) result.errors.push(mapped.skipReason);
   }
 
   const dates = mappedRows.map((row) => row.transaction_date).sort();
