@@ -166,13 +166,32 @@ function isoToDate(value: string): Date {
   return new Date(`${value.slice(0, 10)}T00:00:00`);
 }
 
+function normalizeDateOnly(value: string): string {
+  const trimmed = value.trim();
+  const directIso = /^(\d{4}-\d{2}-\d{2})/.exec(trimmed);
+  if (directIso) return directIso[1];
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`Ungültiges Datum für EÜR-Export: ${value}`);
+  }
+
+  return parsed.toISOString().split('T')[0];
+}
+
+function normalizeDateRange(dateFrom: string, dateTo: string): { dateFrom: string; dateTo: string } {
+  return {
+    dateFrom: normalizeDateOnly(dateFrom),
+    dateTo: normalizeDateOnly(dateTo),
+  };
+}
+
 function exportFilename(options: EuerExportOptions, extension: 'csv' | 'xlsx'): string {
-  const year = options.dateFrom.slice(0, 4);
+  const range = normalizeDateRange(options.dateFrom, options.dateTo);
+  const year = range.dateFrom.slice(0, 4);
   const sameMonth =
-    options.dateFrom.slice(0, 7) === options.dateTo.slice(0, 7) && options.dateFrom.endsWith('-01');
-  return sameMonth
-    ? `euer_${options.dateFrom.slice(0, 7)}.${extension}`
-    : `euer_${year}.${extension}`;
+    range.dateFrom.slice(0, 7) === range.dateTo.slice(0, 7) && range.dateFrom.endsWith('-01');
+  return sameMonth ? `euer_${range.dateFrom.slice(0, 7)}.${extension}` : `euer_${year}.${extension}`;
 }
 
 function orderBookingText(order: OrderListItem): string {
@@ -225,6 +244,7 @@ function formatCsv(bookings: FinanceBooking[]): string {
 }
 
 async function loadOrders(dateFrom: string, dateTo: string): Promise<ExportOrder[]> {
+  const range = normalizeDateRange(dateFrom, dateTo);
   const statusPlaceholders = EARNING_STATUSES.map((_, index) => `$${index + 3}`).join(', ');
   const rows = await getDatabase().select<Row[]>(
     `SELECT o.*, p.name AS product_name, bt.match_confidence AS bank_match_confidence
@@ -237,12 +257,13 @@ async function loadOrders(dateFrom: string, dateTo: string): Promise<ExportOrder
        AND o.payment_received_date <= $2
        AND o.status IN (${statusPlaceholders})
      ORDER BY o.payment_received_date ASC, o.receipt_number ASC`,
-    [dateFrom, dateTo, ...EARNING_STATUSES],
+    [range.dateFrom, range.dateTo, ...EARNING_STATUSES],
   );
   return rows.map(rowToExportOrder);
 }
 
 async function loadExpenses(dateFrom: string, dateTo: string): Promise<ExportExpense[]> {
+  const range = normalizeDateRange(dateFrom, dateTo);
   const rows = await getDatabase().select<Row[]>(
     `SELECT e.*, bt.match_confidence AS bank_match_confidence
      FROM expenses e
@@ -252,7 +273,7 @@ async function loadExpenses(dateFrom: string, dateTo: string): Promise<ExportExp
        AND e.date >= $1
        AND e.date <= $2
      ORDER BY e.date ASC, e.created_at ASC`,
-    [dateFrom, dateTo],
+    [range.dateFrom, range.dateTo],
   );
   return rows.map(rowToExportExpense);
 }
@@ -304,9 +325,11 @@ export async function getEuerExportPreview(
   dateFrom: string,
   dateTo: string,
 ): Promise<EuerExportPreview> {
+  const range = normalizeDateRange(dateFrom, dateTo);
   const statusPlaceholders = EARNING_STATUSES.map((_, index) => `$${index + 3}`).join(', ');
-  const [incomeRows, expenseRows] = await Promise.all([
-    getDatabase().select<{ count: number; total: number | null }[]>(
+  const db = getDatabase();
+  const incomePromise = db
+    .select<{ count: number; total: number | null }[]>(
       `SELECT COUNT(*) AS count, SUM(sale_price + COALESCE(shipping_revenue, 0)) AS total
        FROM orders
        WHERE deleted_at IS NULL
@@ -314,18 +337,27 @@ export async function getEuerExportPreview(
          AND payment_received_date >= $1
          AND payment_received_date <= $2
          AND status IN (${statusPlaceholders})`,
-      [dateFrom, dateTo, ...EARNING_STATUSES],
-    ),
-    getDatabase().select<{ count: number; total: number | null }[]>(
+      [range.dateFrom, range.dateTo, ...EARNING_STATUSES],
+    )
+    .catch((error) => {
+      console.error('EÜR preview income query failed', error);
+      return [{ count: 0, total: 0 }];
+    });
+  const expensePromise = db
+    .select<{ count: number; total: number | null }[]>(
       `SELECT COUNT(*) AS count, SUM(amount_gross) AS total
        FROM expenses
        WHERE deleted_at IS NULL
          AND tax_relevant = 1
          AND date >= $1
          AND date <= $2`,
-      [dateFrom, dateTo],
-    ),
-  ]);
+      [range.dateFrom, range.dateTo],
+    )
+    .catch((error) => {
+      console.error('EÜR preview expense query failed', error);
+      return [{ count: 0, total: 0 }];
+    });
+  const [incomeRows, expenseRows] = await Promise.all([incomePromise, expensePromise]);
 
   return {
     incomeCount: Number(incomeRows[0]?.count ?? 0),
@@ -451,13 +483,15 @@ async function applyTaxLock(
 }
 
 export async function generateEuerExport(options: EuerExportOptions): Promise<EuerExportResult> {
-  const bookings = await loadFinanceBookings(options.dateFrom, options.dateTo);
-  const preview = await getEuerExportPreview(options.dateFrom, options.dateTo);
+  const range = normalizeDateRange(options.dateFrom, options.dateTo);
+  const normalizedOptions = { ...options, ...range };
+  const bookings = await loadFinanceBookings(range.dateFrom, range.dateTo);
+  const preview = await getEuerExportPreview(range.dateFrom, range.dateTo);
   const exportedFiles: string[] = [];
 
   if (options.format === 'csv' || options.format === 'both') {
     const path = await save({
-      defaultPath: exportFilename(options, 'csv'),
+      defaultPath: exportFilename(normalizedOptions, 'csv'),
       filters: [{ name: 'CSV', extensions: ['csv'] }],
     });
     if (!path)
@@ -468,12 +502,12 @@ export async function generateEuerExport(options: EuerExportOptions): Promise<Eu
 
   if (options.format === 'xlsx' || options.format === 'both') {
     const path = await save({
-      defaultPath: exportFilename(options, 'xlsx'),
+      defaultPath: exportFilename(normalizedOptions, 'xlsx'),
       filters: [{ name: 'Excel', extensions: ['xlsx'] }],
     });
     if (!path)
       return { ...preview, exportedFiles, lockedOrders: 0, lockedExpenses: 0, cancelled: true };
-    await writeFile(path, await buildWorkbook(options, bookings));
+    await writeFile(path, await buildWorkbook(normalizedOptions, bookings));
     exportedFiles.push(path);
   }
 

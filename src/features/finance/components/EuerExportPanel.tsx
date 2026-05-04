@@ -54,6 +54,7 @@ export function EuerExportPanel() {
   const [format, setFormat] = useState<ExportFormat>('xlsx');
   const [setTaxLock, setSetTaxLock] = useState(true);
   const [preview, setPreview] = useState<EuerExportPreview | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -70,16 +71,27 @@ export function EuerExportPanel() {
 
   useEffect(() => {
     let cancelled = false;
-    queueMicrotask(() => setIsLoadingPreview(true));
+    queueMicrotask(() => {
+      setIsLoadingPreview(true);
+      setPreviewError(null);
+    });
     void getEuerExportPreview(range.dateFrom, range.dateTo)
       .then((result) => {
         if (!cancelled) setPreview(result);
       })
       .catch((error) => {
-        if (!cancelled)
+        if (!cancelled) {
+          setPreview({
+            incomeCount: 0,
+            expenseCount: 0,
+            incomeTotal: 0,
+            expenseTotal: 0,
+          });
+          setPreviewError(error instanceof Error ? error.message : 'Vorschau konnte nicht geladen werden');
           toast.error(
             error instanceof Error ? error.message : 'Vorschau konnte nicht geladen werden',
           );
+        }
       })
       .finally(() => {
         if (!cancelled) setIsLoadingPreview(false);
@@ -110,7 +122,9 @@ export function EuerExportPanel() {
           `${result.lockedOrders} Aufträge und ${result.lockedExpenses} Ausgaben gesperrt`,
         );
       }
-      setPreview(await getEuerExportPreview(range.dateFrom, range.dateTo));
+      const nextPreview = await getEuerExportPreview(range.dateFrom, range.dateTo);
+      setPreview(nextPreview);
+      setPreviewError(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'EÜR-Export fehlgeschlagen');
     } finally {
@@ -240,6 +254,12 @@ export function EuerExportPanel() {
           value={`${(preview?.expenseTotal ?? 0).toFixed(2)} EUR`}
         />
       </section>
+
+      {previewError && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Vorschau konnte nicht vollständig geladen werden: {previewError}
+        </div>
+      )}
 
       <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
         Diese Auswertung unterstützt die Erfassung deiner Einnahmen und Ausgaben. Sie ersetzt keine
