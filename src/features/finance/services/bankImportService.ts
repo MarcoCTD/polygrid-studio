@@ -31,6 +31,7 @@ export interface BankImportResult {
   batchId: string;
   imported: number;
   skipped: number;
+  skippedRows: string[];
   errors: string[];
 }
 
@@ -100,10 +101,11 @@ export interface ConfirmMatchResult {
 }
 
 interface BankTransactionInput {
+  rowNumber: number;
   transaction_date: string;
   value_date: string | null;
   amount: number;
-  description: string;
+  description: string | null;
   counterparty_name: string | null;
   counterparty_iban: string | null;
   transaction_type: string | null;
@@ -190,6 +192,13 @@ function parseAmount(value: string | null | undefined): number {
   const prepared =
     decimal === ',' ? normalized.replace(/\./g, '').replace(',', '.') : normalized.replace(/,/g, '');
   return Number.parseFloat(prepared);
+}
+
+function dbDescription(value: string | null): string {
+  // Migration 0008 created bank_transactions.description as NOT NULL.
+  // The importer treats empty N26 Payment Reference as nullable and stores
+  // an empty DB value until the schema is relaxed in a dedicated migration.
+  return value ?? '';
 }
 
 function parseDateToISO(value: string): string | null {
@@ -329,27 +338,42 @@ export function mapRowToBankTransaction(
   const description = normalizeText(values.description);
 
   if (!transactionDate) {
-    return { transaction: null, skipReason: `Zeile ${rowNumber}: übersprungen (kein Buchungsdatum)` };
+    console.error('N26 CSV row skipped: missing transaction_date', {
+      rowNumber,
+      row,
+      values,
+    });
+    return {
+      transaction: null,
+      skipReason: `Zeile ${rowNumber}: übersprungen (kein Buchungsdatum)`,
+    };
   }
   if (Number.isNaN(amount)) {
+    console.error('N26 CSV row skipped: invalid amount', {
+      rowNumber,
+      amountValue: values.amount,
+      row,
+      values,
+    });
     return { transaction: null, skipReason: `Zeile ${rowNumber}: übersprungen (kein Betrag)` };
   }
   if (amount === 0) {
+    console.error('N26 CSV row skipped: zero amount', {
+      rowNumber,
+      amountValue: values.amount,
+      row,
+      values,
+    });
     return { transaction: null, skipReason: `Zeile ${rowNumber}: übersprungen (Betrag 0)` };
-  }
-  if (!description) {
-    return {
-      transaction: null,
-      skipReason: `Zeile ${rowNumber}: übersprungen (kein Verwendungszweck)`,
-    };
   }
 
   return {
     transaction: {
+      rowNumber,
       transaction_date: transactionDate,
       value_date: valueDate,
       amount,
-      description,
+      description: description || null,
       counterparty_name: nullableText(values.counterparty_name),
       counterparty_iban: nullableText(values.counterparty_iban),
       transaction_type: nullableText(values.transaction_type),
@@ -362,17 +386,39 @@ export async function importBankCsv(input: BankImportInput): Promise<BankImportR
   const db = getDatabase();
   const batchId = crypto.randomUUID();
   const timestamp = now();
-  const result: BankImportResult = { batchId, imported: 0, skipped: 0, errors: [] };
+  const result: BankImportResult = {
+    batchId,
+    imported: 0,
+    skipped: 0,
+    skippedRows: [],
+    errors: [],
+  };
   const mappedRows: BankTransactionInput[] = [];
 
   for (const [index, row] of input.csv.rows.entries()) {
-    const mapped = mapRowToBankTransaction(row, input.mapping, index + 2);
-    if (mapped.transaction) {
-      mappedRows.push(mapped.transaction);
-      continue;
+    try {
+      const mapped = mapRowToBankTransaction(row, input.mapping, index + 2);
+      if (mapped.transaction) {
+        mappedRows.push(mapped.transaction);
+        continue;
+      }
+      result.skipped++;
+      if (mapped.skipReason) {
+        result.skippedRows.push(mapped.skipReason);
+        result.errors.push(mapped.skipReason);
+      }
+    } catch (error) {
+      const message = `Zeile ${index + 2}: übersprungen (${error instanceof Error ? error.message : String(error)})`;
+      console.error('N26 CSV row mapping failed', {
+        rowNumber: index + 2,
+        row,
+        mapping: input.mapping,
+        error,
+      });
+      result.skipped++;
+      result.skippedRows.push(message);
+      result.errors.push(message);
     }
-    result.skipped++;
-    if (mapped.skipReason) result.errors.push(mapped.skipReason);
   }
 
   const dates = mappedRows.map((row) => row.transaction_date).sort();
@@ -388,42 +434,64 @@ export async function importBankCsv(input: BankImportInput): Promise<BankImportR
     );
 
     for (const row of mappedRows) {
-      const duplicateRows = await db.select<{ id: string }[]>(
-        `SELECT id
-         FROM bank_transactions
-         WHERE transaction_date = $1 AND amount = $2 AND description = $3
-         LIMIT 1`,
-        [row.transaction_date, row.amount, row.description],
-      );
+      try {
+        const duplicateRows = await db.select<{ id: string }[]>(
+          `SELECT id
+           FROM bank_transactions
+           WHERE transaction_date = $1
+             AND amount = $2
+             AND COALESCE(description, '') = $3
+           LIMIT 1`,
+          [row.transaction_date, row.amount, dbDescription(row.description)],
+        );
 
-      if (duplicateRows.length > 0) {
+        if (duplicateRows.length > 0) {
+          result.skipped++;
+          result.skippedRows.push(`Zeile ${row.rowNumber}: übersprungen (Duplikat)`);
+          continue;
+        }
+
+        await db.execute(
+          `INSERT INTO bank_transactions (
+            id, transaction_date, value_date, amount, description, counterparty_name,
+            counterparty_iban, transaction_type, matched_order_id, matched_expense_id,
+            match_confidence, is_payout, import_batch_id, ignored, notes, created_at
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6,
+            $7, $8, NULL, NULL, NULL, 0, $9, 0, NULL, $10
+          )`,
+          [
+            crypto.randomUUID(),
+            row.transaction_date,
+            row.value_date,
+            row.amount,
+            dbDescription(row.description),
+            row.counterparty_name,
+            row.counterparty_iban,
+            row.transaction_type,
+            batchId,
+            timestamp,
+          ],
+        );
+        result.imported++;
+      } catch (error) {
+        const message = `Zeile ${row.rowNumber}: übersprungen (${error instanceof Error ? error.message : String(error)})`;
+        console.error('N26 CSV row insert failed', {
+          rowNumber: row.rowNumber,
+          transactionDate: row.transaction_date,
+          valueDate: row.value_date,
+          amount: row.amount,
+          description: row.description,
+          counterpartyName: row.counterparty_name,
+          counterpartyIban: row.counterparty_iban,
+          transactionType: row.transaction_type,
+          error,
+        });
         result.skipped++;
+        result.skippedRows.push(message);
+        result.errors.push(message);
         continue;
       }
-
-      await db.execute(
-        `INSERT INTO bank_transactions (
-          id, transaction_date, value_date, amount, description, counterparty_name,
-          counterparty_iban, transaction_type, matched_order_id, matched_expense_id,
-          match_confidence, is_payout, import_batch_id, ignored, notes, created_at
-        ) VALUES (
-          $1, $2, $3, $4, $5, $6,
-          $7, $8, NULL, NULL, NULL, 0, $9, 0, NULL, $10
-        )`,
-        [
-          crypto.randomUUID(),
-          row.transaction_date,
-          row.value_date,
-          row.amount,
-          row.description,
-          row.counterparty_name,
-          row.counterparty_iban,
-          row.transaction_type,
-          batchId,
-          timestamp,
-        ],
-      );
-      result.imported++;
     }
 
     await db.execute(
