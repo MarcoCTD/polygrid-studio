@@ -85,6 +85,13 @@ type Row = Record<string, unknown>;
 type ExportOrder = OrderListItem & { bank_match_confidence: string | null };
 type ExportExpense = Expense & { bank_match_confidence: string | null };
 
+const EXPENSE_PREVIEW_QUERY = `SELECT COUNT(*) AS count, SUM(amount_gross) AS total
+       FROM expenses
+       WHERE (deleted_at IS NULL OR deleted_at = '')
+         AND tax_relevant IN (1, '1', 'true', 'TRUE')
+         AND substr(date, 1, 10) >= $1
+         AND substr(date, 1, 10) <= $2`;
+
 function rowToOrder(row: Row): OrderListItem {
   return {
     id: row.id as string,
@@ -268,10 +275,10 @@ async function loadExpenses(dateFrom: string, dateTo: string): Promise<ExportExp
     `SELECT e.*, bt.match_confidence AS bank_match_confidence
      FROM expenses e
      LEFT JOIN bank_transactions bt ON bt.id = e.bank_match_id
-     WHERE e.deleted_at IS NULL
-       AND e.tax_relevant = 1
-       AND e.date >= $1
-       AND e.date <= $2
+     WHERE (e.deleted_at IS NULL OR e.deleted_at = '')
+       AND e.tax_relevant IN (1, '1', 'true', 'TRUE')
+       AND substr(e.date, 1, 10) >= $1
+       AND substr(e.date, 1, 10) <= $2
      ORDER BY e.date ASC, e.created_at ASC`,
     [range.dateFrom, range.dateTo],
   );
@@ -344,17 +351,26 @@ export async function getEuerExportPreview(
       return [{ count: 0, total: 0 }];
     });
   const expensePromise = db
-    .select<{ count: number; total: number | null }[]>(
-      `SELECT COUNT(*) AS count, SUM(amount_gross) AS total
-       FROM expenses
-       WHERE deleted_at IS NULL
-         AND tax_relevant = 1
-         AND date >= $1
-         AND date <= $2`,
-      [range.dateFrom, range.dateTo],
-    )
+    .select<{ count: number; total: number | null }[]>(EXPENSE_PREVIEW_QUERY, [
+      range.dateFrom,
+      range.dateTo,
+    ])
+    .then((rows) => {
+      console.log('EÜR preview expense query', {
+        dateFrom: range.dateFrom,
+        dateTo: range.dateTo,
+        sql: EXPENSE_PREVIEW_QUERY,
+        resultCount: Number(rows[0]?.count ?? 0),
+      });
+      return rows;
+    })
     .catch((error) => {
-      console.error('EÜR preview expense query failed', error);
+      console.error('EÜR preview expense query failed', {
+        dateFrom: range.dateFrom,
+        dateTo: range.dateTo,
+        sql: EXPENSE_PREVIEW_QUERY,
+        error,
+      });
       return [{ count: 0, total: 0 }];
     });
   const [incomeRows, expenseRows] = await Promise.all([incomePromise, expensePromise]);

@@ -15,15 +15,25 @@ const reservedCounters = new WeakMap<object, Map<number, number>>();
 export async function generateReceiptNumber(
   db: ReceiptNumberDatabase,
   year: number,
+  options: { useExistingTransaction?: boolean } = {},
 ): Promise<string> {
-  return runExclusive(() => generateReceiptNumberInTransaction(db, year));
+  return runExclusive(() => generateReceiptNumberInTransaction(db, year, options));
 }
 
 async function generateReceiptNumberInTransaction(
   db: ReceiptNumberDatabase,
   year: number,
+  options: { useExistingTransaction?: boolean },
 ): Promise<string> {
   validateYear(year);
+
+  if (options.useExistingTransaction) {
+    const maxCounter = await getMaxCounter(db, year);
+    const reservedCounter = getReservedCounter(db, year);
+    const nextCounter = Math.max(maxCounter, reservedCounter) + 1;
+    setReservedCounter(db, year, nextCounter);
+    return formatReceiptNumber(year, nextCounter);
+  }
 
   await db.execute('BEGIN IMMEDIATE');
   try {

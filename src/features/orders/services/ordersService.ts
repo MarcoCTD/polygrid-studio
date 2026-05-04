@@ -244,15 +244,21 @@ export async function createOrder(data: NewOrderInput): Promise<Order> {
     const db = getDatabase();
     const id = crypto.randomUUID();
     const timestamp = now();
-    const receiptNumber =
-      input.receipt_number ?? (await generateReceiptNumber(db, dateYear(input.order_date)));
     const status = input.status ?? (input.payment_received_date ? 'paid' : 'ordered');
     const paymentStatus =
       input.payment_status ?? (input.payment_received_date ? 'paid' : 'pending');
     const shippingStatus = input.shipping_status ?? 'not_shipped';
+    const materialCost = input.material_cost ?? (await getProductMaterialCost(input.product_id));
+    const platformFee = input.platform_fee ?? (await getPlatformFee(input.platform, input.sale_price));
 
     await db.execute('BEGIN IMMEDIATE');
     try {
+      const receiptNumber =
+        input.receipt_number ??
+        (await generateReceiptNumber(db, dateYear(input.order_date), {
+          useExistingTransaction: true,
+        }));
+
       await db.execute(
         `INSERT INTO orders (
         id, receipt_number, external_order_id, customer_name, platform,
@@ -279,8 +285,8 @@ export async function createOrder(data: NewOrderInput): Promise<Order> {
           input.sale_price,
           input.shipping_revenue ?? null,
           input.shipping_cost ?? null,
-          input.material_cost ?? (await getProductMaterialCost(input.product_id)),
-          input.platform_fee ?? (await getPlatformFee(input.platform, input.sale_price)),
+          materialCost,
+          platformFee,
           input.payout_amount ?? null,
           status,
           paymentStatus,
