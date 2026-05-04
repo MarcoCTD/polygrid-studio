@@ -423,88 +423,79 @@ export async function importBankCsv(input: BankImportInput): Promise<BankImportR
 
   const dates = mappedRows.map((row) => row.transaction_date).sort();
 
-  await db.execute('BEGIN IMMEDIATE');
-  try {
-    await db.execute(
-      `INSERT INTO import_batches (
-        id, source, imported_at, filename, transaction_count, matched_count,
-        date_range_start, date_range_end
-      ) VALUES ($1, 'n26', $2, $3, 0, 0, $4, $5)`,
-      [batchId, timestamp, input.fileName, dates[0] ?? null, dates[dates.length - 1] ?? null],
-    );
+  await db.execute(
+    `INSERT INTO import_batches (
+      id, source, imported_at, filename, transaction_count, matched_count,
+      date_range_start, date_range_end
+    ) VALUES ($1, 'n26', $2, $3, 0, 0, $4, $5)`,
+    [batchId, timestamp, input.fileName, dates[0] ?? null, dates[dates.length - 1] ?? null],
+  );
 
-    for (const row of mappedRows) {
-      try {
-        const duplicateRows = await db.select<{ id: string }[]>(
-          `SELECT id
-           FROM bank_transactions
-           WHERE transaction_date = $1
-             AND amount = $2
-             AND COALESCE(description, '') = $3
-           LIMIT 1`,
-          [row.transaction_date, row.amount, dbDescription(row.description)],
-        );
+  for (const row of mappedRows) {
+    try {
+      const duplicateRows = await db.select<{ id: string }[]>(
+        `SELECT id
+         FROM bank_transactions
+         WHERE transaction_date = $1
+           AND amount = $2
+           AND COALESCE(description, '') = $3
+         LIMIT 1`,
+        [row.transaction_date, row.amount, dbDescription(row.description)],
+      );
 
-        if (duplicateRows.length > 0) {
-          result.skipped++;
-          result.skippedRows.push(`Zeile ${row.rowNumber}: übersprungen (Duplikat)`);
-          continue;
-        }
-
-        await db.execute(
-          `INSERT INTO bank_transactions (
-            id, transaction_date, value_date, amount, description, counterparty_name,
-            counterparty_iban, transaction_type, matched_order_id, matched_expense_id,
-            match_confidence, is_payout, import_batch_id, ignored, notes, created_at
-          ) VALUES (
-            $1, $2, $3, $4, $5, $6,
-            $7, $8, NULL, NULL, NULL, 0, $9, 0, NULL, $10
-          )`,
-          [
-            crypto.randomUUID(),
-            row.transaction_date,
-            row.value_date,
-            row.amount,
-            dbDescription(row.description),
-            row.counterparty_name,
-            row.counterparty_iban,
-            row.transaction_type,
-            batchId,
-            timestamp,
-          ],
-        );
-        result.imported++;
-      } catch (error) {
-        const message = `Zeile ${row.rowNumber}: übersprungen (${error instanceof Error ? error.message : String(error)})`;
-        console.error('N26 CSV row insert failed', {
-          rowNumber: row.rowNumber,
-          transactionDate: row.transaction_date,
-          valueDate: row.value_date,
-          amount: row.amount,
-          description: row.description,
-          counterpartyName: row.counterparty_name,
-          counterpartyIban: row.counterparty_iban,
-          transactionType: row.transaction_type,
-          error,
-        });
+      if (duplicateRows.length > 0) {
         result.skipped++;
-        result.skippedRows.push(message);
-        result.errors.push(message);
+        result.skippedRows.push(`Zeile ${row.rowNumber}: übersprungen (Duplikat)`);
         continue;
       }
-    }
 
-    await db.execute(
-      'UPDATE import_batches SET transaction_count = $1 WHERE id = $2',
-      [result.imported, batchId],
-    );
-    await db.execute('COMMIT');
-  } catch (error) {
-    await db.execute('ROLLBACK');
-    throw new Error(
-      `Bankimport konnte nicht gespeichert werden: ${error instanceof Error ? error.message : String(error)}`,
-    );
+      await db.execute(
+        `INSERT INTO bank_transactions (
+          id, transaction_date, value_date, amount, description, counterparty_name,
+          counterparty_iban, transaction_type, matched_order_id, matched_expense_id,
+          match_confidence, is_payout, import_batch_id, ignored, notes, created_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6,
+          $7, $8, NULL, NULL, NULL, 0, $9, 0, NULL, $10
+        )`,
+        [
+          crypto.randomUUID(),
+          row.transaction_date,
+          row.value_date,
+          row.amount,
+          dbDescription(row.description),
+          row.counterparty_name,
+          row.counterparty_iban,
+          row.transaction_type,
+          batchId,
+          timestamp,
+        ],
+      );
+      result.imported++;
+    } catch (error) {
+      const message = `Zeile ${row.rowNumber}: übersprungen (${error instanceof Error ? error.message : String(error)})`;
+      console.error('N26 CSV row insert failed', {
+        rowNumber: row.rowNumber,
+        transactionDate: row.transaction_date,
+        valueDate: row.value_date,
+        amount: row.amount,
+        description: row.description,
+        counterpartyName: row.counterparty_name,
+        counterpartyIban: row.counterparty_iban,
+        transactionType: row.transaction_type,
+        error,
+      });
+      result.skipped++;
+      result.skippedRows.push(message);
+      result.errors.push(message);
+      continue;
+    }
   }
+
+  await db.execute('UPDATE import_batches SET transaction_count = $1 WHERE id = $2', [
+    result.imported,
+    batchId,
+  ]);
 
   return result;
 }
