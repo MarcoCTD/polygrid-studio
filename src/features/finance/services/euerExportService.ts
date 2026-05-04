@@ -355,33 +355,6 @@ export async function getEuerExportPreview(
       range.dateFrom,
       range.dateTo,
     ])
-    .then(async (rows) => {
-      const resultCount = Number(rows[0]?.count ?? 0);
-      const sampleExpenseRows =
-        resultCount === 0
-          ? await db.select<
-              {
-                date: string | null;
-                amount_gross: number | string | null;
-                tax_relevant: number | string | boolean | null;
-                deleted_at: string | null;
-              }[]
-            >(
-              `SELECT date, amount_gross, tax_relevant, deleted_at
-               FROM expenses
-               WHERE deleted_at IS NULL OR deleted_at = ''
-               LIMIT 10`,
-            )
-          : [];
-      console.log('EÜR preview expense query', {
-        dateFrom: range.dateFrom,
-        dateTo: range.dateTo,
-        sql: EXPENSE_PREVIEW_QUERY,
-        resultCount,
-        sampleExpenseRows,
-      });
-      return rows;
-    })
     .catch((error) => {
       console.error('EÜR preview expense query failed', {
         dateFrom: range.dateFrom,

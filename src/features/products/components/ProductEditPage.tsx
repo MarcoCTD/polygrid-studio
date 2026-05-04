@@ -75,11 +75,6 @@ export function ProductEditPage() {
         }
         setProduct(data);
         const formValues = productToFormValues(data);
-        console.log('[EditPage] Resetting form with DB data', {
-          productId,
-          name: formValues.name,
-          status: formValues.status,
-        });
         form.reset(formValues);
         setFormReady(true);
       } catch (err) {
@@ -108,13 +103,6 @@ export function ProductEditPage() {
         if (updated) setProduct(updated);
       });
     },
-  });
-
-  console.log('[EditPage] Render', {
-    isLoading,
-    formReady,
-    saveStatus,
-    productId,
   });
 
   // Escape → back to list

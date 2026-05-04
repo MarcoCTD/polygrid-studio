@@ -62,15 +62,8 @@ export function useAutoSave({
   const watchedValues = useWatch({ control: form.control });
 
   useEffect(() => {
-    console.log('[AutoSave] Effect triggered', {
-      enabled,
-      hasInitialized: hasInitialized.current,
-      productId,
-    });
-
     // Don't do anything while data is still loading
     if (!enabled) {
-      console.log('[AutoSave] Skipped: not enabled (still loading)');
       return;
     }
 
@@ -80,38 +73,24 @@ export function useAutoSave({
     if (!hasInitialized.current) {
       hasInitialized.current = true;
       lastSavedData.current = currentJson;
-      console.log('[AutoSave] Initialized with loaded data snapshot', {
-        dataLength: currentJson.length,
-      });
       return;
     }
 
     // Check if data actually changed from last saved/loaded snapshot
     if (currentJson === lastSavedData.current) {
-      console.log('[AutoSave] Skipped: data unchanged from snapshot');
       return;
     }
-
-    console.log('[AutoSave] Data changed, scheduling debounced save');
 
     clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
       async function save() {
         const rawData = watchedValues as Record<string, unknown>;
-        console.log('[AutoSave] Debounce fired, validating...', {
-          nameField: rawData.name,
-          categoryField: rawData.category,
-          productId,
-        });
 
         // Convert empty strings → undefined so partial schema skips them
         const prepared = prepareForPartialValidation(rawData);
 
         const result = productUpdateSchema.safeParse(prepared);
         if (!result.success) {
-          console.log('[AutoSave] Validation FAILED', {
-            errors: result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
-          });
           setSaveStatus('validation-error');
           const messages = result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`);
           setLastError(messages.join(', '));
@@ -130,8 +109,6 @@ export function useAutoSave({
           return;
         }
 
-        console.log('[AutoSave] Validation passed');
-
         // Clear any previous validation errors from form
         form.clearErrors();
 
@@ -144,22 +121,14 @@ export function useAutoSave({
         }
 
         if (Object.keys(cleanData).length === 0) {
-          console.log('[AutoSave] No clean data to save');
           return;
         }
 
         setSaveStatus('saving');
         setLastError(null);
 
-        console.log('[AutoSave] Calling DB update', {
-          productId,
-          fieldCount: Object.keys(cleanData).length,
-          fields: Object.keys(cleanData),
-        });
-
         try {
           await updateProduct(productId, cleanData as ProductUpdate);
-          console.log('[AutoSave] DB update SUCCESS');
           setSaveStatus('saved');
           lastSavedData.current = JSON.stringify(watchedValues);
           pendingData.current = null;
@@ -185,7 +154,6 @@ export function useAutoSave({
     if (!prevEnabled.current && enabled) {
       // enabled just became true — fresh start
       hasInitialized.current = false;
-      console.log('[AutoSave] Enabled transition: resetting initialization');
     }
     prevEnabled.current = enabled;
   }, [enabled]);
@@ -196,10 +164,8 @@ export function useAutoSave({
       const data = pendingData.current;
       setSaveStatus('saving');
       setLastError(null);
-      console.log('[AutoSave] Retrying save...');
       updateProduct(productId, data)
         .then(() => {
-          console.log('[AutoSave] Retry SUCCESS');
           setSaveStatus('saved');
           lastSavedData.current = JSON.stringify(data);
           pendingData.current = null;

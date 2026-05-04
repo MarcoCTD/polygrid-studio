@@ -61,8 +61,16 @@ function now(): string {
   return new Date().toISOString();
 }
 
+function todayISODate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function dateYear(isoDate: string): number {
   return Number.parseInt(isoDate.slice(0, 4), 10);
+}
+
+function statusSetsPaymentDate(status: OrderStatus | undefined): boolean {
+  return status === 'paid' || status === 'completed';
 }
 
 function rowToOrder(row: OrderRow): Order {
@@ -250,8 +258,10 @@ export async function createOrder(data: NewOrderInput): Promise<Order> {
     const id = crypto.randomUUID();
     const timestamp = now();
     const status = input.status ?? (input.payment_received_date ? 'paid' : 'ordered');
+    const paymentReceivedDate =
+      input.payment_received_date ?? (statusSetsPaymentDate(status) ? todayISODate() : null);
     const paymentStatus =
-      input.payment_status ?? (input.payment_received_date ? 'paid' : 'pending');
+      input.payment_status ?? (paymentReceivedDate ? 'paid' : 'pending');
     const shippingStatus = input.shipping_status ?? 'not_shipped';
     const materialCost = input.material_cost ?? (await getProductMaterialCost(input.product_id));
     const platformFee = input.platform_fee ?? (await getPlatformFee(input.platform, input.sale_price));
@@ -290,7 +300,7 @@ export async function createOrder(data: NewOrderInput): Promise<Order> {
           input.payout_amount ?? null,
           status,
           paymentStatus,
-          input.payment_received_date ?? null,
+          paymentReceivedDate,
           shippingStatus,
           input.tracking_number ?? null,
           input.order_date,
@@ -327,9 +337,18 @@ export async function updateOrder(id: string, data: UpdateOrderInput): Promise<O
     const existing = await getOrderById(id);
     if (!existing) throw new Error(`Auftrag ${id} nicht gefunden.`);
 
-    UpdateOrderSchema.parse({ ...data, id, tax_locked: existing.tax_locked });
+    const normalizedData: UpdateOrderInput = { ...data };
+    if (
+      statusSetsPaymentDate(normalizedData.status) &&
+      existing.payment_received_date === null &&
+      normalizedData.payment_received_date === undefined
+    ) {
+      normalizedData.payment_received_date = todayISODate();
+    }
 
-    const updates = Object.entries(data).filter(
+    UpdateOrderSchema.parse({ ...normalizedData, id, tax_locked: existing.tax_locked });
+
+    const updates = Object.entries(normalizedData).filter(
       ([key, value]) => value !== undefined && UPDATE_FIELD_SET.has(key),
     );
 
@@ -346,7 +365,7 @@ export async function updateOrder(id: string, data: UpdateOrderInput): Promise<O
 
     params.push(id);
     const db = getDatabase();
-    const events = eventChanges(existing, data);
+    const events = eventChanges(existing, normalizedData);
 
     await db.execute(
       `UPDATE orders SET ${setClauses.join(', ')} WHERE id = $${params.length}`,
