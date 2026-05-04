@@ -92,6 +92,13 @@ const EXPENSE_PREVIEW_QUERY = `SELECT COUNT(*) AS count, SUM(amount_gross) AS to
          AND substr(date, 1, 10) >= $1
          AND substr(date, 1, 10) <= $2`;
 
+const ORDER_REVENUE_DATE_EXPR = `CASE
+  WHEN o.payment_received_date IS NULL OR o.payment_received_date = '' THEN substr(o.order_date, 1, 10)
+  WHEN length(o.payment_received_date) >= 10 AND substr(o.payment_received_date, 3, 1) = '.' THEN
+    substr(o.payment_received_date, 7, 4) || '-' || substr(o.payment_received_date, 4, 2) || '-' || substr(o.payment_received_date, 1, 2)
+  ELSE substr(o.payment_received_date, 1, 10)
+END`;
+
 function rowToOrder(row: Row): OrderListItem {
   return {
     id: row.id as string,
@@ -125,8 +132,10 @@ function rowToOrder(row: Row): OrderListItem {
 }
 
 function rowToExportOrder(row: Row): ExportOrder {
+  const order = rowToOrder(row);
   return {
-    ...rowToOrder(row),
+    ...order,
+    payment_received_date: (row.euer_payment_date as string | null | undefined) ?? order.order_date,
     bank_match_confidence: (row.bank_match_confidence as string | null | undefined) ?? null,
   };
 }
@@ -254,16 +263,16 @@ async function loadOrders(dateFrom: string, dateTo: string): Promise<ExportOrder
   const range = normalizeDateRange(dateFrom, dateTo);
   const statusPlaceholders = EARNING_STATUSES.map((_, index) => `$${index + 3}`).join(', ');
   const rows = await getDatabase().select<Row[]>(
-    `SELECT o.*, p.name AS product_name, bt.match_confidence AS bank_match_confidence
+    `SELECT o.*, ${ORDER_REVENUE_DATE_EXPR} AS euer_payment_date,
+       p.name AS product_name, bt.match_confidence AS bank_match_confidence
      FROM orders o
      LEFT JOIN products p ON p.id = o.product_id
      LEFT JOIN bank_transactions bt ON bt.id = o.bank_match_id
      WHERE o.deleted_at IS NULL
-       AND o.payment_received_date IS NOT NULL
-       AND o.payment_received_date >= $1
-       AND o.payment_received_date <= $2
+       AND ${ORDER_REVENUE_DATE_EXPR} >= $1
+       AND ${ORDER_REVENUE_DATE_EXPR} <= $2
        AND o.status IN (${statusPlaceholders})
-     ORDER BY o.payment_received_date ASC, o.receipt_number ASC`,
+     ORDER BY euer_payment_date ASC, o.receipt_number ASC`,
     [range.dateFrom, range.dateTo, ...EARNING_STATUSES],
   );
   return rows.map(rowToExportOrder);
@@ -338,12 +347,11 @@ export async function getEuerExportPreview(
   const incomePromise = db
     .select<{ count: number; total: number | null }[]>(
       `SELECT COUNT(*) AS count, SUM(sale_price + COALESCE(shipping_revenue, 0)) AS total
-       FROM orders
-       WHERE deleted_at IS NULL
-         AND payment_received_date IS NOT NULL
-         AND payment_received_date >= $1
-         AND payment_received_date <= $2
-         AND status IN (${statusPlaceholders})`,
+       FROM orders o
+       WHERE o.deleted_at IS NULL
+         AND ${ORDER_REVENUE_DATE_EXPR} >= $1
+         AND ${ORDER_REVENUE_DATE_EXPR} <= $2
+         AND o.status IN (${statusPlaceholders})`,
       [range.dateFrom, range.dateTo, ...EARNING_STATUSES],
     )
     .catch((error) => {
