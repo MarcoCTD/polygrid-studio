@@ -431,7 +431,7 @@ function MappingStep({
                   onValueChange={(value) => onMappingChange(header, value as ExpenseField)}
                 >
                   <SelectTrigger className="w-56">
-                    <SelectValue />
+                    <SelectValue>{FIELD_LABELS[mapping[header] ?? 'ignore']}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {FIELD_OPTIONS.map((field) => (

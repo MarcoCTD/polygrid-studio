@@ -678,66 +678,59 @@ export async function confirmMatch(
   const transaction = await getTransactionById(transactionId);
   if (!transaction) throw new Error('Banktransaktion nicht gefunden');
 
-  await db.execute('BEGIN IMMEDIATE');
-  try {
-    if (target.orderId) {
-      const orderRows = await db.select<Row[]>(
-        'SELECT id, receipt_number, status FROM orders WHERE id = $1 LIMIT 1',
-        [target.orderId],
-      );
-      const order = orderRows[0];
-      if (!order) throw new Error('Auftrag nicht gefunden');
+  if (target.orderId) {
+    const orderRows = await db.select<Row[]>(
+      'SELECT id, receipt_number, status FROM orders WHERE id = $1 LIMIT 1',
+      [target.orderId],
+    );
+    const order = orderRows[0];
+    if (!order) throw new Error('Auftrag nicht gefunden');
 
-      await db.execute(
-        `UPDATE bank_transactions
-         SET matched_order_id = $1, matched_expense_id = NULL, match_confidence = 'manual'
-         WHERE id = $2`,
-        [target.orderId, transactionId],
-      );
-      await db.execute(
-        `UPDATE orders
-         SET payment_received_date = $1, bank_match_id = $2, payment_status = 'paid', updated_at = $3
-         WHERE id = $4`,
-        [transaction.transaction_date, transactionId, now(), target.orderId],
-      );
-      await db.execute('COMMIT');
-      return {
-        transactionId,
-        orderId: target.orderId,
-        expenseId: null,
-        payoutOrderCount: 0,
-        suggestPaidStatus: order.status === 'ordered',
-        receiptNumber: order.receipt_number as string,
-      };
-    }
-
-    if (target.expenseId) {
-      await db.execute(
-        `UPDATE bank_transactions
-         SET matched_order_id = NULL, matched_expense_id = $1, match_confidence = 'manual'
-         WHERE id = $2`,
-        [target.expenseId, transactionId],
-      );
-      await db.execute(
-        'UPDATE expenses SET bank_match_id = $1, updated_at = $2 WHERE id = $3',
-        [transactionId, now(), target.expenseId],
-      );
-      await db.execute('COMMIT');
-      return {
-        transactionId,
-        orderId: null,
-        expenseId: target.expenseId,
-        payoutOrderCount: 0,
-        suggestPaidStatus: false,
-        receiptNumber: null,
-      };
-    }
-
-    throw new Error('Kein Match-Ziel angegeben');
-  } catch (error) {
-    await db.execute('ROLLBACK');
-    throw error;
+    await db.execute(
+      `UPDATE bank_transactions
+       SET matched_order_id = $1, matched_expense_id = NULL, match_confidence = 'manual'
+       WHERE id = $2`,
+      [target.orderId, transactionId],
+    );
+    await db.execute(
+      `UPDATE orders
+       SET payment_received_date = $1, bank_match_id = $2, payment_status = 'paid', updated_at = $3
+       WHERE id = $4`,
+      [transaction.transaction_date, transactionId, now(), target.orderId],
+    );
+    return {
+      transactionId,
+      orderId: target.orderId,
+      expenseId: null,
+      payoutOrderCount: 0,
+      suggestPaidStatus: order.status === 'ordered',
+      receiptNumber: order.receipt_number as string,
+    };
   }
+
+  if (target.expenseId) {
+    await db.execute(
+      `UPDATE bank_transactions
+       SET matched_order_id = NULL, matched_expense_id = $1, match_confidence = 'manual'
+       WHERE id = $2`,
+      [target.expenseId, transactionId],
+    );
+    await db.execute('UPDATE expenses SET bank_match_id = $1, updated_at = $2 WHERE id = $3', [
+      transactionId,
+      now(),
+      target.expenseId,
+    ]);
+    return {
+      transactionId,
+      orderId: null,
+      expenseId: target.expenseId,
+      payoutOrderCount: 0,
+      suggestPaidStatus: false,
+      receiptNumber: null,
+    };
+  }
+
+  throw new Error('Kein Match-Ziel angegeben');
 }
 
 export async function confirmPayoutMatch(
@@ -748,67 +741,53 @@ export async function confirmPayoutMatch(
   const transaction = await getTransactionById(transactionId);
   if (!transaction) throw new Error('Banktransaktion nicht gefunden');
 
-  await db.execute('BEGIN IMMEDIATE');
-  try {
-    await db.execute('DELETE FROM bank_payout_orders WHERE bank_transaction_id = $1', [
-      transactionId,
-    ]);
+  await db.execute('DELETE FROM bank_payout_orders WHERE bank_transaction_id = $1', [
+    transactionId,
+  ]);
 
-    for (const allocation of allocations) {
-      await db.execute(
-        `INSERT INTO bank_payout_orders (
+  for (const allocation of allocations) {
+    await db.execute(
+      `INSERT INTO bank_payout_orders (
           id, bank_transaction_id, order_id, allocated_amount, created_at
         ) VALUES ($1, $2, $3, $4, $5)`,
-        [crypto.randomUUID(), transactionId, allocation.orderId, allocation.allocatedAmount, now()],
-      );
-      await db.execute(
-        `UPDATE orders
+      [crypto.randomUUID(), transactionId, allocation.orderId, allocation.allocatedAmount, now()],
+    );
+    await db.execute(
+      `UPDATE orders
          SET payment_received_date = $1, bank_match_id = $2, payment_status = 'paid', updated_at = $3
          WHERE id = $4`,
-        [transaction.transaction_date, transactionId, now(), allocation.orderId],
-      );
-    }
+      [transaction.transaction_date, transactionId, now(), allocation.orderId],
+    );
+  }
 
-    await db.execute(
-      `UPDATE bank_transactions
+  await db.execute(
+    `UPDATE bank_transactions
        SET is_payout = 1, match_confidence = 'manual', matched_order_id = NULL, matched_expense_id = NULL
        WHERE id = $1`,
-      [transactionId],
-    );
-    await db.execute('COMMIT');
+    [transactionId],
+  );
 
-    return {
-      transactionId,
-      orderId: null,
-      expenseId: null,
-      payoutOrderCount: allocations.length,
-      suggestPaidStatus: false,
-      receiptNumber: null,
-    };
-  } catch (error) {
-    await db.execute('ROLLBACK');
-    throw error;
-  }
+  return {
+    transactionId,
+    orderId: null,
+    expenseId: null,
+    payoutOrderCount: allocations.length,
+    suggestPaidStatus: false,
+    receiptNumber: null,
+  };
 }
 
 export async function rejectMatch(transactionId: string): Promise<void> {
   const db = getDatabase();
-  await db.execute('BEGIN IMMEDIATE');
-  try {
-    await db.execute(
-      `UPDATE bank_transactions
+  await db.execute(
+    `UPDATE bank_transactions
        SET match_confidence = 'unmatched', matched_order_id = NULL, matched_expense_id = NULL
        WHERE id = $1`,
-      [transactionId],
-    );
-    await db.execute('DELETE FROM bank_payout_orders WHERE bank_transaction_id = $1', [
-      transactionId,
-    ]);
-    await db.execute('COMMIT');
-  } catch (error) {
-    await db.execute('ROLLBACK');
-    throw error;
-  }
+    [transactionId],
+  );
+  await db.execute('DELETE FROM bank_payout_orders WHERE bank_transaction_id = $1', [
+    transactionId,
+  ]);
 }
 
 export async function ignoreTransaction(transactionId: string): Promise<void> {

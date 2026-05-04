@@ -109,7 +109,7 @@ export function QuickExpenseForm({ onCreated, onMore }: QuickExpenseFormProps) {
               }}
             >
               <SelectTrigger className="w-full">
-                <SelectValue />
+                <SelectValue>{EXPENSE_CATEGORY_LABELS[field.value]}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {EXPENSE_CATEGORIES.map((category) => (

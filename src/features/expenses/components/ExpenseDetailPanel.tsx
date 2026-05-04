@@ -539,7 +539,13 @@ function OverviewTab({ form }: { form: UseFormReturn<ExpenseUpdateWithId> }) {
               }}
             >
               <SelectTrigger className="w-full">
-                <SelectValue />
+                <SelectValue>
+                  {recurringInterval === 'quarterly'
+                    ? 'Quartalsweise'
+                    : recurringInterval === 'yearly'
+                      ? 'Jährlich'
+                      : 'Monatlich'}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="monthly">Monatlich</SelectItem>

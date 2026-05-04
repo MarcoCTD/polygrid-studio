@@ -15,6 +15,19 @@ import { generateEuerExport, getEuerExportPreview, type EuerExportPreview } from
 type PeriodMode = 'month' | 'quarter' | 'year' | 'custom';
 type ExportFormat = 'csv' | 'xlsx' | 'both';
 
+const PERIOD_LABELS: Record<PeriodMode, string> = {
+  month: 'Monat',
+  quarter: 'Quartal',
+  year: 'Jahr',
+  custom: 'Benutzerdefiniert',
+};
+
+const FORMAT_LABELS: Record<ExportFormat, string> = {
+  csv: 'CSV',
+  xlsx: 'Excel',
+  both: 'Beides',
+};
+
 function currentYear(): number {
   return new Date().getFullYear();
 }
@@ -143,7 +156,7 @@ export function EuerExportPanel() {
               onValueChange={(value) => setPeriodMode(value as PeriodMode)}
             >
               <SelectTrigger className="w-full">
-                <SelectValue />
+                <SelectValue>{PERIOD_LABELS[periodMode]}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="month">Monat</SelectItem>
@@ -183,7 +196,7 @@ export function EuerExportPanel() {
               <span className="font-medium text-text-secondary">Quartal</span>
               <Select value={String(quarter)} onValueChange={(value) => setQuarter(Number(value))}>
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>Q{quarter}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="1">Q1</SelectItem>
@@ -220,7 +233,7 @@ export function EuerExportPanel() {
             <span className="font-medium text-text-secondary">Format</span>
             <Select value={format} onValueChange={(value) => setFormat(value as ExportFormat)}>
               <SelectTrigger className="w-full">
-                <SelectValue />
+                <SelectValue>{FORMAT_LABELS[format]}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="csv">CSV</SelectItem>

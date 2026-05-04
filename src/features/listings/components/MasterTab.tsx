@@ -342,7 +342,7 @@ export function MasterTab({ listing, form }: MasterTabProps) {
               }}
             >
               <SelectTrigger className="w-full">
-                <SelectValue />
+                <SelectValue>{LISTING_STATUS_LABELS[watch('status')]}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {STATUS_OPTIONS.map((status) => (

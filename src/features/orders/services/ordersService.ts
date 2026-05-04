@@ -175,6 +175,11 @@ function createPlaceholders(start: number, count: number): string {
   return Array.from({ length: count }, (_, index) => `$${start + index}`).join(', ');
 }
 
+function isUniqueConstraintError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /unique|constraint/i.test(message);
+}
+
 function buildOrderWhere(filters?: OrderFilters): { where: string; params: unknown[] } {
   const clauses: string[] = [];
   const params: unknown[] = [];
@@ -250,17 +255,12 @@ export async function createOrder(data: NewOrderInput): Promise<Order> {
     const shippingStatus = input.shipping_status ?? 'not_shipped';
     const materialCost = input.material_cost ?? (await getProductMaterialCost(input.product_id));
     const platformFee = input.platform_fee ?? (await getPlatformFee(input.platform, input.sale_price));
+    let receiptNumber = input.receipt_number ?? (await generateReceiptNumber(db, dateYear(input.order_date)));
 
-    await db.execute('BEGIN IMMEDIATE');
-    try {
-      const receiptNumber =
-        input.receipt_number ??
-        (await generateReceiptNumber(db, dateYear(input.order_date), {
-          useExistingTransaction: true,
-        }));
-
-      await db.execute(
-        `INSERT INTO orders (
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await db.execute(
+          `INSERT INTO orders (
         id, receipt_number, external_order_id, customer_name, platform,
         product_id, variant, quantity, sale_price, shipping_revenue,
         shipping_cost, material_cost, platform_fee, payout_amount, status,
@@ -302,11 +302,14 @@ export async function createOrder(data: NewOrderInput): Promise<Order> {
           null,
         ],
       );
-      await createOrderEvent(db, id, 'status_change', null, status, timestamp);
-      await db.execute('COMMIT');
-    } catch (error) {
-      await db.execute('ROLLBACK');
-      throw error;
+        await createOrderEvent(db, id, 'status_change', null, status, timestamp);
+        break;
+      } catch (error) {
+        if (input.receipt_number || !isUniqueConstraintError(error) || attempt === 2) {
+          throw error;
+        }
+        receiptNumber = await generateReceiptNumber(db, dateYear(input.order_date));
+      }
     }
 
     const order = await getOrderById(id);
@@ -345,28 +348,20 @@ export async function updateOrder(id: string, data: UpdateOrderInput): Promise<O
     const db = getDatabase();
     const events = eventChanges(existing, data);
 
-    await db.execute('BEGIN IMMEDIATE');
-    try {
-      await db.execute(
-        `UPDATE orders SET ${setClauses.join(', ')} WHERE id = $${params.length}`,
-        params,
+    await db.execute(
+      `UPDATE orders SET ${setClauses.join(', ')} WHERE id = $${params.length}`,
+      params,
+    );
+
+    for (const event of events) {
+      await createOrderEvent(
+        db,
+        id,
+        event.event_type,
+        event.from_value,
+        event.to_value,
+        timestamp,
       );
-
-      for (const event of events) {
-        await createOrderEvent(
-          db,
-          id,
-          event.event_type,
-          event.from_value,
-          event.to_value,
-          timestamp,
-        );
-      }
-
-      await db.execute('COMMIT');
-    } catch (error) {
-      await db.execute('ROLLBACK');
-      throw error;
     }
 
     const updated = await getOrderById(id);

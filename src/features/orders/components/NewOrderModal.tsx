@@ -38,6 +38,10 @@ const PLATFORM_OPTIONS: { value: OrderPlatform; label: string }[] = [
   { value: 'direkt', label: 'Direkt' },
 ];
 
+function platformLabel(value: OrderPlatform | undefined): string {
+  return PLATFORM_OPTIONS.find((option) => option.value === value)?.label ?? 'Plattform wählen';
+}
+
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -164,7 +168,7 @@ export function NewOrderModal({ open, onOpenChange, onCreated }: NewOrderModalPr
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger className="w-full">
-                      <SelectValue />
+                      <SelectValue>{platformLabel(field.value)}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {PLATFORM_OPTIONS.map((option) => (
@@ -194,7 +198,12 @@ export function NewOrderModal({ open, onOpenChange, onCreated }: NewOrderModalPr
                     onValueChange={(value) => field.onChange(value === 'none' ? null : value)}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue />
+                      <SelectValue>
+                        {field.value
+                          ? products.find((product) => product.id === field.value)?.name ??
+                            'Produkt wählen'
+                          : 'Kein Produkt'}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Kein Produkt</SelectItem>

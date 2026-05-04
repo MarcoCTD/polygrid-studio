@@ -81,6 +81,21 @@ const FIELD_OPTIONS: BankField[] = [
   'amount',
 ];
 
+const WORKBENCH_FILTER_LABELS: Record<BankTransactionFilter, string> = {
+  all: 'Alle',
+  income: 'Eingänge',
+  expense: 'Ausgänge',
+};
+
+const MATCH_STATUS_LABELS: Record<string, string> = {
+  all: 'Alle Status',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+  manual: 'Manual',
+  unmatched: 'Unmatched',
+};
+
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat('de-DE').format(new Date(`${value.slice(0, 10)}T00:00:00`));
 }
@@ -318,7 +333,7 @@ export function BanktransaktionenPanel() {
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue>{FIELD_LABELS[mapping[header] ?? 'ignore']}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {FIELD_OPTIONS.map((field) => (
@@ -402,7 +417,7 @@ export function BanktransaktionenPanel() {
                 onValueChange={(value) => setWorkbenchFilter(value as BankTransactionFilter)}
               >
                 <SelectTrigger className="w-36">
-                  <SelectValue />
+                  <SelectValue>{WORKBENCH_FILTER_LABELS[workbenchFilter]}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Alle</SelectItem>
@@ -638,7 +653,13 @@ function AllTransactionsTable({
             }}
           >
             <SelectTrigger className="w-48">
-              <SelectValue />
+              <SelectValue>
+                {batchFilter === 'all'
+                  ? 'Alle Import-Batches'
+                  : batches.find((batch) => batch.id === batchFilter)?.filename ??
+                    batches.find((batch) => batch.id === batchFilter)?.imported_at.slice(0, 10) ??
+                    'Import-Batch'}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Alle Import-Batches</SelectItem>
@@ -656,7 +677,7 @@ function AllTransactionsTable({
             }}
           >
             <SelectTrigger className="w-40">
-              <SelectValue />
+              <SelectValue>{MATCH_STATUS_LABELS[statusFilter] ?? 'Status'}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Alle Status</SelectItem>

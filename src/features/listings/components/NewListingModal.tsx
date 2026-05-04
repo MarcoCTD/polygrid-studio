@@ -192,7 +192,9 @@ export function NewListingModal({
                 onValueChange={(value) => setInventoryMode(value as InventoryMode)}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>
+                    {inventoryMode === 'stock' ? 'Lagerbestand' : 'Auf Bestellung'}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="made_to_order">Auf Bestellung</SelectItem>

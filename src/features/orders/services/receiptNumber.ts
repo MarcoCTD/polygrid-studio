@@ -15,38 +15,21 @@ const reservedCounters = new WeakMap<object, Map<number, number>>();
 export async function generateReceiptNumber(
   db: ReceiptNumberDatabase,
   year: number,
-  options: { useExistingTransaction?: boolean } = {},
 ): Promise<string> {
-  return runExclusive(() => generateReceiptNumberInTransaction(db, year, options));
+  return runExclusive(() => generateReceiptNumberWithoutTransaction(db, year));
 }
 
-async function generateReceiptNumberInTransaction(
+async function generateReceiptNumberWithoutTransaction(
   db: ReceiptNumberDatabase,
   year: number,
-  options: { useExistingTransaction?: boolean },
 ): Promise<string> {
   validateYear(year);
 
-  if (options.useExistingTransaction) {
-    const maxCounter = await getMaxCounter(db, year);
-    const reservedCounter = getReservedCounter(db, year);
-    const nextCounter = Math.max(maxCounter, reservedCounter) + 1;
-    setReservedCounter(db, year, nextCounter);
-    return formatReceiptNumber(year, nextCounter);
-  }
-
-  await db.execute('BEGIN IMMEDIATE');
-  try {
-    const maxCounter = await getMaxCounter(db, year);
-    const reservedCounter = getReservedCounter(db, year);
-    const nextCounter = Math.max(maxCounter, reservedCounter) + 1;
-    setReservedCounter(db, year, nextCounter);
-    await db.execute('COMMIT');
-    return formatReceiptNumber(year, nextCounter);
-  } catch (err) {
-    await db.execute('ROLLBACK').catch(() => undefined);
-    throw err;
-  }
+  const maxCounter = await getMaxCounter(db, year);
+  const reservedCounter = getReservedCounter(db, year);
+  const nextCounter = Math.max(maxCounter, reservedCounter) + 1;
+  setReservedCounter(db, year, nextCounter);
+  return formatReceiptNumber(year, nextCounter);
 }
 
 async function getMaxCounter(db: ReceiptNumberDatabase, year: number): Promise<number> {

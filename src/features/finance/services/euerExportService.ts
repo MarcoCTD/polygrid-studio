@@ -355,12 +355,30 @@ export async function getEuerExportPreview(
       range.dateFrom,
       range.dateTo,
     ])
-    .then((rows) => {
+    .then(async (rows) => {
+      const resultCount = Number(rows[0]?.count ?? 0);
+      const sampleExpenseRows =
+        resultCount === 0
+          ? await db.select<
+              {
+                date: string | null;
+                amount_gross: number | string | null;
+                tax_relevant: number | string | boolean | null;
+                deleted_at: string | null;
+              }[]
+            >(
+              `SELECT date, amount_gross, tax_relevant, deleted_at
+               FROM expenses
+               WHERE deleted_at IS NULL OR deleted_at = ''
+               LIMIT 10`,
+            )
+          : [];
       console.log('EÜR preview expense query', {
         dateFrom: range.dateFrom,
         dateTo: range.dateTo,
         sql: EXPENSE_PREVIEW_QUERY,
-        resultCount: Number(rows[0]?.count ?? 0),
+        resultCount,
+        sampleExpenseRows,
       });
       return rows;
     })
@@ -476,26 +494,19 @@ async function applyTaxLock(
   if (orderIds.length === 0 && expenseIds.length === 0) return { orders: 0, expenses: 0 };
 
   const db = getDatabase();
-  await db.execute('BEGIN IMMEDIATE');
-  try {
-    if (orderIds.length > 0) {
-      await db.execute(
-        `UPDATE orders SET tax_locked = 1, updated_at = $1 WHERE id IN (${orderIds.map((_, index) => `$${index + 2}`).join(', ')})`,
-        [new Date().toISOString(), ...orderIds],
-      );
-    }
-    if (expenseIds.length > 0) {
-      await db.execute(
-        `UPDATE expenses SET tax_locked = 1, updated_at = $1 WHERE id IN (${expenseIds.map((_, index) => `$${index + 2}`).join(', ')})`,
-        [new Date().toISOString(), ...expenseIds],
-      );
-    }
-    await db.execute('COMMIT');
-    return { orders: orderIds.length, expenses: expenseIds.length };
-  } catch (error) {
-    await db.execute('ROLLBACK');
-    throw error;
+  if (orderIds.length > 0) {
+    await db.execute(
+      `UPDATE orders SET tax_locked = 1, updated_at = $1 WHERE id IN (${orderIds.map((_, index) => `$${index + 2}`).join(', ')})`,
+      [new Date().toISOString(), ...orderIds],
+    );
   }
+  if (expenseIds.length > 0) {
+    await db.execute(
+      `UPDATE expenses SET tax_locked = 1, updated_at = $1 WHERE id IN (${expenseIds.map((_, index) => `$${index + 2}`).join(', ')})`,
+      [new Date().toISOString(), ...expenseIds],
+    );
+  }
+  return { orders: orderIds.length, expenses: expenseIds.length };
 }
 
 export async function generateEuerExport(options: EuerExportOptions): Promise<EuerExportResult> {

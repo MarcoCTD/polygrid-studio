@@ -36,6 +36,11 @@ const PLATFORM_OPTIONS: { value: OrderPlatform; label: string }[] = [
   { value: 'direkt', label: 'Direkt' },
 ];
 
+const DELETED_FILTER_LABELS: Record<'active' | 'deleted', string> = {
+  active: 'Aktive Aufträge',
+  deleted: 'Gelöschte anzeigen',
+};
+
 function toggleValue<T extends string>(values: T[], value: T): T[] {
   return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
 }
@@ -123,7 +128,9 @@ export function OrdersToolbar({ filters, onFiltersChange }: OrdersToolbarProps) 
         onValueChange={(value) => onFiltersChange({ ...filters, showDeleted: value === 'deleted' })}
       >
         <SelectTrigger size="sm" className="w-44">
-          <SelectValue />
+          <SelectValue>
+            {DELETED_FILTER_LABELS[filters.showDeleted ? 'deleted' : 'active']}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="active">Aktive Aufträge</SelectItem>

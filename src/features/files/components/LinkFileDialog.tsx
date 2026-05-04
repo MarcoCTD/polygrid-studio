@@ -240,7 +240,10 @@ export function LinkFileDialog({
               <Label className="text-xs text-text-secondary">Dateityp</Label>
               <Select value={fileType} onValueChange={(value) => setFileType(value as FileType)}>
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>
+                    {FILE_TYPE_OPTIONS.find((option) => option.value === fileType)?.label ??
+                      'Dateityp wählen'}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {FILE_TYPE_OPTIONS.map((option) => (

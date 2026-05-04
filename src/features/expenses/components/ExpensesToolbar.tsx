@@ -26,6 +26,19 @@ export interface ExpensesFilterState {
   includeDeleted: boolean;
 }
 
+const TAX_RELEVANT_LABELS: Record<ExpensesFilterState['taxRelevant'], string> = {
+  all: 'Alle',
+  yes: 'Ja',
+  no: 'Nein',
+};
+
+const PERIOD_LABELS: Record<ExpensePeriod, string> = {
+  current_month: 'Dieser Monat',
+  previous_month: 'Letzter Monat',
+  current_year: 'Dieses Jahr',
+  custom: 'Benutzerdefiniert',
+};
+
 interface ExpensesToolbarProps {
   filters: ExpensesFilterState;
   totalCount: number;
@@ -131,7 +144,7 @@ export function ExpensesToolbar({
                   }}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue>{TAX_RELEVANT_LABELS[filters.taxRelevant]}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Alle</SelectItem>
@@ -154,7 +167,7 @@ export function ExpensesToolbar({
                   }}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue>{PERIOD_LABELS[filters.period]}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="current_month">Dieser Monat</SelectItem>

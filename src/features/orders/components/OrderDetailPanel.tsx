@@ -728,12 +728,14 @@ function SelectField({
   disabled?: boolean;
   onChange: (value: string | null) => void;
 }) {
+  const selectedLabel = options.find((option) => option.value === value)?.label ?? 'Auswählen';
+
   return (
     <div className="space-y-1.5 text-sm">
       <span className="font-medium text-text-secondary">{label}</span>
       <Select value={value} onValueChange={onChange} disabled={disabled}>
         <SelectTrigger className="w-full">
-          <SelectValue />
+          <SelectValue>{selectedLabel}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           {options.map((option) => (

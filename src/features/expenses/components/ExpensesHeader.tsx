@@ -78,7 +78,10 @@ export function ExpensesHeader({
             }}
           >
             <SelectTrigger className="w-44">
-              <SelectValue />
+              <SelectValue>
+                {monthOptions().find((option) => option.value === selectedMonth)?.label ??
+                  formatMonthLabel(selectedMonth)}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent align="end">
               {monthOptions().map((option) => (
