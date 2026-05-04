@@ -82,7 +82,10 @@ const EUER_CATEGORY_BY_EXPENSE: Record<ExpenseCategory, string> = {
 };
 
 type Row = Record<string, unknown>;
-type ExportOrder = OrderListItem & { bank_match_confidence: string | null };
+type ExportOrder = OrderListItem & {
+  bank_match_confidence: string | null;
+  has_order_file_link: boolean;
+};
 type ExportExpense = Expense & { bank_match_confidence: string | null };
 
 const EXPENSE_PREVIEW_QUERY = `SELECT COUNT(*) AS count, SUM(amount_gross) AS total
@@ -137,6 +140,7 @@ function rowToExportOrder(row: Row): ExportOrder {
     ...order,
     payment_received_date: (row.euer_payment_date as string | null | undefined) ?? order.order_date,
     bank_match_confidence: (row.bank_match_confidence as string | null | undefined) ?? null,
+    has_order_file_link: Boolean(row.has_order_file_link),
   };
 }
 
@@ -223,7 +227,8 @@ function platformLabel(platform: OrderPlatform): string {
 }
 
 function expenseReceiptNumber(expense: Expense): string {
-  return `E-${expense.date.slice(0, 4)}-${expense.id.slice(0, 8)}`;
+  const year = (expense.created_at || expense.date).slice(0, 4);
+  return `A-${year}-${expense.id.slice(0, 4)}`;
 }
 
 function escapeCsv(value: string): string {
@@ -264,6 +269,11 @@ async function loadOrders(dateFrom: string, dateTo: string): Promise<ExportOrder
   const statusPlaceholders = EARNING_STATUSES.map((_, index) => `$${index + 3}`).join(', ');
   const rows = await getDatabase().select<Row[]>(
     `SELECT o.*, ${ORDER_REVENUE_DATE_EXPR} AS euer_payment_date,
+       EXISTS (
+         SELECT 1 FROM file_links fl
+         WHERE fl.entity_type = 'order' AND fl.entity_id = o.id
+         LIMIT 1
+       ) AS has_order_file_link,
        p.name AS product_name, bt.match_confidence AS bank_match_confidence
      FROM orders o
      LEFT JOIN products p ON p.id = o.product_id
@@ -314,7 +324,7 @@ export async function loadFinanceBookings(
       category: 'Betriebseinnahmen aus Lieferungen und Leistungen',
       amount: order.sale_price + (order.shipping_revenue ?? 0),
       party: platformLabel(order.platform),
-      receiptAttached: true,
+      receiptAttached: Boolean(order.external_order_id?.trim()) || order.has_order_file_link,
       externalReference: order.external_order_id ?? '',
       bankMatchId: order.bank_match_id,
       bankMatchConfidence: order.bank_match_confidence,

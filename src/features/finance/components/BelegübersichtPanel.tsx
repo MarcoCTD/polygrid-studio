@@ -8,7 +8,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -111,9 +111,9 @@ export function BeleguebersichtPanel() {
         header: 'Beleg',
         cell: ({ row }) =>
           row.original.receiptAttached ? (
-            <CheckCircle2 className="size-4 text-emerald-600" />
+            <CheckCircle2 className="size-4 text-emerald-600" aria-label="Beleg vorhanden" />
           ) : (
-            <AlertCircle className="size-4 text-amber-600" />
+            <XCircle className="size-4 text-red-600" aria-label="Beleg fehlt" />
           ),
       },
       {
