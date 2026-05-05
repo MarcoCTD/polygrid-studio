@@ -95,7 +95,9 @@ function receiptIcon(expense: Expense) {
   }
 
   if (hasFlag && !hasPath) {
-    return <AlertCircle size={16} className="text-amber-500" aria-label="Belegstatus inkonsistent" />;
+    return (
+      <AlertCircle size={16} className="text-amber-500" aria-label="Belegstatus inkonsistent" />
+    );
   }
 
   return <XCircle size={16} className="text-text-muted" aria-label="Kein Beleg" />;
@@ -245,6 +247,7 @@ export function ExpensesTable({
     [onEditExpense, productNamesById],
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: expenses,
     columns,

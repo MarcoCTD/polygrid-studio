@@ -5,6 +5,7 @@ import { getMonthlyLimit, getMonthlySpent } from '../services/costTracker';
 import type { AIProviderName } from '../types';
 
 const PROVIDERS: AIProviderName[] = ['claude', 'openai', 'ollama'];
+const CLOUD_PROVIDERS: AIProviderName[] = ['claude', 'openai'];
 
 interface AIState {
   activeProvider: AIProviderName | null;
@@ -18,6 +19,7 @@ interface AIState {
   setActiveProvider: (provider: AIProviderName) => void;
   refreshBudget: () => Promise<void>;
   setLoading: (loading: boolean, action?: string) => void;
+  markProviderUnavailable: (provider: AIProviderName) => void;
 }
 
 async function preferredProvider(): Promise<AIProviderName | null> {
@@ -60,7 +62,9 @@ export const useAIStore = create<AIState>((set, get) => ({
     try {
       const [preferred, availability, monthlySpent, monthlyLimit] = await Promise.all([
         preferredProvider(),
-        Promise.all(PROVIDERS.map(async (provider) => ({ provider, ok: await providerAvailable(provider) }))),
+        Promise.all(
+          PROVIDERS.map(async (provider) => ({ provider, ok: await providerAvailable(provider) })),
+        ),
         getMonthlySpent(),
         getMonthlyLimit(),
       ]);
@@ -103,4 +107,33 @@ export const useAIStore = create<AIState>((set, get) => ({
       currentAction: loading ? (action ?? null) : null,
       error: loading ? null : get().error,
     }),
+
+  markProviderUnavailable: (provider) =>
+    set((state) => {
+      const availableProviders = state.availableProviders.filter((item) => item !== provider);
+      return {
+        availableProviders,
+        activeProvider:
+          state.activeProvider === provider
+            ? (availableProviders[0] ?? null)
+            : state.activeProvider,
+      };
+    }),
 }));
+
+export function getAIProviderFallbackChain(preferOllama = false): AIProviderName[] {
+  const { activeProvider, availableProviders } = useAIStore.getState();
+  const chain: AIProviderName[] = [];
+
+  if (preferOllama && availableProviders.includes('ollama')) chain.push('ollama');
+  if (activeProvider && availableProviders.includes(activeProvider)) chain.push(activeProvider);
+
+  for (const provider of CLOUD_PROVIDERS) {
+    if (availableProviders.includes(provider)) {
+      chain.push(provider);
+    }
+  }
+
+  if (!preferOllama && availableProviders.includes('ollama')) chain.push('ollama');
+  return Array.from(new Set(chain));
+}

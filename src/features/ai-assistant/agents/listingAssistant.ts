@@ -3,7 +3,7 @@ import type { Listing } from '@/features/listings/schemas';
 import { aiEstimateCost, aiGenerateStructured, aiGenerateText } from '../services/aiService';
 import { checkBudget, logAIJob } from '../services/costTracker';
 import { buildListingSystemPrompt, loadBrandSettings } from '../services/promptBuilder';
-import { useAIStore } from '../stores/aiStore';
+import { getAIProviderFallbackChain, useAIStore } from '../stores/aiStore';
 import type { AIAction, AIDiffResult, AIProviderName, AIResponse } from '../types';
 
 type ListingPlatform = 'etsy' | 'ebay' | 'kleinanzeigen';
@@ -57,83 +57,111 @@ function parseLines(text: string): string[] {
 }
 
 function parseStringArray(text: string): string[] {
-  const cleaned = text
-    .trim()
-    .replace(/^```(?:json)?/i, '')
-    .replace(/```$/i, '')
-    .trim();
-  const parsed: unknown = JSON.parse(cleaned);
-  if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === 'string')) {
-    throw new Error('KI-Antwort ist kein JSON-Array aus Strings.');
+  try {
+    const cleaned = text
+      .trim()
+      .replace(/^```(?:json)?/i, '')
+      .replace(/```$/i, '')
+      .trim();
+    const parsed: unknown = JSON.parse(cleaned);
+    if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === 'string')) {
+      return [];
+    }
+    return parsed;
+  } catch {
+    return [];
   }
-  return parsed;
-}
-
-function activeProvider(): AIProviderName {
-  return useAIStore.getState().activeProvider ?? 'ollama';
 }
 
 async function ensureBudget(provider: AIProviderName): Promise<void> {
   if (provider === 'ollama') return;
   const budget = await checkBudget();
   if (budget.isBlocked) {
-    throw new Error('KI-Budget fuer diesen Monat erreicht.');
+    throw new Error(
+      `KI-Budget erschöpft (${budget.spent.toFixed(2)} / ${budget.limit.toFixed(2)} EUR). Limit in den Einstellungen anpassen oder Ollama nutzen.`,
+    );
   }
 }
 
 async function runListingCall(params: {
   action: AIAction;
-  provider: AIProviderName;
   systemPrompt: string;
   userPrompt: string;
   structured: boolean;
   model?: string;
-}): Promise<{ response: AIResponse; jobId: string }> {
-  await ensureBudget(params.provider);
-  try {
-    const response = params.structured
-      ? await aiGenerateStructured(params.provider, params.systemPrompt, params.userPrompt, {
-          model: params.model,
-        })
-      : await aiGenerateText(params.provider, params.systemPrompt, params.userPrompt, {
-          model: params.model,
-        });
-    const estimatedCost = await aiEstimateCost(
-      response.provider,
-      response.model,
-      response.tokensInput,
-      response.tokensOutput,
-    );
-    const jobId = await logAIJob({
-      provider: params.provider,
-      model: response.model,
-      agent: 'listing_assistant',
-      action: params.action,
-      input: params.userPrompt,
-      output: response.text,
-      tokensUsed: response.tokensInput + response.tokensOutput,
-      durationMs: response.durationMs,
-      status: 'success',
-      estimatedCost,
-    });
-    await useAIStore.getState().refreshBudget();
-    return { response, jobId };
-  } catch (error) {
-    await logAIJob({
-      provider: params.provider,
-      model: params.model ?? 'unknown',
-      agent: 'listing_assistant',
-      action: params.action,
-      input: params.userPrompt,
-      output: null,
-      tokensUsed: null,
-      durationMs: null,
-      status: 'error',
-      errorMessage: error instanceof Error ? error.message : String(error),
-      estimatedCost: 0,
-    });
-    throw error;
+}): Promise<{ response: AIResponse; provider: AIProviderName; jobId: string }> {
+  let lastError: unknown = null;
+  const providers = getAIProviderFallbackChain();
+
+  if (providers.length === 0) {
+    throw new Error('Kein KI-Provider verfügbar. Bitte in den Einstellungen konfigurieren.');
   }
+
+  for (const provider of providers) {
+    try {
+      await ensureBudget(provider);
+      const response = params.structured
+        ? await aiGenerateStructured(provider, params.systemPrompt, params.userPrompt, {
+            model: params.model,
+          })
+        : await aiGenerateText(provider, params.systemPrompt, params.userPrompt, {
+            model: params.model,
+          });
+      const estimatedCost = await aiEstimateCost(
+        response.provider,
+        response.model,
+        response.tokensInput,
+        response.tokensOutput,
+      );
+      const jobId = await logAIJob({
+        provider,
+        model: response.model,
+        agent: 'listing_assistant',
+        action: params.action,
+        input: params.userPrompt,
+        output: response.text,
+        tokensUsed: response.tokensInput + response.tokensOutput,
+        durationMs: response.durationMs,
+        status: 'success',
+        estimatedCost,
+      });
+      await useAIStore.getState().refreshBudget();
+      return { response, provider, jobId };
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      if (
+        message.includes('API-Key ungültig') ||
+        message.includes('Provider nicht erreichbar') ||
+        message.includes('Ollama ist nicht erreichbar') ||
+        message.includes('Keine Internetverbindung') ||
+        message.includes('Timeout')
+      ) {
+        useAIStore.getState().markProviderUnavailable(provider);
+      }
+      try {
+        await logAIJob({
+          provider,
+          model: params.model ?? 'unknown',
+          agent: 'listing_assistant',
+          action: params.action,
+          input: params.userPrompt,
+          output: null,
+          tokensUsed: null,
+          durationMs: null,
+          status: 'error',
+          errorMessage: message,
+          estimatedCost: 0,
+        });
+      } catch {
+        // Logging darf die Fallback-Kette nicht blockieren.
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(String(lastError ?? 'KI-Aufruf fehlgeschlagen'));
 }
 
 export async function generateTitle(
@@ -143,7 +171,6 @@ export async function generateTitle(
   listing?: Listing,
 ): Promise<AIDiffResult> {
   const brand = await loadBrandSettings();
-  const provider = activeProvider();
   const systemPrompt = buildListingSystemPrompt(platform, language, brand);
   const userPrompt = [
     `Erstelle 3 SEO-optimierte Produkttitel fuer ${platform} (max. ${TITLE_LIMITS[platform]} Zeichen pro Titel).`,
@@ -151,9 +178,8 @@ export async function generateTitle(
     '',
     productContext(product, listing),
   ].join('\n');
-  const { response, jobId } = await runListingCall({
+  const { response, provider, jobId } = await runListingCall({
     action: 'generate_title',
-    provider,
     systemPrompt,
     userPrompt,
     structured: false,
@@ -184,7 +210,6 @@ export async function generateDescription(
   listing?: Listing,
 ): Promise<AIDiffResult> {
   const brand = await loadBrandSettings();
-  const provider = activeProvider();
   const systemPrompt = buildListingSystemPrompt(platform, language, brand);
   const userPrompt =
     style === 'short'
@@ -201,9 +226,8 @@ export async function generateDescription(
           '',
           productContext(product, listing),
         ].join('\n');
-  const { response, jobId } = await runListingCall({
+  const { response, provider, jobId } = await runListingCall({
     action: 'generate_description',
-    provider,
     systemPrompt,
     userPrompt,
     structured: false,
@@ -236,7 +260,6 @@ export async function generateTags(
   listing?: Listing,
 ): Promise<AIDiffResult> {
   const brand = await loadBrandSettings();
-  const provider = activeProvider();
   const systemPrompt = buildListingSystemPrompt(platform, language, brand);
   const userPrompt = [
     `Erstelle genau ${TAG_LIMITS[platform]} SEO-optimierte Tags fuer dieses ${platform}-Listing.`,
@@ -247,9 +270,8 @@ export async function generateTags(
     '',
     productContext(product, listing),
   ].join('\n');
-  const { response, jobId } = await runListingCall({
+  const { response, provider, jobId } = await runListingCall({
     action: 'generate_tags',
-    provider,
     systemPrompt,
     userPrompt,
     structured: true,
@@ -278,7 +300,6 @@ export async function generateBulletPoints(
   listing?: Listing,
 ): Promise<AIDiffResult> {
   const brand = await loadBrandSettings();
-  const provider = activeProvider();
   const systemPrompt = buildListingSystemPrompt('etsy', language, brand);
   const userPrompt = [
     'Erstelle 5 sachliche Bullet Points fuer folgendes Produkt.',
@@ -287,9 +308,8 @@ export async function generateBulletPoints(
     '',
     productContext(product, listing),
   ].join('\n');
-  const { response, jobId } = await runListingCall({
+  const { response, provider, jobId } = await runListingCall({
     action: 'generate_bullet_points',
-    provider,
     systemPrompt,
     userPrompt,
     structured: true,
@@ -319,7 +339,6 @@ export async function rewriteForPlatform(
   language: Language = 'de',
 ): Promise<AIDiffResult> {
   const brand = await loadBrandSettings();
-  const provider = activeProvider();
   const target = targetPlatform as ListingPlatform;
   const systemPrompt = buildListingSystemPrompt(target, language, brand);
   const userPrompt = [
@@ -329,9 +348,8 @@ export async function rewriteForPlatform(
     '',
     text,
   ].join('\n');
-  const { response, jobId } = await runListingCall({
+  const { response, provider, jobId } = await runListingCall({
     action: 'rewrite_for_platform',
-    provider,
     systemPrompt,
     userPrompt,
     structured: false,

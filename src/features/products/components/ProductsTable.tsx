@@ -261,6 +261,7 @@ export function ProductsTable({ products, isLoading }: ProductsTableProps) {
 
   const totalMinWidth = useMemo(() => computeTotalMinWidth(columns), [columns]);
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: products,
     columns,

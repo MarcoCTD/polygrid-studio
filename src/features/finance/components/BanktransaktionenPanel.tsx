@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { readTextFile } from '@tauri-apps/plugin-fs';
-import {
-  type ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
+import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { AlertTriangle, FileUp, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -190,7 +185,9 @@ export function BanktransaktionenPanel() {
       .catch((error) => {
         if (!cancelled) {
           toast.error(
-            error instanceof Error ? error.message : 'Match-Vorschläge konnten nicht geladen werden',
+            error instanceof Error
+              ? error.message
+              : 'Match-Vorschläge konnten nicht geladen werden',
           );
         }
       });
@@ -290,7 +287,9 @@ export function BanktransaktionenPanel() {
       toast.success('Transaktion ignoriert');
       await loadData();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Transaktion konnte nicht ignoriert werden');
+      toast.error(
+        error instanceof Error ? error.message : 'Transaktion konnte nicht ignoriert werden',
+      );
     }
   }
 
@@ -305,7 +304,11 @@ export function BanktransaktionenPanel() {
             </p>
           </div>
           <Button className="gap-2" onClick={() => void handleSelectFile()} disabled={isReading}>
-            {isReading ? <Loader2 className="size-4 animate-spin" /> : <FileUp className="size-4" />}
+            {isReading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <FileUp className="size-4" />
+            )}
             CSV-Datei auswählen
           </Button>
         </div>
@@ -566,7 +569,9 @@ export function BanktransaktionenPanel() {
               setPendingStatus(null);
             })
             .catch((error) => {
-              toast.error(error instanceof Error ? error.message : 'Status konnte nicht gesetzt werden');
+              toast.error(
+                error instanceof Error ? error.message : 'Status konnte nicht gesetzt werden',
+              );
             });
         }}
       />
@@ -656,9 +661,9 @@ function AllTransactionsTable({
               <SelectValue>
                 {batchFilter === 'all'
                   ? 'Alle Import-Batches'
-                  : batches.find((batch) => batch.id === batchFilter)?.filename ??
+                  : (batches.find((batch) => batch.id === batchFilter)?.filename ??
                     batches.find((batch) => batch.id === batchFilter)?.imported_at.slice(0, 10) ??
-                    'Import-Batch'}
+                    'Import-Batch')}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>

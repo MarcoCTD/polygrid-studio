@@ -361,7 +361,9 @@ export function OrderDetailPanel({ order, onClose, onChanged }: OrderDetailPanel
               toast.success('Auftrag auf bezahlt gesetzt');
             })
             .catch((error) => {
-              toast.error(error instanceof Error ? error.message : 'Status konnte nicht gesetzt werden');
+              toast.error(
+                error instanceof Error ? error.message : 'Status konnte nicht gesetzt werden',
+              );
             });
         }}
       />

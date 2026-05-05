@@ -260,12 +260,13 @@ export async function createOrder(data: NewOrderInput): Promise<Order> {
     const status = input.status ?? (input.payment_received_date ? 'paid' : 'ordered');
     const paymentReceivedDate =
       input.payment_received_date ?? (statusSetsPaymentDate(status) ? todayISODate() : null);
-    const paymentStatus =
-      input.payment_status ?? (paymentReceivedDate ? 'paid' : 'pending');
+    const paymentStatus = input.payment_status ?? (paymentReceivedDate ? 'paid' : 'pending');
     const shippingStatus = input.shipping_status ?? 'not_shipped';
     const materialCost = input.material_cost ?? (await getProductMaterialCost(input.product_id));
-    const platformFee = input.platform_fee ?? (await getPlatformFee(input.platform, input.sale_price));
-    let receiptNumber = input.receipt_number ?? (await generateReceiptNumber(db, dateYear(input.order_date)));
+    const platformFee =
+      input.platform_fee ?? (await getPlatformFee(input.platform, input.sale_price));
+    let receiptNumber =
+      input.receipt_number ?? (await generateReceiptNumber(db, dateYear(input.order_date)));
 
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
@@ -283,35 +284,35 @@ export async function createOrder(data: NewOrderInput): Promise<Order> {
         $16, $17, $18, $19,
         $20, $21, $22, $23, $24, $25, $26
       )`,
-        [
-          id,
-          receiptNumber,
-          input.external_order_id ?? null,
-          input.customer_name ?? null,
-          input.platform,
-          input.product_id ?? null,
-          input.variant ?? null,
-          input.quantity ?? 1,
-          input.sale_price,
-          input.shipping_revenue ?? null,
-          input.shipping_cost ?? null,
-          materialCost,
-          platformFee,
-          input.payout_amount ?? null,
-          status,
-          paymentStatus,
-          paymentReceivedDate,
-          shippingStatus,
-          input.tracking_number ?? null,
-          input.order_date,
-          input.notes ?? null,
-          input.tax_locked ? 1 : 0,
-          input.bank_match_id ?? null,
-          timestamp,
-          timestamp,
-          null,
-        ],
-      );
+          [
+            id,
+            receiptNumber,
+            input.external_order_id ?? null,
+            input.customer_name ?? null,
+            input.platform,
+            input.product_id ?? null,
+            input.variant ?? null,
+            input.quantity ?? 1,
+            input.sale_price,
+            input.shipping_revenue ?? null,
+            input.shipping_cost ?? null,
+            materialCost,
+            platformFee,
+            input.payout_amount ?? null,
+            status,
+            paymentStatus,
+            paymentReceivedDate,
+            shippingStatus,
+            input.tracking_number ?? null,
+            input.order_date,
+            input.notes ?? null,
+            input.tax_locked ? 1 : 0,
+            input.bank_match_id ?? null,
+            timestamp,
+            timestamp,
+            null,
+          ],
+        );
         await createOrderEvent(db, id, 'status_change', null, status, timestamp);
         break;
       } catch (error) {
@@ -373,14 +374,7 @@ export async function updateOrder(id: string, data: UpdateOrderInput): Promise<O
     );
 
     for (const event of events) {
-      await createOrderEvent(
-        db,
-        id,
-        event.event_type,
-        event.from_value,
-        event.to_value,
-        timestamp,
-      );
+      await createOrderEvent(db, id, event.event_type, event.from_value, event.to_value, timestamp);
     }
 
     const updated = await getOrderById(id);

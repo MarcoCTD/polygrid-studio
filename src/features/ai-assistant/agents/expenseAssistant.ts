@@ -1,7 +1,7 @@
 import { aiEstimateCost, aiGenerateStructured, aiGenerateText } from '../services/aiService';
 import { checkBudget, logAIJob } from '../services/costTracker';
 import { buildExpenseSystemPrompt, loadBrandSettings } from '../services/promptBuilder';
-import { useAIStore } from '../stores/aiStore';
+import { getAIProviderFallbackChain, useAIStore } from '../stores/aiStore';
 import type {
   AIAction,
   AIDiffResult,
@@ -26,18 +26,16 @@ const EXPENSE_CATEGORIES = [
 ];
 
 function providerCandidates(preferOllama: boolean): AIProviderName[] {
-  const { activeProvider, availableProviders } = useAIStore.getState();
-  const candidates: AIProviderName[] = preferOllama ? ['ollama'] : [];
-  if (activeProvider) candidates.push(activeProvider);
-  candidates.push(...availableProviders, 'claude', 'openai');
-  return Array.from(new Set(candidates));
+  return getAIProviderFallbackChain(preferOllama);
 }
 
 async function ensureBudget(provider: AIProviderName): Promise<void> {
   if (provider === 'ollama') return;
   const budget = await checkBudget();
   if (budget.isBlocked) {
-    throw new Error('KI-Budget fuer diesen Monat erreicht.');
+    throw new Error(
+      `KI-Budget erschöpft (${budget.spent.toFixed(2)} / ${budget.limit.toFixed(2)} EUR). Limit in den Einstellungen anpassen oder Ollama nutzen.`,
+    );
   }
 }
 
@@ -49,8 +47,13 @@ async function runExpenseCall(params: {
   preferOllama?: boolean;
 }): Promise<{ response: AIResponse; provider: AIProviderName; jobId: string }> {
   let lastError: unknown = null;
+  const providers = providerCandidates(Boolean(params.preferOllama));
 
-  for (const provider of providerCandidates(Boolean(params.preferOllama))) {
+  if (providers.length === 0) {
+    throw new Error('Kein KI-Provider verfügbar. Bitte in den Einstellungen konfigurieren.');
+  }
+
+  for (const provider of providers) {
     try {
       await ensureBudget(provider);
       const response = params.structured
@@ -78,19 +81,33 @@ async function runExpenseCall(params: {
       return { response, provider, jobId };
     } catch (error) {
       lastError = error;
-      await logAIJob({
-        provider,
-        model: 'unknown',
-        agent: 'expense_assistant',
-        action: params.action,
-        input: params.userPrompt,
-        output: null,
-        tokensUsed: null,
-        durationMs: null,
-        status: 'error',
-        errorMessage: error instanceof Error ? error.message : String(error),
-        estimatedCost: 0,
-      });
+      const message = error instanceof Error ? error.message : String(error);
+      if (
+        message.includes('API-Key ungültig') ||
+        message.includes('Provider nicht erreichbar') ||
+        message.includes('Ollama ist nicht erreichbar') ||
+        message.includes('Keine Internetverbindung') ||
+        message.includes('Timeout')
+      ) {
+        useAIStore.getState().markProviderUnavailable(provider);
+      }
+      try {
+        await logAIJob({
+          provider,
+          model: 'unknown',
+          agent: 'expense_assistant',
+          action: params.action,
+          input: params.userPrompt,
+          output: null,
+          tokensUsed: null,
+          durationMs: null,
+          status: 'error',
+          errorMessage: message,
+          estimatedCost: 0,
+        });
+      } catch {
+        // Logging darf die Fallback-Kette nicht blockieren.
+      }
     }
   }
 

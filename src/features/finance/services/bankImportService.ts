@@ -190,7 +190,9 @@ function parseAmount(value: string | null | undefined): number {
   const dot = normalized.lastIndexOf('.');
   const decimal = comma > dot ? ',' : '.';
   const prepared =
-    decimal === ',' ? normalized.replace(/\./g, '').replace(',', '.') : normalized.replace(/,/g, '');
+    decimal === ','
+      ? normalized.replace(/\./g, '').replace(',', '.')
+      : normalized.replace(/,/g, '');
   return Number.parseFloat(prepared);
 }
 
@@ -212,7 +214,11 @@ function parseDateToISO(value: string): string | null {
   return null;
 }
 
-function normalizeDateParts(yearValue: string, monthValue: string, dayValue: string): string | null {
+function normalizeDateParts(
+  yearValue: string,
+  monthValue: string,
+  dayValue: string,
+): string | null {
   const year = Number(yearValue);
   const month = Number(monthValue);
   const day = Number(dayValue);
@@ -502,9 +508,10 @@ export async function importBankCsv(input: BankImportInput): Promise<BankImportR
 
 export async function runAutoMatching(batchId: string): Promise<AutoMatchingResult> {
   const db = getDatabase();
-  const rows = await db.select<Row[]>('SELECT * FROM bank_transactions WHERE import_batch_id = $1', [
-    batchId,
-  ]);
+  const rows = await db.select<Row[]>(
+    'SELECT * FROM bank_transactions WHERE import_batch_id = $1',
+    [batchId],
+  );
   const transactions = rows.map(rowToTransaction);
   const result: AutoMatchingResult = { batchId, matched: 0, payouts: 0, unmatched: 0 };
 
@@ -521,7 +528,10 @@ export async function runAutoMatching(batchId: string): Promise<AutoMatchingResu
       );
       const maxDiff = Math.max(Math.abs(transaction.amount) * 0.01, 0.01);
 
-      if (allocations.length > 0 && Math.abs(allocationTotal - Math.abs(transaction.amount)) <= maxDiff) {
+      if (
+        allocations.length > 0 &&
+        Math.abs(allocationTotal - Math.abs(transaction.amount)) <= maxDiff
+      ) {
         await savePayoutSuggestion(transaction.id, allocations);
         await db.execute(
           'UPDATE bank_transactions SET is_payout = 1, match_confidence = $1 WHERE id = $2',
@@ -569,14 +579,16 @@ export async function runAutoMatching(batchId: string): Promise<AutoMatchingResu
   return result;
 }
 
-export async function getBankTransactions(options: {
-  filter?: BankTransactionFilter;
-  batchId?: string | null;
-  matchStatus?: string | null;
-  dateFrom?: string | null;
-  dateTo?: string | null;
-  onlyUnmatched?: boolean;
-} = {}): Promise<BankTransaction[]> {
+export async function getBankTransactions(
+  options: {
+    filter?: BankTransactionFilter;
+    batchId?: string | null;
+    matchStatus?: string | null;
+    dateFrom?: string | null;
+    dateTo?: string | null;
+    onlyUnmatched?: boolean;
+  } = {},
+): Promise<BankTransaction[]> {
   const conditions: string[] = [];
   const params: unknown[] = [];
 
@@ -638,7 +650,9 @@ export async function getMatchSuggestions(transactionId: string): Promise<MatchS
           type: 'payout',
           label: `Sammelauszahlung (${allocations.length} Aufträge)`,
           subtitle: allocations.map((allocation) => allocation.receiptNumber).join(', '),
-          amount: money(allocations.reduce((sum, allocation) => sum + allocation.allocatedAmount, 0)),
+          amount: money(
+            allocations.reduce((sum, allocation) => sum + allocation.allocatedAmount, 0),
+          ),
           date: transaction.transaction_date,
           confidence: transaction.match_confidence === 'high' ? 'high' : 'low',
         },
@@ -856,10 +870,18 @@ async function detectPayoutPlatform(transaction: BankTransaction): Promise<Order
   const etsyKeywords = await getSetting<string[]>('payout_keywords_etsy');
   const ebayKeywords = await getSetting<string[]>('payout_keywords_ebay');
 
-  if ((etsyKeywords ?? ['Etsy', 'Etsy Ireland', 'Etsy Inc']).some((keyword) => haystack.includes(normalizeToken(keyword)))) {
+  if (
+    (etsyKeywords ?? ['Etsy', 'Etsy Ireland', 'Etsy Inc']).some((keyword) =>
+      haystack.includes(normalizeToken(keyword)),
+    )
+  ) {
     return 'etsy';
   }
-  if ((ebayKeywords ?? ['eBay', 'Ebay Marketplaces']).some((keyword) => haystack.includes(normalizeToken(keyword)))) {
+  if (
+    (ebayKeywords ?? ['eBay', 'Ebay Marketplaces']).some((keyword) =>
+      haystack.includes(normalizeToken(keyword)),
+    )
+  ) {
     return 'ebay';
   }
   return null;
@@ -901,7 +923,8 @@ async function getOrderMatchSuggestions(transaction: BankTransaction): Promise<M
         id: row.id as string,
         type: 'order',
         label: row.receipt_number as string,
-        subtitle: (row.product_name as string | null) ?? (row.customer_name as string | null) ?? platform,
+        subtitle:
+          (row.product_name as string | null) ?? (row.customer_name as string | null) ?? platform,
         amount: expected,
         date: row.order_date as string,
         confidence,
@@ -923,7 +946,10 @@ async function getExpenseMatchSuggestions(
        AND bank_match_id IS NULL
        AND date >= $1
        AND date <= $2`,
-    [addDays(transaction.transaction_date, -windowDays), addDays(transaction.transaction_date, windowDays)],
+    [
+      addDays(transaction.transaction_date, -windowDays),
+      addDays(transaction.transaction_date, windowDays),
+    ],
   );
   const description = normalizeToken(
     `${transaction.description} ${transaction.counterparty_name ?? ''}`,

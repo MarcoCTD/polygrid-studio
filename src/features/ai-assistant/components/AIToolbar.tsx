@@ -62,7 +62,9 @@ export function AIToolbar({ product, listing, platform, language, onApplyDiff }:
   const providerLabel = status.activeProvider ?? 'kein Provider';
   const disabledReason = useMemo(() => {
     if (!status.activeProvider) return 'Kein KI-Provider konfiguriert';
-    if (status.isLimitReached) return 'KI-Budget ist ausgeschöpft';
+    if (status.isLimitReached && status.activeProvider !== 'ollama') {
+      return 'KI-Budget ist ausgeschöpft. Ollama bleibt kostenlos nutzbar.';
+    }
     return null;
   }, [status.activeProvider, status.isLimitReached]);
 

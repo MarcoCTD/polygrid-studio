@@ -100,7 +100,9 @@ export function EuerExportPanel() {
             incomeTotal: 0,
             expenseTotal: 0,
           });
-          setPreviewError(error instanceof Error ? error.message : 'Vorschau konnte nicht geladen werden');
+          setPreviewError(
+            error instanceof Error ? error.message : 'Vorschau konnte nicht geladen werden',
+          );
           toast.error(
             error instanceof Error ? error.message : 'Vorschau konnte nicht geladen werden',
           );

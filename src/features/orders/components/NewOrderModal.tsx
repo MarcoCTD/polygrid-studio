@@ -200,8 +200,8 @@ export function NewOrderModal({ open, onOpenChange, onCreated }: NewOrderModalPr
                     <SelectTrigger className="w-full">
                       <SelectValue>
                         {field.value
-                          ? products.find((product) => product.id === field.value)?.name ??
-                            'Produkt wählen'
+                          ? (products.find((product) => product.id === field.value)?.name ??
+                            'Produkt wählen')
                           : 'Kein Produkt'}
                       </SelectValue>
                     </SelectTrigger>

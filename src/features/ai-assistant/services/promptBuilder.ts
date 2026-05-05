@@ -17,7 +17,8 @@ const DEFAULT_BRAND_SETTINGS: BrandSettings = {
 const PLATFORM_LIMITS = {
   etsy: 'Etsy: Titel maximal 140 Zeichen, maximal 13 Tags, keine irreführenden Keywords.',
   ebay: 'eBay: Titel maximal 80 Zeichen, HTML in Beschreibungen möglich, klare Produktspezifikationen.',
-  kleinanzeigen: 'Kleinanzeigen: Titel maximal 65 Zeichen, reine Textbeschreibung, lokal und sachlich formulieren.',
+  kleinanzeigen:
+    'Kleinanzeigen: Titel maximal 65 Zeichen, reine Textbeschreibung, lokal und sachlich formulieren.',
 } as const;
 
 export async function loadBrandSettings(): Promise<BrandSettings> {

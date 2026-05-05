@@ -231,7 +231,7 @@ export function EtsyTab({ listing, onChanged }: EtsyTabProps) {
                 variant="ghost"
                 size="sm"
                 disabled
-                title="Wird in Modul 06 verfügbar"
+                title="Plattform-KI wird über die Toolbar im Master-Tab gesteuert"
                 className="w-full justify-start gap-1.5"
               >
                 <Sparkles size={14} />

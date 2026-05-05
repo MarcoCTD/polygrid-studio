@@ -433,6 +433,7 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
                 <div className="grid grid-cols-2 gap-3">
                   <FormField label="Material *">
                     <Select
+                      // eslint-disable-next-line react-hooks/incompatible-library
                       value={form1.watch('material_type')}
                       onValueChange={(val) => {
                         if (val) form1.setValue('material_type', val as MaterialType);

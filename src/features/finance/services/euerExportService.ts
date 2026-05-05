@@ -212,7 +212,10 @@ function normalizeDateOnly(value: string): string {
   return parsed.toISOString().split('T')[0];
 }
 
-function normalizeDateRange(dateFrom: string, dateTo: string): { dateFrom: string; dateTo: string } {
+function normalizeDateRange(
+  dateFrom: string,
+  dateTo: string,
+): { dateFrom: string; dateTo: string } {
   return {
     dateFrom: normalizeDateOnly(dateFrom),
     dateTo: normalizeDateOnly(dateTo),
@@ -224,7 +227,9 @@ function exportFilename(options: EuerExportOptions, extension: 'csv' | 'xlsx'): 
   const year = range.dateFrom.slice(0, 4);
   const sameMonth =
     range.dateFrom.slice(0, 7) === range.dateTo.slice(0, 7) && range.dateFrom.endsWith('-01');
-  return sameMonth ? `euer_${range.dateFrom.slice(0, 7)}.${extension}` : `euer_${year}.${extension}`;
+  return sameMonth
+    ? `euer_${range.dateFrom.slice(0, 7)}.${extension}`
+    : `euer_${year}.${extension}`;
 }
 
 function orderBookingText(order: OrderListItem): string {
@@ -390,10 +395,9 @@ export async function getEuerExportPreview(
       return [{ count: 0, total: 0 }];
     });
   const expensePromise = db
-    .select<{ count: number; total: number | null }[]>(EXPENSE_PREVIEW_QUERY, [
-      range.dateFrom,
-      range.dateTo,
-    ])
+    .select<
+      { count: number; total: number | null }[]
+    >(EXPENSE_PREVIEW_QUERY, [range.dateFrom, range.dateTo])
     .catch((error) => {
       console.error('EÜR preview expense query failed', {
         dateFrom: range.dateFrom,

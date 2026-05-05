@@ -31,9 +31,9 @@ const PLACEHOLDER_CONFIG: Record<
     icon: Sparkles,
     title: 'KI-Assistent',
     lines: [
-      'KI-Funktionen werden in Modul 06 implementiert.',
-      'Hier werden dann Titel, Beschreibungen und Tags',
-      'automatisch generiert.',
+      'Der KI-Tab ist aktiv, sobald ein Provider konfiguriert ist.',
+      'Titel, Beschreibungen und Tags werden produktbasiert',
+      'über den Listing Assistant vorgeschlagen.',
     ],
   },
 };

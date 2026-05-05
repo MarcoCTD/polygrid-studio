@@ -163,7 +163,11 @@ export function ManualBankMatchDialog({
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Abbrechen
           </Button>
-          <Button type="button" disabled={!selectedId || isSaving} onClick={() => void handleConfirm()}>
+          <Button
+            type="button"
+            disabled={!selectedId || isSaving}
+            onClick={() => void handleConfirm()}
+          >
             Verknüpfen
           </Button>
         </DialogFooter>
