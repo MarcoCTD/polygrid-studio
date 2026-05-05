@@ -11,8 +11,8 @@ import { useAutoSave } from '../hooks/useAutoSave';
 import { SaveIndicator } from './SaveIndicator';
 import { OverviewTab } from './OverviewTab';
 import { MarginCalculator } from './MarginCalculator';
-import { PlaceholderTab } from './PlaceholderTab';
 import { ProductFilesTab } from './ProductFilesTab';
+import { ProductAITab } from './ProductAITab';
 
 function productToFormValues(product: Product): ProductUpdate {
   return {
@@ -210,7 +210,7 @@ export function ProductEditPage() {
           </TabsContent>
 
           <TabsContent value="ai">
-            <PlaceholderTab type="ai" />
+            <ProductAITab product={product} />
           </TabsContent>
         </div>
       </Tabs>

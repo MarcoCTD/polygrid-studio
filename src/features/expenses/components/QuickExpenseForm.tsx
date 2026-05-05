@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { MoreHorizontal, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -12,9 +12,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS } from '../constants';
-import { createExpense, checkDuplicate } from '../services';
+import { createExpense } from '../services';
 import { createExpenseSchema, type CreateExpense } from '../schemas';
 import { todayISODate } from '../utils';
+import { confirmDuplicateIfNeeded } from '../utils/duplicateUtils';
+import { AIClassifyButton } from './AIClassifyButton';
 import { ProductCombobox } from './ProductCombobox';
 
 interface QuickExpenseFormProps {
@@ -39,13 +41,13 @@ export function QuickExpenseForm({ onCreated, onMore }: QuickExpenseFormProps) {
       product_id: null,
     },
   });
+  const vendorValue = useWatch({ control: form.control, name: 'vendor' });
+  const amountValue = useWatch({ control: form.control, name: 'amount_gross' });
 
   async function handleSubmit(data: CreateExpense) {
     try {
-      const duplicate = await checkDuplicate(data.date, data.amount_gross, data.vendor);
-      if (duplicate) {
-        toast.warning('Mögliches Duplikat gefunden');
-      }
+      const shouldSave = await confirmDuplicateIfNeeded(data);
+      if (!shouldSave) return;
 
       await createExpense(data);
       toast.success('Ausgabe hinzugefügt');
@@ -73,7 +75,7 @@ export function QuickExpenseForm({ onCreated, onMore }: QuickExpenseFormProps) {
       onSubmit={(event) => void form.handleSubmit(handleSubmit)(event)}
       className="rounded-lg border border-border-subtle bg-bg-elevated p-3 dark:border-transparent dark:shadow-md"
     >
-      <div className="grid gap-2 xl:grid-cols-[140px_130px_minmax(180px,1fr)_190px_minmax(160px,1fr)_auto_auto]">
+      <div className="grid gap-2 xl:grid-cols-[140px_130px_minmax(180px,1fr)_190px_150px_minmax(160px,1fr)_auto_auto]">
         <Input
           type="date"
           aria-label="Datum"
@@ -120,6 +122,16 @@ export function QuickExpenseForm({ onCreated, onMore }: QuickExpenseFormProps) {
               </SelectContent>
             </Select>
           )}
+        />
+
+        <AIClassifyButton
+          vendor={vendorValue ?? ''}
+          amount={Number(amountValue ?? 0)}
+          purpose={null}
+          onApply={(category, subcategory) => {
+            form.setValue('category', category, { shouldDirty: true, shouldValidate: true });
+            form.setValue('subcategory', subcategory, { shouldDirty: true, shouldValidate: true });
+          }}
         />
 
         <Controller

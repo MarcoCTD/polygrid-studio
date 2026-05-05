@@ -1,3 +1,4 @@
+export { AIClassifyButton } from './AIClassifyButton';
 export { ExpenseCategoryBadge } from './ExpenseCategoryBadge';
 export { ExpenseDetailPanel } from './ExpenseDetailPanel';
 export { ExpenseImportDialog } from './ExpenseImportDialog';

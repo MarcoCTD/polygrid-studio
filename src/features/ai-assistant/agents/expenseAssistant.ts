@@ -94,11 +94,18 @@ async function runExpenseCall(params: {
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error(String(lastError ?? 'KI-Aufruf fehlgeschlagen'));
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(String(lastError ?? 'KI-Aufruf fehlgeschlagen'));
 }
 
 function parseClassification(text: string): ExpenseClassification {
-  const parsed: unknown = JSON.parse(text);
+  const cleaned = text
+    .trim()
+    .replace(/^```(?:json)?/i, '')
+    .replace(/```$/i, '')
+    .trim();
+  const parsed: unknown = JSON.parse(cleaned);
   if (!parsed || typeof parsed !== 'object') {
     throw new Error('KI-Antwort ist kein Klassifikationsobjekt.');
   }
@@ -119,7 +126,12 @@ function parseClassification(text: string): ExpenseClassification {
 }
 
 function parseDuplicateCheck(text: string): DuplicateCheck {
-  const parsed: unknown = JSON.parse(text);
+  const cleaned = text
+    .trim()
+    .replace(/^```(?:json)?/i, '')
+    .replace(/```$/i, '')
+    .trim();
+  const parsed: unknown = JSON.parse(cleaned);
   if (!parsed || typeof parsed !== 'object') {
     throw new Error('KI-Antwort ist kein Duplikatobjekt.');
   }
@@ -141,7 +153,16 @@ export async function classifyExpense(
 ): Promise<AIDiffResult> {
   const brand = await loadBrandSettings();
   const systemPrompt = buildExpenseSystemPrompt(EXPENSE_CATEGORIES, brand);
-  const userPrompt = `Klassifiziere diese Ausgabe. Händler: ${vendor}. Betrag: ${amount.toFixed(2)} EUR. Zweck: ${purpose ?? 'nicht angegeben'}. Antworte als JSON: {"category":"...","subcategory":"...","confidence":"high|medium|low"}.`;
+  const userPrompt = [
+    'Klassifiziere diese Ausgabe:',
+    `Händler: ${vendor}`,
+    `Betrag: ${amount.toFixed(2)} EUR`,
+    `Verwendungszweck: ${purpose ?? 'nicht angegeben'}`,
+    '',
+    `Gültige Kategorien: ${EXPENSE_CATEGORIES.join(', ')}`,
+    '',
+    'Antworte als JSON: { "category": "...", "subcategory": "...", "confidence": "high|medium|low" }',
+  ].join('\n');
   const { response, provider, jobId } = await runExpenseCall({
     action: 'classify_expense',
     systemPrompt,
@@ -200,7 +221,11 @@ export async function detectDuplicate(
 export async function suggestPurpose(vendor: string, category: string): Promise<string> {
   const brand = await loadBrandSettings();
   const systemPrompt = buildExpenseSystemPrompt(EXPENSE_CATEGORIES, brand);
-  const userPrompt = `Schlage einen kurzen, sachlichen Verwendungszweck fuer eine Ausgabe vor. Händler: ${vendor}. Kategorie: ${category}. Antworte nur mit dem Verwendungszweck.`;
+  const userPrompt = [
+    'Schlage einen kurzen Verwendungszweck vor (max. 50 Zeichen) für:',
+    `Händler: ${vendor}, Kategorie: ${category}`,
+    'Antworte NUR mit dem Verwendungszweck, ohne Erklärung.',
+  ].join('\n');
   const { response } = await runExpenseCall({
     action: 'suggest_purpose',
     systemPrompt,

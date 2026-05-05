@@ -3,8 +3,18 @@ import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm, type UseFormReturn } from 'react-hook-form';
-import { FileImage, FileText, FileWarning, Paperclip, RotateCcw, Save, Trash2 } from 'lucide-react';
+import {
+  FileImage,
+  FileText,
+  FileWarning,
+  Paperclip,
+  RotateCcw,
+  Save,
+  Sparkles,
+  Trash2,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { DiffView } from '@/components/shared/DiffView';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +39,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { useUIStore } from '@/stores';
+import { classifyExpense, suggestPurpose } from '@/features/ai-assistant/agents/expenseAssistant';
+import { useAIStatus } from '@/features/ai-assistant/hooks/useAIStatus';
+import { updateAIJobStatus } from '@/features/ai-assistant/services/costTracker';
+import type { AIDiffField, AIDiffResult } from '@/features/ai-assistant/types';
 import {
   EXPENSE_CATEGORIES,
   EXPENSE_CATEGORY_LABELS,
@@ -56,6 +70,7 @@ import {
   type UpdateExpense,
 } from '../schemas';
 import { todayISODate } from '../utils';
+import { confirmDuplicateIfNeeded } from '../utils/duplicateUtils';
 import { ProductCombobox } from './ProductCombobox';
 
 type DetailMode = Expense | 'new';
@@ -168,6 +183,8 @@ export function ExpenseDetailPanel({
           import_ref: values.import_ref,
           notes: values.notes,
         });
+        const shouldSave = await confirmDuplicateIfNeeded(createInput);
+        if (!shouldSave) return;
         const created = await createExpense(createInput);
         toast.success('Ausgabe erstellt');
         onSaved(created);
@@ -376,6 +393,116 @@ function OverviewTab({ form }: { form: UseFormReturn<ExpenseUpdateWithId> }) {
     recurring && recurringInterval
       ? calculateNextRecurringDate(expenseDate, recurringInterval)
       : null;
+  const aiStatus = useAIStatus();
+  const [aiLoading, setAiLoading] = useState<'category' | 'purpose' | null>(null);
+  const [diffResult, setDiffResult] = useState<AIDiffResult | null>(null);
+  const [isDiffOpen, setIsDiffOpen] = useState(false);
+  const aiDisabledReason = !aiStatus.activeProvider
+    ? 'Kein KI-Provider konfiguriert'
+    : aiStatus.isLimitReached
+      ? 'KI-Budget ist ausgeschöpft'
+      : null;
+
+  function resolveCategory(value: string) {
+    const normalized = value.trim().toLowerCase();
+    return (
+      EXPENSE_CATEGORIES.find(
+        (item) =>
+          item.toLowerCase() === normalized ||
+          EXPENSE_CATEGORY_LABELS[item].toLowerCase() === normalized,
+      ) ?? 'sonstiges'
+    );
+  }
+
+  function resolveSubcategory(categoryValue: typeof category, value: string) {
+    const normalized = value.trim().toLowerCase();
+    return (
+      EXPENSE_SUBCATEGORIES[categoryValue].find(
+        (item) =>
+          item.toLowerCase() === normalized ||
+          EXPENSE_SUBCATEGORY_LABELS[item].toLowerCase() === normalized,
+      ) ?? null
+    );
+  }
+
+  async function suggestCategory() {
+    if (aiDisabledReason) {
+      toast.error(aiDisabledReason);
+      return;
+    }
+    setAiLoading('category');
+    try {
+      const result = await classifyExpense(
+        watch('vendor') ?? '',
+        Number(watch('amount_gross') ?? 0),
+        watch('purpose') ?? undefined,
+      );
+      setDiffResult({
+        ...result,
+        fields: result.fields.map((field) => ({
+          ...field,
+          currentValue: field.fieldName === 'category' ? category : (subcategory ?? null),
+        })),
+      });
+      setIsDiffOpen(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Kategorie-Vorschlag fehlgeschlagen');
+    } finally {
+      setAiLoading(null);
+    }
+  }
+
+  async function handleSuggestPurpose() {
+    if (aiDisabledReason) {
+      toast.error(aiDisabledReason);
+      return;
+    }
+    setAiLoading('purpose');
+    try {
+      const purpose = await suggestPurpose(watch('vendor') ?? '', category);
+      setDiffResult({
+        agent: 'expense_assistant',
+        action: 'suggest_purpose',
+        provider: aiStatus.activeProvider ?? 'ollama',
+        model: 'unknown',
+        fields: [
+          {
+            fieldName: 'purpose',
+            fieldLabel: 'Verwendungszweck',
+            currentValue: watch('purpose') ?? null,
+            suggestedValue: purpose,
+          },
+        ],
+      });
+      setIsDiffOpen(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Zweck-Vorschlag fehlgeschlagen');
+    } finally {
+      setAiLoading(null);
+    }
+  }
+
+  function applyDiff(fields: AIDiffField[]) {
+    for (const field of fields) {
+      const value = Array.isArray(field.suggestedValue)
+        ? field.suggestedValue.join(', ')
+        : field.suggestedValue;
+      if (field.fieldName === 'category') {
+        const nextCategory = resolveCategory(value);
+        setValue('category', nextCategory, { shouldDirty: true });
+      }
+      if (field.fieldName === 'subcategory') {
+        const nextCategory = resolveCategory(
+          String(fields.find((item) => item.fieldName === 'category')?.suggestedValue ?? category),
+        );
+        const nextSubcategory = resolveSubcategory(nextCategory, value);
+        setValue('subcategory', nextSubcategory, { shouldDirty: true });
+      }
+      if (field.fieldName === 'purpose') {
+        setValue('purpose', value || null, { shouldDirty: true });
+      }
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -425,6 +552,18 @@ function OverviewTab({ form }: { form: UseFormReturn<ExpenseUpdateWithId> }) {
             </Select>
           )}
         />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-2 gap-1.5"
+          disabled={Boolean(aiDisabledReason) || aiLoading === 'category'}
+          title={aiDisabledReason ?? 'Kategorie per KI vorschlagen'}
+          onClick={() => void suggestCategory()}
+        >
+          <Sparkles size={14} />
+          Kategorie vorschlagen
+        </Button>
       </FormField>
 
       <FormField label="Unterkategorie">
@@ -478,7 +617,21 @@ function OverviewTab({ form }: { form: UseFormReturn<ExpenseUpdateWithId> }) {
       </FormField>
 
       <FormField label="Verwendungszweck">
-        <Input {...register('purpose')} placeholder="Optional" />
+        <div className="flex gap-2">
+          <Input {...register('purpose')} placeholder="Optional" />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            disabled={Boolean(aiDisabledReason) || aiLoading === 'purpose'}
+            title={aiDisabledReason ?? 'Zweck per KI vorschlagen'}
+            onClick={() => void handleSuggestPurpose()}
+          >
+            <Sparkles size={14} />
+            Zweck
+          </Button>
+        </div>
       </FormField>
 
       <FormField label="Produktzuordnung">
@@ -564,6 +717,19 @@ function OverviewTab({ form }: { form: UseFormReturn<ExpenseUpdateWithId> }) {
       <FormField label="Notizen">
         <Textarea {...register('notes')} rows={4} placeholder="Optional" />
       </FormField>
+
+      <DiffView
+        title="KI-Vorschlag"
+        agent="Expense Assistant"
+        provider={`${diffResult?.provider ?? aiStatus.activeProvider ?? 'kein Provider'}${diffResult?.model ? ` (${diffResult.model})` : ''}`}
+        fields={diffResult?.fields ?? []}
+        onAccept={applyDiff}
+        onReject={() => {
+          if (diffResult?.jobId) void updateAIJobStatus(diffResult.jobId, 'cancelled');
+        }}
+        isOpen={isDiffOpen}
+        onClose={() => setIsDiffOpen(false)}
+      />
     </div>
   );
 }

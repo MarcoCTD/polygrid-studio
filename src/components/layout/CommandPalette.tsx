@@ -208,7 +208,17 @@ export function CommandPalette() {
       },
     ];
 
-    registerCommands([...navCommands, ...systemCommands]);
+    const aiCommands: CommandType[] = [
+      {
+        id: 'ai-ask',
+        label: 'KI fragen',
+        icon: Sparkles,
+        category: 'ai',
+        action: () => void router.navigate({ to: '/ai' }),
+      },
+    ];
+
+    registerCommands([...navCommands, ...systemCommands, ...aiCommands]);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Commands nach Kategorie gruppieren

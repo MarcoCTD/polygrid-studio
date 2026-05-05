@@ -1,3 +1,4 @@
+export { ProductAITab } from './ProductAITab';
 export { StatusBadge } from './StatusBadge';
 export { MarginCell } from './MarginCell';
 export { PlatformIcons } from './PlatformIcons';

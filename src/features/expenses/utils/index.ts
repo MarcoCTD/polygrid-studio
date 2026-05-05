@@ -1,5 +1,7 @@
 import type { ExpenseFilter } from '../schemas';
 
+export * from './duplicateUtils';
+
 export type ExpensePeriod = 'current_month' | 'previous_month' | 'current_year' | 'custom';
 
 export function formatEUR(value: number | null | undefined): string {
