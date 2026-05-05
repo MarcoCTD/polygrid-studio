@@ -21,6 +21,7 @@ import {
   MoreHorizontal,
   Trash2,
   X,
+  XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -83,6 +84,21 @@ function computeTotalMinWidth(columns: ColumnDef<Expense, unknown>[]): number {
     if (size === 99999) return sum + VENDOR_COL_MIN_WIDTH;
     return sum + size;
   }, 0);
+}
+
+function receiptIcon(expense: Expense) {
+  const hasFlag = expense.receipt_attached;
+  const hasPath = Boolean(expense.receipt_file_path?.trim());
+
+  if (hasFlag && hasPath) {
+    return <CheckCircle size={16} className="text-emerald-600" aria-label="Beleg vorhanden" />;
+  }
+
+  if (hasFlag && !hasPath) {
+    return <AlertCircle size={16} className="text-amber-500" aria-label="Belegstatus inkonsistent" />;
+  }
+
+  return <XCircle size={16} className="text-text-muted" aria-label="Kein Beleg" />;
 }
 
 export function ExpensesTable({
@@ -169,12 +185,7 @@ export function ExpensesTable({
           header: 'Beleg',
           size: 80,
           enableSorting: false,
-          cell: (info) =>
-            info.getValue() ? (
-              <CheckCircle size={16} className="text-emerald-600" />
-            ) : (
-              <AlertCircle size={16} className="text-amber-500" />
-            ),
+          cell: ({ row }) => receiptIcon(row.original),
         }),
         columnHelper.accessor('tax_relevant', {
           header: 'Steuer',

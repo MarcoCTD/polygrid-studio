@@ -24,6 +24,18 @@ function currentYearRange(): { dateFrom: string; dateTo: string } {
   return { dateFrom: `${year}-01-01`, dateTo: `${year}-12-31` };
 }
 
+function ReceiptStatusIcon({ booking }: { booking: FinanceBooking }) {
+  if (booking.receiptStatus === 'present') {
+    return <CheckCircle2 className="size-4 text-emerald-600" aria-label="Beleg vorhanden" />;
+  }
+
+  if (booking.receiptStatus === 'inconsistent') {
+    return <AlertCircle className="size-4 text-amber-600" aria-label="Belegstatus inkonsistent" />;
+  }
+
+  return <XCircle className="size-4 text-red-600" aria-label="Beleg fehlt" />;
+}
+
 export function BeleguebersichtPanel() {
   const defaultRange = currentYearRange();
   const [dateFrom, setDateFrom] = useState(defaultRange.dateFrom);
@@ -109,12 +121,7 @@ export function BeleguebersichtPanel() {
       {
         accessorKey: 'receiptAttached',
         header: 'Beleg',
-        cell: ({ row }) =>
-          row.original.receiptAttached ? (
-            <CheckCircle2 className="size-4 text-emerald-600" aria-label="Beleg vorhanden" />
-          ) : (
-            <XCircle className="size-4 text-red-600" aria-label="Beleg fehlt" />
-          ),
+        cell: ({ row }) => <ReceiptStatusIcon booking={row.original} />,
       },
       {
         accessorKey: 'bankMatchId',

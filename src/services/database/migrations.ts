@@ -12,6 +12,7 @@ import migration0006 from '../../../drizzle/0006_familiar_wallflower.sql?raw';
 import migration0007 from '../../../drizzle/0007_listings_data_model_custom.sql?raw';
 import migration0008 from '../../../drizzle/0008_modul_08_orders_finance.sql?raw';
 import migration0009 from '../../../drizzle/0009_modul_08_order_events.sql?raw';
+import migration0010 from '../../../drizzle/0010_fix_expense_receipt_attached.sql?raw';
 
 export interface Migration {
   tag: string;
@@ -29,4 +30,5 @@ export const MIGRATIONS: Migration[] = [
   { tag: '0007_listings_data_model_custom', sql: migration0007 },
   { tag: '0008_modul_08_orders_finance', sql: migration0008 },
   { tag: '0009_modul_08_order_events', sql: migration0009 },
+  { tag: '0010_fix_expense_receipt_attached', sql: migration0010 },
 ];

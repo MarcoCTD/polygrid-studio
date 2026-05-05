@@ -46,6 +46,7 @@ export interface FinanceBooking {
   amount: number;
   party: string;
   receiptAttached: boolean;
+  receiptStatus: 'present' | 'missing' | 'inconsistent';
   externalReference: string;
   bankMatchId: string | null;
   bankMatchConfidence: string | null;
@@ -158,21 +159,33 @@ function rowToExpense(row: Row): Expense {
     purpose: (row.purpose as string | null) ?? null,
     product_id: (row.product_id as string | null) ?? null,
     order_id: (row.order_id as string | null) ?? null,
-    receipt_attached: Boolean(row.receipt_attached),
+    receipt_attached: dbBoolean(row.receipt_attached),
     receipt_file_path: (row.receipt_file_path as string | null) ?? null,
-    tax_relevant: Boolean(row.tax_relevant),
-    recurring: Boolean(row.recurring),
+    tax_relevant: dbBoolean(row.tax_relevant),
+    recurring: dbBoolean(row.recurring),
     recurring_interval: (row.recurring_interval as Expense['recurring_interval']) ?? null,
     recurring_next_date: (row.recurring_next_date as string | null) ?? null,
     import_source: (row.import_source as Expense['import_source']) ?? 'manual',
     import_ref: (row.import_ref as string | null) ?? null,
-    tax_locked: Boolean(row.tax_locked),
+    tax_locked: dbBoolean(row.tax_locked),
     bank_match_id: (row.bank_match_id as string | null) ?? null,
     notes: (row.notes as string | null) ?? null,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
     deleted_at: (row.deleted_at as string | null) ?? null,
   };
+}
+
+function dbBoolean(value: unknown): boolean {
+  return value === true || value === 1 || value === '1' || value === 'true' || value === 'TRUE';
+}
+
+function expenseReceiptStatus(expense: Expense): FinanceBooking['receiptStatus'] {
+  const hasFlag = expense.receipt_attached;
+  const hasPath = Boolean(expense.receipt_file_path?.trim());
+  if (hasFlag && hasPath) return 'present';
+  if (hasFlag && !hasPath) return 'inconsistent';
+  return 'missing';
 }
 
 function rowToExportExpense(row: Row): ExportExpense {
@@ -325,25 +338,33 @@ export async function loadFinanceBookings(
       amount: order.sale_price + (order.shipping_revenue ?? 0),
       party: platformLabel(order.platform),
       receiptAttached: Boolean(order.external_order_id?.trim()) || order.has_order_file_link,
+      receiptStatus:
+        Boolean(order.external_order_id?.trim()) || order.has_order_file_link
+          ? 'present'
+          : 'missing',
       externalReference: order.external_order_id ?? '',
       bankMatchId: order.bank_match_id,
       bankMatchConfidence: order.bank_match_confidence,
     })),
-    ...expenses.map<FinanceBooking>((expense) => ({
-      id: expense.id,
-      source: 'expense',
-      receiptNumber: expenseReceiptNumber(expense),
-      date: expense.date,
-      type: 'Ausgabe',
-      bookingText: `${expense.vendor} - ${EXPENSE_CATEGORY_LABELS[expense.category]}`,
-      category: EUER_CATEGORY_BY_EXPENSE[expense.category],
-      amount: -expense.amount_gross,
-      party: expense.vendor,
-      receiptAttached: expense.receipt_attached,
-      externalReference: '',
-      bankMatchId: expense.bank_match_id,
-      bankMatchConfidence: expense.bank_match_confidence,
-    })),
+    ...expenses.map<FinanceBooking>((expense) => {
+      const receiptStatus = expenseReceiptStatus(expense);
+      return {
+        id: expense.id,
+        source: 'expense',
+        receiptNumber: expenseReceiptNumber(expense),
+        date: expense.date,
+        type: 'Ausgabe',
+        bookingText: `${expense.vendor} - ${EXPENSE_CATEGORY_LABELS[expense.category]}`,
+        category: EUER_CATEGORY_BY_EXPENSE[expense.category],
+        amount: -expense.amount_gross,
+        party: expense.vendor,
+        receiptAttached: receiptStatus === 'present',
+        receiptStatus,
+        externalReference: '',
+        bankMatchId: expense.bank_match_id,
+        bankMatchConfidence: expense.bank_match_confidence,
+      };
+    }),
   ].sort((a, b) => a.date.localeCompare(b.date));
 }
 
