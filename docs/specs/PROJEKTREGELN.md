@@ -131,7 +131,7 @@ Die ursprüngliche Reihenfolge wurde geändert: Modul 08 wird vor Modul 06 imple
 | Dateimanager       | ✅ Abgeschlossen       | Auf main gemergt                                                       |
 | Ausgabenverwaltung | ✅ Abgeschlossen       | Auf main gemergt, inkl. CSV-Import/Export und wiederkehrende Ausgaben  |
 | Listing-Verwaltung | ✅ Abgeschlossen       | Auf main gemergt, Master+Overrides-Konzept                             |
-| Auftragsverwaltung | 🔄 In Arbeit            | Vorgezogen wegen EÜR-Bedarf, inkl. EÜR-Export und N26-Bankimport       |
+| Auftragsverwaltung | ✅ Abgeschlossen | Auf main gemergt, inkl. EÜR-Export und N26-Bankimport                        |
 | KI-Architektur     | ⏳ Nicht begonnen      |                                                                        |
 | Aufgaben-Modul     | ⏳ Nicht begonnen      |                                                                        |
 | Vorlagenbibliothek | ⏳ Nicht begonnen      |                                                                        |
