@@ -1,4 +1,7 @@
 export { AIAssistantPage } from './AIAssistantPage';
+export { AIStatusBadge } from './components/AIStatusBadge';
+export { BrandSettings } from './components/BrandSettings';
+export { ProviderSettings } from './components/ProviderSettings';
 
 export * from './agents/expenseAssistant';
 export * from './agents/listingAssistant';

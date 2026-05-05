@@ -3,6 +3,8 @@ import { useTheme } from '@/hooks/useTheme';
 import { ACCENT_PRESETS, type AccentPresetKey } from '@/utils/colors';
 import { cn } from '@/lib/utils';
 import type { Theme, AccentColor } from '@/types';
+import { ProviderSettings } from '@/features/ai-assistant/components/ProviderSettings';
+import { BrandSettings } from '@/features/ai-assistant/components/BrandSettings';
 
 const THEME_OPTIONS: { value: Theme; label: string; icon: typeof Sun }[] = [
   { value: 'light', label: 'Hell', icon: Sun },
@@ -22,7 +24,9 @@ export function SettingsPage() {
         </div>
         <div>
           <h1 className="text-xl font-semibold text-text-primary">Einstellungen</h1>
-          <p className="text-sm text-text-secondary">Erscheinungsbild und Anzeigeoptionen</p>
+          <p className="text-sm text-text-secondary">
+            Erscheinungsbild, KI-Provider und Markenstil
+          </p>
         </div>
       </div>
 
@@ -96,6 +100,22 @@ export function SettingsPage() {
               );
             })}
           </div>
+        </section>
+
+        <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm dark:border-transparent dark:shadow-md">
+          <h2 className="mb-1 text-base font-semibold text-text-primary">KI-Provider</h2>
+          <p className="mb-4 text-sm text-text-secondary">
+            Konfiguriere API-Keys, lokalen Ollama-Zugriff und das Monatsbudget fuer KI-Aufrufe.
+          </p>
+          <ProviderSettings />
+        </section>
+
+        <section className="rounded-xl border border-border bg-bg-elevated p-6 shadow-sm dark:border-transparent dark:shadow-md">
+          <h2 className="mb-1 text-base font-semibold text-text-primary">Markenstil</h2>
+          <p className="mb-4 text-sm text-text-secondary">
+            Lege Tonalitaet, bevorzugte Begriffe und No-Go-Formulierungen fuer KI-Texte fest.
+          </p>
+          <BrandSettings />
         </section>
       </div>
     </div>
