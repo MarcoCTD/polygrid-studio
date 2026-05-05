@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useUIStore } from '@/stores';
 import { initDatabase } from '@/services/database';
 import { processDueRecurringExpenses } from '@/features/expenses/services';
+import { useAIStore } from '@/features/ai-assistant/stores/aiStore';
 import { router } from '@/router';
 import { Toaster } from '@/components/ui/sonner';
 import '@/styles/globals.css';
@@ -45,12 +46,14 @@ function App() {
   const dbError = useUIStore((s) => s.dbError);
   const setDbReady = useUIStore((s) => s.setDbReady);
   const setDbError = useUIStore((s) => s.setDbError);
+  const initializeAI = useAIStore((s) => s.initialize);
 
   useEffect(() => {
     initDatabase()
       .then(async () => {
         try {
           const createdCount = await processDueRecurringExpenses();
+          await initializeAI();
           setDbReady(true);
 
           if (createdCount > 0) {
@@ -79,7 +82,7 @@ function App() {
         const message = err instanceof Error ? err.message : String(err);
         setDbError(message);
       });
-  }, [setDbReady, setDbError]);
+  }, [initializeAI, setDbReady, setDbError]);
 
   if (dbError) {
     return <DatabaseError error={dbError} />;
