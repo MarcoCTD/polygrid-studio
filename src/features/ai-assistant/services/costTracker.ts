@@ -77,3 +77,10 @@ export async function logAIJob(input: AIJobLogInput): Promise<string> {
   );
   return id;
 }
+
+export async function updateAIJobStatus(
+  id: string,
+  status: 'success' | 'error' | 'cancelled',
+): Promise<void> {
+  await getDatabase().execute('UPDATE ai_jobs SET status = $1 WHERE id = $2', [status, id]);
+}

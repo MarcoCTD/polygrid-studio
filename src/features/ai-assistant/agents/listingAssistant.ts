@@ -1,4 +1,5 @@
 import type { Product } from '@/features/products/schema';
+import type { Listing } from '@/features/listings/schemas';
 import { aiEstimateCost, aiGenerateStructured, aiGenerateText } from '../services/aiService';
 import { checkBudget, logAIJob } from '../services/costTracker';
 import { buildListingSystemPrompt, loadBrandSettings } from '../services/promptBuilder';
@@ -20,7 +21,7 @@ const TITLE_LIMITS: Record<ListingPlatform, number> = {
   kleinanzeigen: 65,
 };
 
-function productContext(product: Product): string {
+function productContext(product: Product, listing?: Listing): string {
   return [
     `Name: ${product.name}`,
     product.short_name ? `Kurzname: ${product.short_name}` : '',
@@ -32,6 +33,17 @@ function productContext(product: Product): string {
     product.print_time_minutes ? `Druckzeit: ${product.print_time_minutes} Minuten` : '',
     product.target_price ? `Zielpreis: ${product.target_price} EUR` : '',
     product.notes ? `Notizen: ${product.notes}` : '',
+    listing?.master_title ? `Aktueller Listing-Titel: ${listing.master_title}` : '',
+    listing?.master_short_description
+      ? `Aktuelle Kurzbeschreibung: ${listing.master_short_description}`
+      : '',
+    listing?.master_long_description
+      ? `Aktuelle Langbeschreibung: ${listing.master_long_description}`
+      : '',
+    listing?.master_tags.length ? `Aktuelle Tags: ${listing.master_tags.join(', ')}` : '',
+    listing?.master_bullet_points?.length
+      ? `Aktuelle Bullet Points: ${listing.master_bullet_points.join(' | ')}`
+      : '',
   ]
     .filter(Boolean)
     .join('\n');
@@ -45,7 +57,12 @@ function parseLines(text: string): string[] {
 }
 
 function parseStringArray(text: string): string[] {
-  const parsed: unknown = JSON.parse(text);
+  const cleaned = text
+    .trim()
+    .replace(/^```(?:json)?/i, '')
+    .replace(/```$/i, '')
+    .trim();
+  const parsed: unknown = JSON.parse(cleaned);
   if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === 'string')) {
     throw new Error('KI-Antwort ist kein JSON-Array aus Strings.');
   }
@@ -123,11 +140,17 @@ export async function generateTitle(
   product: Product,
   platform: ListingPlatform,
   language: Language,
+  listing?: Listing,
 ): Promise<AIDiffResult> {
   const brand = await loadBrandSettings();
   const provider = activeProvider();
   const systemPrompt = buildListingSystemPrompt(platform, language, brand);
-  const userPrompt = `Erstelle 3 SEO-optimierte Titel fuer folgendes Produkt auf ${platform} (max. ${TITLE_LIMITS[platform]} Zeichen pro Titel). Antworte NUR mit den 3 Titeln, je einer pro Zeile, ohne Nummerierung.\n\n${productContext(product)}`;
+  const userPrompt = [
+    `Erstelle 3 SEO-optimierte Produkttitel fuer ${platform} (max. ${TITLE_LIMITS[platform]} Zeichen pro Titel).`,
+    'Antworte NUR mit den 3 Titeln, einer pro Zeile, ohne Nummerierung und ohne Anfuehrungszeichen.',
+    '',
+    productContext(product, listing),
+  ].join('\n');
   const { response, jobId } = await runListingCall({
     action: 'generate_title',
     provider,
@@ -144,10 +167,10 @@ export async function generateTitle(
     jobId,
     fields: [
       {
-        fieldName: 'title',
+        fieldName: 'master_title',
         fieldLabel: 'Titel',
-        currentValue: product.name,
-        suggestedValue: parseLines(response.text),
+        currentValue: listing?.master_title ?? product.name,
+        suggestedValue: parseLines(response.text)[0] ?? response.text.trim(),
       },
     ],
   };
@@ -158,11 +181,26 @@ export async function generateDescription(
   platform: ListingPlatform,
   style: 'short' | 'long',
   language: Language,
+  listing?: Listing,
 ): Promise<AIDiffResult> {
   const brand = await loadBrandSettings();
   const provider = activeProvider();
   const systemPrompt = buildListingSystemPrompt(platform, language, brand);
-  const userPrompt = `Erstelle eine ${style === 'short' ? 'kurze' : 'ausfuehrliche'} Produktbeschreibung fuer ${platform}. Keine Markdown-Formatierung.\n\n${productContext(product)}`;
+  const userPrompt =
+    style === 'short'
+      ? [
+          `Erstelle eine kurze Produktbeschreibung fuer ${platform}.`,
+          'Maximal 2 kurze Absaetze, keine Markdown-Formatierung, sachlich und praezise.',
+          '',
+          productContext(product, listing),
+        ].join('\n')
+      : [
+          `Erstelle eine ausfuehrliche Produktbeschreibung fuer ${platform}.`,
+          'Die Beschreibung soll sachlich und praezise sein, technische Details betonen und in 3-4 Absaetze gegliedert sein.',
+          'Keine Markdown-Formatierung.',
+          '',
+          productContext(product, listing),
+        ].join('\n');
   const { response, jobId } = await runListingCall({
     action: 'generate_description',
     provider,
@@ -179,9 +217,12 @@ export async function generateDescription(
     jobId,
     fields: [
       {
-        fieldName: style === 'short' ? 'short_description' : 'long_description',
+        fieldName: style === 'short' ? 'master_short_description' : 'master_long_description',
         fieldLabel: style === 'short' ? 'Kurzbeschreibung' : 'Beschreibung',
-        currentValue: product.description_internal,
+        currentValue:
+          style === 'short'
+            ? (listing?.master_short_description ?? product.description_internal)
+            : (listing?.master_long_description ?? product.description_internal),
         suggestedValue: response.text.trim(),
       },
     ],
@@ -192,11 +233,20 @@ export async function generateTags(
   product: Product,
   platform: ListingPlatform,
   language: Language,
+  listing?: Listing,
 ): Promise<AIDiffResult> {
   const brand = await loadBrandSettings();
   const provider = activeProvider();
   const systemPrompt = buildListingSystemPrompt(platform, language, brand);
-  const userPrompt = `Erstelle ${TAG_LIMITS[platform]} SEO-Tags fuer ${platform} fuer folgendes Produkt. Antworte als JSON-Array: ["tag1", "tag2"].\n\n${productContext(product)}`;
+  const userPrompt = [
+    `Erstelle genau ${TAG_LIMITS[platform]} SEO-optimierte Tags fuer dieses ${platform}-Listing.`,
+    'Antworte als JSON-Array: ["tag1", "tag2", ...].',
+    platform === 'etsy'
+      ? 'Beachte: Jeder Tag maximal 20 Zeichen. Keine Duplikate.'
+      : 'Keine Duplikate.',
+    '',
+    productContext(product, listing),
+  ].join('\n');
   const { response, jobId } = await runListingCall({
     action: 'generate_tags',
     provider,
@@ -213,10 +263,10 @@ export async function generateTags(
     jobId,
     fields: [
       {
-        fieldName: 'tags',
+        fieldName: 'master_tags',
         fieldLabel: 'Tags',
-        currentValue: null,
-        suggestedValue: parseStringArray(response.text),
+        currentValue: listing?.master_tags ?? null,
+        suggestedValue: parseStringArray(response.text).slice(0, TAG_LIMITS[platform]),
       },
     ],
   };
@@ -225,11 +275,18 @@ export async function generateTags(
 export async function generateBulletPoints(
   product: Product,
   language: Language,
+  listing?: Listing,
 ): Promise<AIDiffResult> {
   const brand = await loadBrandSettings();
   const provider = activeProvider();
   const systemPrompt = buildListingSystemPrompt('etsy', language, brand);
-  const userPrompt = `Erstelle 5 sachliche Bullet Points fuer folgendes Produkt. Antworte als JSON-Array aus Strings.\n\n${productContext(product)}`;
+  const userPrompt = [
+    'Erstelle 5 sachliche Bullet Points fuer folgendes Produkt.',
+    'Fokus: Nutzen, Material, technische Details, Verarbeitung, Einsatzbereich.',
+    'Antworte als JSON-Array aus Strings.',
+    '',
+    productContext(product, listing),
+  ].join('\n');
   const { response, jobId } = await runListingCall({
     action: 'generate_bullet_points',
     provider,
@@ -246,9 +303,9 @@ export async function generateBulletPoints(
     jobId,
     fields: [
       {
-        fieldName: 'bullet_points',
+        fieldName: 'master_bullet_points',
         fieldLabel: 'Bullet Points',
-        currentValue: null,
+        currentValue: listing?.master_bullet_points ?? null,
         suggestedValue: parseStringArray(response.text),
       },
     ],
@@ -259,12 +316,19 @@ export async function rewriteForPlatform(
   text: string,
   sourcePlatform: string,
   targetPlatform: string,
+  language: Language = 'de',
 ): Promise<AIDiffResult> {
   const brand = await loadBrandSettings();
   const provider = activeProvider();
   const target = targetPlatform as ListingPlatform;
-  const systemPrompt = buildListingSystemPrompt(target, 'de', brand);
-  const userPrompt = `Schreibe den folgenden Text von ${sourcePlatform} fuer ${targetPlatform} um. Behalte Fakten bei und beachte Plattform-Limits.\n\n${text}`;
+  const systemPrompt = buildListingSystemPrompt(target, language, brand);
+  const userPrompt = [
+    `Schreibe den folgenden Text von ${sourcePlatform} fuer ${targetPlatform} um.`,
+    'Behalte alle Fakten bei, entferne nicht belegbare Aussagen und beachte die Plattform-Limits.',
+    'Gib nur den umgeschriebenen Text aus, ohne Markdown und ohne Einleitung.',
+    '',
+    text,
+  ].join('\n');
   const { response, jobId } = await runListingCall({
     action: 'rewrite_for_platform',
     provider,
@@ -281,8 +345,8 @@ export async function rewriteForPlatform(
     jobId,
     fields: [
       {
-        fieldName: 'text',
-        fieldLabel: 'Text',
+        fieldName: 'master_long_description',
+        fieldLabel: `Text fuer ${targetPlatform}`,
         currentValue: text,
         suggestedValue: response.text.trim(),
       },

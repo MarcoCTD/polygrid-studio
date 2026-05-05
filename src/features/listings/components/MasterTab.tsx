@@ -1,11 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
-import { Sparkles, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { X } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { AIToolbar } from '@/features/ai-assistant/components/AIToolbar';
+import type { AIDiffField } from '@/features/ai-assistant/types';
+import { getProduct } from '@/features/products/db';
+import type { Product } from '@/features/products/schema';
 import {
   Select,
   SelectContent,
@@ -42,6 +45,9 @@ function toNullableNumber(value: string): number | null {
 
 export function MasterTab({ listing, form }: MasterTabProps) {
   const [tagInput, setTagInput] = useState('');
+  const [product, setProduct] = useState<Product | null>(null);
+  const [isProductLoading, setIsProductLoading] = useState(true);
+  const [productLoadError, setProductLoadError] = useState<string | null>(null);
   const {
     register,
     setValue,
@@ -51,9 +57,40 @@ export function MasterTab({ listing, form }: MasterTabProps) {
 
   const title = watch('master_title') ?? '';
   const tags = watch('master_tags') ?? [];
+  const bulletPoints = watch('master_bullet_points') ?? [];
   const inventoryMode = watch('inventory_mode');
   const language = watch('language');
   const appendLegalTexts = watch('append_legal_texts');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadProduct() {
+      setIsProductLoading(true);
+      setProductLoadError(null);
+      try {
+        const nextProduct = await getProduct(listing.product_id);
+        if (isMounted) {
+          setProduct(nextProduct);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setProduct(null);
+          setProductLoadError(error instanceof Error ? error.message : String(error));
+        }
+      } finally {
+        if (isMounted) {
+          setIsProductLoading(false);
+        }
+      }
+    }
+
+    void loadProduct();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [listing.product_id]);
 
   const titleCounters = useMemo(
     () => [
@@ -62,6 +99,11 @@ export function MasterTab({ listing, form }: MasterTabProps) {
       { key: 'kleinanzeigen', label: 'KA', limit: PLATFORM_LIMITS.kleinanzeigen.maxTitleLength },
     ],
     [],
+  );
+
+  const primaryPlatform = useMemo(
+    () => listing.overrides.find((override) => override.is_active)?.platform ?? 'etsy',
+    [listing.overrides],
   );
 
   function addTags(raw: string) {
@@ -82,6 +124,67 @@ export function MasterTab({ listing, form }: MasterTabProps) {
       tags.filter((item) => item !== tag),
       { shouldDirty: true, shouldValidate: true },
     );
+  }
+
+  function setBulletPoints(raw: string) {
+    const nextBulletPoints = raw
+      .split('\n')
+      .map((item) => item.trim())
+      .filter(Boolean);
+    setValue('master_bullet_points', nextBulletPoints.length > 0 ? nextBulletPoints : null, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }
+
+  function applyAIDiff(fields: AIDiffField[]) {
+    for (const field of fields) {
+      const value = field.suggestedValue;
+
+      switch (field.fieldName) {
+        case 'master_title':
+          setValue('master_title', Array.isArray(value) ? (value[0] ?? '') : value, {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
+          break;
+        case 'master_short_description':
+          setValue(
+            'master_short_description',
+            Array.isArray(value) ? value.join('\n') : value || null,
+            { shouldDirty: true, shouldValidate: true },
+          );
+          break;
+        case 'master_long_description':
+          setValue(
+            'master_long_description',
+            Array.isArray(value) ? value.join('\n') : value || null,
+            {
+              shouldDirty: true,
+              shouldValidate: true,
+            },
+          );
+          break;
+        case 'master_tags':
+          setValue(
+            'master_tags',
+            Array.isArray(value) ? value.slice(0, 20) : [value].filter(Boolean),
+            {
+              shouldDirty: true,
+              shouldValidate: true,
+            },
+          );
+          break;
+        case 'master_bullet_points':
+          setValue('master_bullet_points', Array.isArray(value) ? value : [value].filter(Boolean), {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
+          break;
+        default:
+          break;
+      }
+    }
   }
 
   function setInventoryMode(mode: InventoryMode) {
@@ -198,6 +301,15 @@ export function MasterTab({ listing, form }: MasterTabProps) {
             />
           </div>
           <p className="mt-1 text-xs text-text-muted">{tags.length} / 20 Tags</p>
+        </Field>
+
+        <Field label="Master-Aufzählungspunkte" error={errors.master_bullet_points?.message}>
+          <Textarea
+            rows={5}
+            value={bulletPoints.join('\n')}
+            onChange={(event) => setBulletPoints(event.target.value)}
+            placeholder="Ein Punkt pro Zeile"
+          />
         </Field>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -377,19 +489,23 @@ export function MasterTab({ listing, form }: MasterTabProps) {
 
         <div className="space-y-2 rounded-lg border border-border-subtle bg-bg-elevated p-4 dark:border-transparent">
           <p className="text-xs font-medium uppercase tracking-wide text-text-muted">KI-Aktionen</p>
-          {['Titel verbessern', 'Beschreibung generieren', 'Tags vorschlagen'].map((label) => (
-            <Button
-              key={label}
-              variant="ghost"
-              size="sm"
-              disabled
-              title="Wird in Modul 06 verfügbar"
-              className="w-full justify-start gap-1.5"
-            >
-              <Sparkles size={14} />
-              <span>{label}</span>
-            </Button>
-          ))}
+          {isProductLoading && (
+            <p className="text-sm text-text-secondary">Produktdaten werden geladen...</p>
+          )}
+          {!isProductLoading && !product && (
+            <p className="text-sm text-danger">
+              {productLoadError ?? 'Produktdaten konnten nicht geladen werden.'}
+            </p>
+          )}
+          {product && (
+            <AIToolbar
+              product={product}
+              listing={listing}
+              platform={primaryPlatform}
+              language={language}
+              onApplyDiff={applyAIDiff}
+            />
+          )}
         </div>
       </aside>
     </div>

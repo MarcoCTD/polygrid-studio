@@ -63,6 +63,7 @@ export function ListingEditorPage() {
       master_title: '',
       master_short_description: null,
       master_long_description: null,
+      master_bullet_points: null,
       master_tags: [],
       base_price: 0,
       inventory_mode: 'made_to_order',

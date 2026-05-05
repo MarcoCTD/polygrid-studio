@@ -1,5 +1,6 @@
 export { AIAssistantPage } from './AIAssistantPage';
 export { AIStatusBadge } from './components/AIStatusBadge';
+export { AIToolbar } from './components/AIToolbar';
 export { BrandSettings } from './components/BrandSettings';
 export { ProviderSettings } from './components/ProviderSettings';
 
