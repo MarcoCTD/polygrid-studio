@@ -1,3 +1,4 @@
+mod ai;
 mod filesystem;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -15,6 +16,14 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             greet,
+            ai::keychain::keychain_set,
+            ai::keychain::keychain_get,
+            ai::keychain::keychain_delete,
+            ai::commands::ai_generate_text,
+            ai::commands::ai_generate_structured,
+            ai::commands::ai_test_connection,
+            ai::commands::ai_list_ollama_models,
+            ai::commands::ai_estimate_cost,
             filesystem::commands::list_directory,
             filesystem::commands::get_file_info,
             filesystem::commands::create_directory,
