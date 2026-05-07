@@ -26,7 +26,9 @@ interface WeekViewProps {
   weekDates: Date[];
   isCurrentWeek: boolean;
   refreshKey?: number;
+  showDone?: boolean;
   onOpenTask: (task: Task) => void;
+  onChanged?: () => void | Promise<void>;
 }
 
 const UNSCHEDULED_COLUMN_ID = 'tasks-column-unscheduled';
@@ -50,7 +52,14 @@ function uniqueTasks(tasks: Task[]): Task[] {
   });
 }
 
-export function WeekView({ weekDates, isCurrentWeek, refreshKey = 0, onOpenTask }: WeekViewProps) {
+export function WeekView({
+  weekDates,
+  isCurrentWeek,
+  refreshKey = 0,
+  showDone = true,
+  onOpenTask,
+  onChanged,
+}: WeekViewProps) {
   const [scheduledTasks, setScheduledTasks] = useState<Task[]>([]);
   const [unscheduledTasks, setUnscheduledTasks] = useState<Task[]>([]);
   const [overdueTasks, setOverdueTasks] = useState<Task[]>([]);
@@ -72,11 +81,11 @@ export function WeekView({ weekDates, isCurrentWeek, refreshKey = 0, onOpenTask 
     try {
       const [scheduled, unscheduled, overdue] = await Promise.all([
         getTasksByDateRange(weekStart, weekEnd),
-        getUnscheduledTasks(),
+        getUnscheduledTasks(showDone),
         isCurrentWeek ? getOverdueTasks() : Promise.resolve([]),
       ]);
 
-      setScheduledTasks(scheduled);
+      setScheduledTasks(showDone ? scheduled : scheduled.filter((task) => task.status !== 'done'));
       setUnscheduledTasks(unscheduled);
       setOverdueTasks(overdue);
     } catch (error) {
@@ -84,7 +93,7 @@ export function WeekView({ weekDates, isCurrentWeek, refreshKey = 0, onOpenTask 
     } finally {
       setIsLoading(false);
     }
-  }, [isCurrentWeek, weekEnd, weekStart]);
+  }, [isCurrentWeek, showDone, weekEnd, weekStart]);
 
   useEffect(() => {
     // Loading tasks from SQLite is this component's external synchronization point.
@@ -124,6 +133,7 @@ export function WeekView({ weekDates, isCurrentWeek, refreshKey = 0, onOpenTask 
     try {
       await updateTask(task.id, { due_date: nextDueDate });
       await loadTasks();
+      await onChanged?.();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Aufgabe konnte nicht verschoben werden',
@@ -156,9 +166,10 @@ export function WeekView({ weekDates, isCurrentWeek, refreshKey = 0, onOpenTask 
             id={UNSCHEDULED_COLUMN_ID}
             isUnscheduled
             tasks={unscheduledTasks}
-            onCompleteTask={(taskId) => void handleComplete(taskId, loadTasks)}
+            emptyText="Keine ungeplanten Aufgaben"
+            onCompleteTask={(taskId) => void handleComplete(taskId, loadTasks, onChanged)}
             onOpenTask={onOpenTask}
-            onTaskCreated={() => void loadTasks()}
+            onTaskCreated={() => void handleColumnTaskCreated(loadTasks, onChanged)}
           />
           {weekDates.map((date) => {
             const isoDate = formatISODate(date);
@@ -168,9 +179,10 @@ export function WeekView({ weekDates, isCurrentWeek, refreshKey = 0, onOpenTask 
                 id={dayColumnId(isoDate)}
                 date={date}
                 tasks={tasksByDate.get(isoDate) ?? []}
-                onCompleteTask={(taskId) => void handleComplete(taskId, loadTasks)}
+                emptyText="Keine Aufgaben für diese Woche"
+                onCompleteTask={(taskId) => void handleComplete(taskId, loadTasks, onChanged)}
                 onOpenTask={onOpenTask}
-                onTaskCreated={() => void loadTasks()}
+                onTaskCreated={() => void handleColumnTaskCreated(loadTasks, onChanged)}
               />
             );
           })}
@@ -202,13 +214,26 @@ export function WeekView({ weekDates, isCurrentWeek, refreshKey = 0, onOpenTask 
   }
 }
 
-async function handleComplete(taskId: string, onChanged: () => Promise<void>) {
+async function handleComplete(
+  taskId: string,
+  loadTasks: () => Promise<void>,
+  onChanged?: () => void | Promise<void>,
+) {
   try {
     await completeTask(taskId);
-    await onChanged();
+    await loadTasks();
+    await onChanged?.();
   } catch (error) {
     toast.error(
       error instanceof Error ? error.message : 'Aufgabe konnte nicht abgeschlossen werden',
     );
   }
+}
+
+async function handleColumnTaskCreated(
+  loadTasks: () => Promise<void>,
+  onChanged?: () => void | Promise<void>,
+) {
+  await loadTasks();
+  await onChanged?.();
 }

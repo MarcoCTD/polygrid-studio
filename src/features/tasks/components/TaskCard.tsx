@@ -79,7 +79,8 @@ export function TaskCard({ task, isOverlay = false, onCompleteTask, onOpenTask }
             <EntityIcon task={task} />
             {overdue ? (
               <Badge variant="outline" className="border-danger bg-danger-subtle text-danger">
-                Überfällig {task.due_date ? formatDisplayDate(parseISODate(task.due_date)) : ''}
+                Überfällig seit{' '}
+                {task.due_date ? formatDisplayDate(parseISODate(task.due_date)) : ''}
               </Badge>
             ) : null}
             {task.recurring_rule ? <RecurringBadge rule={task.recurring_rule} /> : null}

@@ -24,6 +24,7 @@ interface NavItem {
   icon: LucideIcon;
   route: string;
   badge?: number;
+  badgeTone?: 'default' | 'danger';
 }
 
 const mainNavItems: NavItem[] = [
@@ -84,11 +85,27 @@ function NavButton({
         <>
           <span className="truncate">{item.label}</span>
           {item.badge !== undefined && item.badge > 0 && (
-            <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-pg-accent px-1.5 text-xs font-medium text-white">
+            <span
+              className={cn(
+                'ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-medium text-white',
+                item.badgeTone === 'danger' ? 'bg-danger' : 'bg-pg-accent',
+              )}
+            >
               {item.badge}
             </span>
           )}
         </>
+      )}
+
+      {collapsed && item.badge !== undefined && item.badge > 0 && (
+        <span
+          className={cn(
+            'absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white',
+            item.badgeTone === 'danger' ? 'bg-danger' : 'bg-pg-accent',
+          )}
+        >
+          {item.badge > 9 ? '9+' : item.badge}
+        </span>
       )}
     </button>
   );
@@ -98,11 +115,16 @@ export function Sidebar() {
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const openOrdersCount = useUIStore((s) => s.openOrdersCount);
+  const overdueTasksCount = useUIStore((s) => s.overdueTasksCount);
   const matches = useMatches();
   const currentPath = matches[matches.length - 1]?.fullPath ?? '/';
-  const navItems = mainNavItems.map((item) =>
-    item.route === '/orders' ? { ...item, badge: openOrdersCount } : item,
-  );
+  const navItems = mainNavItems.map((item) => {
+    if (item.route === '/orders') return { ...item, badge: openOrdersCount };
+    if (item.route === '/tasks') {
+      return { ...item, badge: overdueTasksCount, badgeTone: 'danger' as const };
+    }
+    return item;
+  });
 
   return (
     <aside

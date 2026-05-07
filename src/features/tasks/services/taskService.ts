@@ -259,14 +259,14 @@ export async function getTasksByDateRange(start: string, end: string): Promise<T
   }
 }
 
-export async function getUnscheduledTasks(): Promise<Task[]> {
+export async function getUnscheduledTasks(includeDone = false): Promise<Task[]> {
   try {
     const rows = await getDatabase().select<TaskRow[]>(
       `SELECT *
        FROM tasks
        WHERE deleted_at IS NULL
          AND due_date IS NULL
-         AND status IN ('todo', 'in_progress')
+         AND status IN (${includeDone ? "'todo', 'in_progress', 'done'" : "'todo', 'in_progress'"})
        ORDER BY created_at DESC`,
     );
     return rows.map(rowToTask);

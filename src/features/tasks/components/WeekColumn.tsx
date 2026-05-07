@@ -13,6 +13,7 @@ interface WeekColumnProps {
   date?: Date;
   tasks: Task[];
   isUnscheduled?: boolean;
+  emptyText?: string;
   onCompleteTask: (taskId: string) => void;
   onOpenTask: (task: Task) => void;
   onTaskCreated: () => void;
@@ -28,6 +29,7 @@ export function WeekColumn({
   date,
   tasks,
   isUnscheduled = false,
+  emptyText = 'Keine Aufgaben',
   onCompleteTask,
   onOpenTask,
   onTaskCreated,
@@ -67,7 +69,7 @@ export function WeekColumn({
         <div className="flex-1 space-y-2 overflow-y-auto p-2">
           {tasks.length === 0 ? (
             <div className="flex min-h-24 items-center justify-center rounded-lg border border-dashed border-border-subtle px-2 text-center text-xs text-text-muted">
-              Keine Aufgaben
+              {emptyText}
             </div>
           ) : (
             tasks.map((task) => (

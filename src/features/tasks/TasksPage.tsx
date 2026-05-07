@@ -1,9 +1,18 @@
 import { useState } from 'react';
-import { Bot, CalendarDays, ChevronLeft, ChevronRight, ListChecks, Plus } from 'lucide-react';
+import {
+  Bot,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  ListChecks,
+  Plus,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUIStore } from '@/stores';
 import type { Task } from './schemas';
-import { useWeekNavigation } from './hooks';
+import { useTaskBadge, useWeekNavigation } from './hooks';
 import { ListView, NewTaskModal, TaskDetailPanel, WeekView } from './components';
 
 type TaskViewMode = 'week' | 'list';
@@ -13,12 +22,15 @@ export function TasksPage() {
   const closeDetailPanel = useUIStore((state) => state.closeDetailPanel);
   const [viewMode, setViewMode] = useState<TaskViewMode>('week');
   const [newTaskOpen, setNewTaskOpen] = useState(false);
+  const [showDoneInWeek, setShowDoneInWeek] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const { refreshTaskBadge } = useTaskBadge();
   const { weekDates, weekNumber, isCurrentWeek, goToPreviousWeek, goToNextWeek, goToToday } =
     useWeekNavigation();
 
   function refreshTasks() {
     setRefreshKey((value) => value + 1);
+    void refreshTaskBadge();
   }
 
   function openTask(task: Task) {
@@ -102,6 +114,19 @@ export function TasksPage() {
             </div>
           ) : null}
 
+          {viewMode === 'week' ? (
+            <Button
+              type="button"
+              variant={showDoneInWeek ? 'secondary' : 'outline'}
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setShowDoneInWeek((value) => !value)}
+            >
+              {showDoneInWeek ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+              Erledigte {showDoneInWeek ? 'ausblenden' : 'einblenden'}
+            </Button>
+          ) : null}
+
           <Button type="button" size="sm" className="gap-1.5" onClick={() => setNewTaskOpen(true)}>
             <Plus className="size-4" />
             Neue Aufgabe
@@ -126,10 +151,12 @@ export function TasksPage() {
             weekDates={weekDates}
             isCurrentWeek={isCurrentWeek}
             refreshKey={refreshKey}
+            showDone={showDoneInWeek}
             onOpenTask={openTask}
+            onChanged={refreshTasks}
           />
         ) : (
-          <ListView refreshKey={refreshKey} onOpenTask={openTask} />
+          <ListView refreshKey={refreshKey} onOpenTask={openTask} onChanged={refreshTasks} />
         )}
       </main>
 

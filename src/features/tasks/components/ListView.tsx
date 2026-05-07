@@ -46,6 +46,7 @@ type LinkType = 'product' | 'order' | 'listing' | 'none';
 interface ListViewProps {
   refreshKey?: number;
   onOpenTask: (task: TaskListItem) => void;
+  onChanged?: () => void | Promise<void>;
 }
 
 const ROW_HEIGHT = 50;
@@ -148,7 +149,7 @@ function toggleFilterValue<T extends string>(values: T[], value: T, checked: boo
   return values.filter((item) => item !== value);
 }
 
-export function ListView({ refreshKey = 0, onOpenTask }: ListViewProps) {
+export function ListView({ refreshKey = 0, onOpenTask, onChanged }: ListViewProps) {
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([
@@ -218,13 +219,14 @@ export function ListView({ refreshKey = 0, onOpenTask }: ListViewProps) {
           toast.success('Aufgabe wieder geöffnet');
         }
         await loadTasks();
+        await onChanged?.();
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : 'Aufgabe konnte nicht aktualisiert werden',
         );
       }
     },
-    [loadTasks],
+    [loadTasks, onChanged],
   );
 
   const columns = useMemo(

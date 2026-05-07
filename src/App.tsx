@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useUIStore } from '@/stores';
 import { initDatabase } from '@/services/database';
 import { processDueRecurringExpenses } from '@/features/expenses/services';
+import { useTaskBadge } from '@/features/tasks/hooks';
 import { router } from '@/router';
 import { Toaster } from '@/components/ui/sonner';
 import '@/styles/globals.css';
@@ -45,6 +46,7 @@ function App() {
   const dbError = useUIStore((s) => s.dbError);
   const setDbReady = useUIStore((s) => s.setDbReady);
   const setDbError = useUIStore((s) => s.setDbError);
+  useTaskBadge(dbReady);
 
   useEffect(() => {
     initDatabase()
