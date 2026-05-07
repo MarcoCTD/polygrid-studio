@@ -1,15 +1,38 @@
 import { useState } from 'react';
 import { Bot, CalendarDays, ChevronLeft, ChevronRight, ListChecks, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useUIStore } from '@/stores';
+import type { Task } from './schemas';
 import { useWeekNavigation } from './hooks';
-import { ListView, WeekView } from './components';
+import { ListView, NewTaskModal, TaskDetailPanel, WeekView } from './components';
 
 type TaskViewMode = 'week' | 'list';
 
 export function TasksPage() {
+  const openDetailPanel = useUIStore((state) => state.openDetailPanel);
+  const closeDetailPanel = useUIStore((state) => state.closeDetailPanel);
   const [viewMode, setViewMode] = useState<TaskViewMode>('week');
+  const [newTaskOpen, setNewTaskOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const { weekDates, weekNumber, isCurrentWeek, goToPreviousWeek, goToNextWeek, goToToday } =
     useWeekNavigation();
+
+  function refreshTasks() {
+    setRefreshKey((value) => value + 1);
+  }
+
+  function openTask(task: Task) {
+    openDetailPanel(
+      <TaskDetailPanel
+        task={task}
+        onSaved={() => refreshTasks()}
+        onDeleted={() => {
+          refreshTasks();
+          closeDetailPanel();
+        }}
+      />,
+    );
+  }
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-bg-primary">
@@ -79,7 +102,7 @@ export function TasksPage() {
             </div>
           ) : null}
 
-          <Button type="button" size="sm" className="gap-1.5" title="Folgt in Sub-Session E">
+          <Button type="button" size="sm" className="gap-1.5" onClick={() => setNewTaskOpen(true)}>
             <Plus className="size-4" />
             Neue Aufgabe
           </Button>
@@ -99,11 +122,18 @@ export function TasksPage() {
 
       <main className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-6">
         {viewMode === 'week' ? (
-          <WeekView weekDates={weekDates} isCurrentWeek={isCurrentWeek} />
+          <WeekView
+            weekDates={weekDates}
+            isCurrentWeek={isCurrentWeek}
+            refreshKey={refreshKey}
+            onOpenTask={openTask}
+          />
         ) : (
-          <ListView />
+          <ListView refreshKey={refreshKey} onOpenTask={openTask} />
         )}
       </main>
+
+      <NewTaskModal open={newTaskOpen} onOpenChange={setNewTaskOpen} onCreated={refreshTasks} />
     </div>
   );
 }

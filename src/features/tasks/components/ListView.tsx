@@ -43,6 +43,11 @@ import { PriorityBadge } from './PriorityBadge';
 
 type LinkType = 'product' | 'order' | 'listing' | 'none';
 
+interface ListViewProps {
+  refreshKey?: number;
+  onOpenTask: (task: TaskListItem) => void;
+}
+
 const ROW_HEIGHT = 50;
 const TITLE_COL_MIN_WIDTH = 260;
 const columnHelper = createColumnHelper<TaskListItem>();
@@ -143,7 +148,7 @@ function toggleFilterValue<T extends string>(values: T[], value: T, checked: boo
   return values.filter((item) => item !== value);
 }
 
-export function ListView() {
+export function ListView({ refreshKey = 0, onOpenTask }: ListViewProps) {
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([
@@ -172,7 +177,7 @@ export function ListView() {
 
   useEffect(() => {
     void loadTasks();
-  }, [loadTasks]);
+  }, [loadTasks, refreshKey]);
 
   const filteredTasks = useMemo(
     () =>
@@ -222,10 +227,6 @@ export function ListView() {
     [loadTasks],
   );
 
-  const openTaskPlaceholder = useCallback((task: TaskListItem) => {
-    toast.info(`Detail-Panel für "${task.title}" folgt in Sub-Session E.`);
-  }, []);
-
   const columns = useMemo(
     () =>
       [
@@ -260,7 +261,7 @@ export function ListView() {
               title={getValue()}
               onClick={(event) => {
                 event.stopPropagation();
-                openTaskPlaceholder(row.original);
+                onOpenTask(row.original);
               }}
             >
               {getValue()}
@@ -319,7 +320,7 @@ export function ListView() {
           cell: (info) => <StatusBadge status={info.getValue()} />,
         }),
       ] as ColumnDef<TaskListItem, unknown>[],
-    [handleToggleDone, openTaskPlaceholder],
+    [handleToggleDone, onOpenTask],
   );
 
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -510,7 +511,7 @@ export function ListView() {
                         transform: `translateY(${virtualRow.start}px)`,
                         minWidth: '100%',
                       }}
-                      onClick={() => openTaskPlaceholder(row.original)}
+                      onClick={() => onOpenTask(row.original)}
                     >
                       {row.getVisibleCells().map((cell) => (
                         <div

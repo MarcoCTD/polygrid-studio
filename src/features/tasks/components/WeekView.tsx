@@ -25,6 +25,8 @@ import { WeekColumn } from './WeekColumn';
 interface WeekViewProps {
   weekDates: Date[];
   isCurrentWeek: boolean;
+  refreshKey?: number;
+  onOpenTask: (task: Task) => void;
 }
 
 const UNSCHEDULED_COLUMN_ID = 'tasks-column-unscheduled';
@@ -48,7 +50,7 @@ function uniqueTasks(tasks: Task[]): Task[] {
   });
 }
 
-export function WeekView({ weekDates, isCurrentWeek }: WeekViewProps) {
+export function WeekView({ weekDates, isCurrentWeek, refreshKey = 0, onOpenTask }: WeekViewProps) {
   const [scheduledTasks, setScheduledTasks] = useState<Task[]>([]);
   const [unscheduledTasks, setUnscheduledTasks] = useState<Task[]>([]);
   const [overdueTasks, setOverdueTasks] = useState<Task[]>([]);
@@ -88,7 +90,7 @@ export function WeekView({ weekDates, isCurrentWeek }: WeekViewProps) {
     // Loading tasks from SQLite is this component's external synchronization point.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadTasks();
-  }, [loadTasks]);
+  }, [loadTasks, refreshKey]);
 
   const tasksByDate = useMemo(() => {
     const map = new Map<string, Task[]>();
@@ -155,7 +157,7 @@ export function WeekView({ weekDates, isCurrentWeek }: WeekViewProps) {
             isUnscheduled
             tasks={unscheduledTasks}
             onCompleteTask={(taskId) => void handleComplete(taskId, loadTasks)}
-            onOpenTask={handleOpenTask}
+            onOpenTask={onOpenTask}
             onTaskCreated={() => void loadTasks()}
           />
           {weekDates.map((date) => {
@@ -167,7 +169,7 @@ export function WeekView({ weekDates, isCurrentWeek }: WeekViewProps) {
                 date={date}
                 tasks={tasksByDate.get(isoDate) ?? []}
                 onCompleteTask={(taskId) => void handleComplete(taskId, loadTasks)}
-                onOpenTask={handleOpenTask}
+                onOpenTask={onOpenTask}
                 onTaskCreated={() => void loadTasks()}
               />
             );
@@ -209,8 +211,4 @@ async function handleComplete(taskId: string, onChanged: () => Promise<void>) {
       error instanceof Error ? error.message : 'Aufgabe konnte nicht abgeschlossen werden',
     );
   }
-}
-
-function handleOpenTask(task: Task) {
-  toast.info(`Detail-Panel für "${task.title}" folgt in Sub-Session E.`);
 }

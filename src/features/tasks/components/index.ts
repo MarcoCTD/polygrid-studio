@@ -1,7 +1,9 @@
 export { EntityLink } from './EntityLink';
 export { ListView } from './ListView';
+export { NewTaskModal } from './NewTaskModal';
 export { PriorityBadge } from './PriorityBadge';
 export { QuickAddInput } from './QuickAddInput';
 export { TaskCard } from './TaskCard';
+export { TaskDetailPanel } from './TaskDetailPanel';
 export { WeekColumn } from './WeekColumn';
 export { WeekView } from './WeekView';
