@@ -30,6 +30,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -572,19 +573,21 @@ function MultiFilterDropdown<T extends string>({
         <ChevronDown className="size-3.5" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-48">
-        <DropdownMenuLabel>{label}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {items.map((item) => (
-          <DropdownMenuCheckboxItem
-            key={item.value}
-            checked={values.includes(item.value)}
-            onCheckedChange={(checked) =>
-              onChange(toggleFilterValue(values, item.value, Boolean(checked)))
-            }
-          >
-            {item.label}
-          </DropdownMenuCheckboxItem>
-        ))}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>{label}</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {items.map((item) => (
+            <DropdownMenuCheckboxItem
+              key={item.value}
+              checked={values.includes(item.value)}
+              onCheckedChange={(checked) =>
+                onChange(toggleFilterValue(values, item.value, Boolean(checked)))
+              }
+            >
+              {item.label}
+            </DropdownMenuCheckboxItem>
+          ))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
