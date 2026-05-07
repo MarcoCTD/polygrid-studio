@@ -160,14 +160,14 @@ export function WeekView({
       onDragCancel={() => setActiveTask(null)}
       onDragEnd={(event) => void handleDragEnd(event)}
     >
-      <div className="min-w-[900px] flex-1 overflow-x-auto">
-        <div className="grid min-h-full grid-cols-[200px_repeat(7,minmax(120px,1fr))] gap-3">
+      <div className="min-w-0 flex-1 overflow-x-auto">
+        <div className="grid min-h-full min-w-[1358px] grid-cols-[200px_repeat(7,minmax(160px,1fr))] gap-3">
           <WeekColumn
             id={UNSCHEDULED_COLUMN_ID}
             isUnscheduled
             tasks={unscheduledTasks}
             emptyText="Keine ungeplanten Aufgaben"
-            onCompleteTask={(taskId) => void handleComplete(taskId, loadTasks, onChanged)}
+            onToggleTask={(task) => void handleToggleTask(task, loadTasks, onChanged)}
             onOpenTask={onOpenTask}
             onTaskCreated={() => void handleColumnTaskCreated(loadTasks, onChanged)}
           />
@@ -180,7 +180,7 @@ export function WeekView({
                 date={date}
                 tasks={tasksByDate.get(isoDate) ?? []}
                 emptyText="Keine Aufgaben für diese Woche"
-                onCompleteTask={(taskId) => void handleComplete(taskId, loadTasks, onChanged)}
+                onToggleTask={(task) => void handleToggleTask(task, loadTasks, onChanged)}
                 onOpenTask={onOpenTask}
                 onTaskCreated={() => void handleColumnTaskCreated(loadTasks, onChanged)}
               />
@@ -214,18 +214,22 @@ export function WeekView({
   }
 }
 
-async function handleComplete(
-  taskId: string,
+async function handleToggleTask(
+  task: Task,
   loadTasks: () => Promise<void>,
   onChanged?: () => void | Promise<void>,
 ) {
   try {
-    await completeTask(taskId);
+    if (task.status === 'done') {
+      await updateTask(task.id, { status: 'todo' });
+    } else {
+      await completeTask(task.id);
+    }
     await loadTasks();
     await onChanged?.();
   } catch (error) {
     toast.error(
-      error instanceof Error ? error.message : 'Aufgabe konnte nicht abgeschlossen werden',
+      error instanceof Error ? error.message : 'Aufgabe konnte nicht aktualisiert werden',
     );
   }
 }

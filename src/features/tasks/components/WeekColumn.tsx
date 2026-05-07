@@ -14,7 +14,7 @@ interface WeekColumnProps {
   tasks: Task[];
   isUnscheduled?: boolean;
   emptyText?: string;
-  onCompleteTask: (taskId: string) => void;
+  onToggleTask: (task: Task) => void;
   onOpenTask: (task: Task) => void;
   onTaskCreated: () => void;
 }
@@ -30,7 +30,7 @@ export function WeekColumn({
   tasks,
   isUnscheduled = false,
   emptyText = 'Keine Aufgaben',
-  onCompleteTask,
+  onToggleTask,
   onOpenTask,
   onTaskCreated,
 }: WeekColumnProps) {
@@ -45,6 +45,7 @@ export function WeekColumn({
       ref={setNodeRef}
       className={cn(
         'flex min-h-[calc(100vh-230px)] flex-col overflow-hidden rounded-lg border border-border-subtle bg-bg-secondary',
+        isUnscheduled && 'sticky left-0 z-20 shadow-md',
         today && 'border-t-[3px] border-t-pg-accent',
         isOver && 'border-pg-accent bg-pg-accent-subtle/40',
       )}
@@ -76,7 +77,7 @@ export function WeekColumn({
               <TaskCard
                 key={task.id}
                 task={task}
-                onCompleteTask={onCompleteTask}
+                onToggleTask={onToggleTask}
                 onOpenTask={onOpenTask}
               />
             ))

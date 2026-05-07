@@ -369,6 +369,7 @@ export async function updateTask(id: string, data: TaskUpdate): Promise<Task> {
     const setClauses = ['updated_at = $1'];
     const params: unknown[] = [timestamp];
     const completesTask = input.status === 'done' && existing.status !== 'done';
+    const reopensTask = input.status === 'todo' && existing.status === 'done';
 
     for (const field of TASK_UPDATE_FIELDS) {
       if (field in input) {
@@ -384,6 +385,10 @@ export async function updateTask(id: string, data: TaskUpdate): Promise<Task> {
     if (completesTask) {
       setClauses.push(`completed_at = $${params.length + 1}`);
       params.push(timestamp);
+    }
+
+    if (reopensTask) {
+      setClauses.push('completed_at = NULL');
     }
 
     if (setClauses.length === 1) return existing;

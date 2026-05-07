@@ -12,7 +12,7 @@ import { RecurringBadge } from './RecurringBadge';
 interface TaskCardProps {
   task: Task;
   isOverlay?: boolean;
-  onCompleteTask?: (taskId: string) => void;
+  onToggleTask?: (task: Task) => void;
   onOpenTask?: (task: Task) => void;
 }
 
@@ -20,7 +20,7 @@ function formatDisplayDate(date: Date): string {
   return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.`;
 }
 
-export function TaskCard({ task, isOverlay = false, onCompleteTask, onOpenTask }: TaskCardProps) {
+export function TaskCard({ task, isOverlay = false, onToggleTask, onOpenTask }: TaskCardProps) {
   const done = task.status === 'done';
   const cancelled = task.status === 'cancelled';
   const draggable = !done && !cancelled && !isOverlay;
@@ -40,6 +40,7 @@ export function TaskCard({ task, isOverlay = false, onCompleteTask, onOpenTask }
       style={style}
       className={cn(
         'min-h-[60px] rounded-lg border border-border-subtle bg-bg-elevated p-2 text-left shadow-sm transition hover:border-pg-accent/40',
+        'overflow-hidden',
         draggable && 'cursor-grab active:cursor-grabbing',
         isDragging && 'z-50 opacity-80 shadow-lg',
         done && 'opacity-50',
@@ -55,13 +56,13 @@ export function TaskCard({ task, isOverlay = false, onCompleteTask, onOpenTask }
       <div className="flex items-start gap-2">
         <Checkbox
           checked={done}
-          disabled={done || cancelled}
-          aria-label={`Aufgabe ${task.title} erledigen`}
+          disabled={cancelled}
+          aria-label={`Aufgabe ${task.title} erledigt umschalten`}
           onClick={(event) => event.stopPropagation()}
           onPointerDown={(event) => event.stopPropagation()}
           onCheckedChange={() => {
-            if (!done && !cancelled) {
-              onCompleteTask?.(task.id);
+            if (!cancelled) {
+              onToggleTask?.(task);
             }
           }}
         />
@@ -74,7 +75,7 @@ export function TaskCard({ task, isOverlay = false, onCompleteTask, onOpenTask }
           >
             {task.title}
           </p>
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex max-w-full flex-wrap items-center gap-1.5 overflow-hidden">
             <PriorityBadge priority={task.priority} />
             <EntityIcon task={task} />
             {overdue ? (

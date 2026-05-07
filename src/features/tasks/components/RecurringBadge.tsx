@@ -18,11 +18,11 @@ export function RecurringBadge({ rule }: { rule: RecurringRule }) {
   return (
     <Badge
       variant="outline"
-      className="gap-1 border-pg-accent/40 bg-pg-accent-subtle text-pg-accent"
+      className="h-5 w-5 shrink-0 justify-center border-pg-accent/40 bg-pg-accent-subtle p-0 text-pg-accent"
       title={`Wiederkehrend: ${label}`}
+      aria-label={`Wiederkehrend: ${label}`}
     >
       <Repeat className="size-3" />
-      {label}
     </Badge>
   );
 }
