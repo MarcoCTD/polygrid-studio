@@ -55,6 +55,23 @@ function recurringRuleToDbValue(rule: RecurringRule | null | undefined): string 
   return rule ? JSON.stringify(rule) : null;
 }
 
+async function createRecurringSuccessor(task: Task): Promise<void> {
+  if (!task.recurring_rule) return;
+
+  await createTask({
+    title: task.title,
+    description: task.description,
+    priority: task.priority,
+    status: 'todo',
+    due_date: calculateNextDueDate(task.due_date, task.recurring_rule),
+    product_id: task.product_id,
+    order_id: task.order_id,
+    listing_id: task.listing_id,
+    recurring_rule: task.recurring_rule,
+    parent_task_id: task.id,
+  });
+}
+
 function rowToTask(row: TaskRow): Task {
   return taskSchema.parse({
     id: row.id,
@@ -348,8 +365,10 @@ export async function updateTask(id: string, data: TaskUpdate): Promise<Task> {
     const existing = await getTaskById(id);
     if (!existing) throw new Error(`Aufgabe ${id} nicht gefunden.`);
 
+    const timestamp = now();
     const setClauses = ['updated_at = $1'];
-    const params: unknown[] = [now()];
+    const params: unknown[] = [timestamp];
+    const completesTask = input.status === 'done' && existing.status !== 'done';
 
     for (const field of TASK_UPDATE_FIELDS) {
       if (field in input) {
@@ -362,6 +381,11 @@ export async function updateTask(id: string, data: TaskUpdate): Promise<Task> {
       }
     }
 
+    if (completesTask) {
+      setClauses.push(`completed_at = $${params.length + 1}`);
+      params.push(timestamp);
+    }
+
     if (setClauses.length === 1) return existing;
 
     params.push(id);
@@ -372,6 +396,9 @@ export async function updateTask(id: string, data: TaskUpdate): Promise<Task> {
 
     const updated = await getTaskById(id);
     if (!updated) throw new Error(`Aufgabe ${id} wurde nach Update nicht gefunden.`);
+    if (completesTask) {
+      await createRecurringSuccessor(updated);
+    }
     return updated;
   } catch (error) {
     throw new Error(
@@ -398,6 +425,7 @@ export async function completeTask(id: string): Promise<Task> {
   try {
     const existing = await getTaskById(id);
     if (!existing) throw new Error(`Aufgabe ${id} nicht gefunden.`);
+    if (existing.status === 'done') return existing;
 
     const timestamp = now();
     await getDatabase().execute(
@@ -407,23 +435,9 @@ export async function completeTask(id: string): Promise<Task> {
       [timestamp, id],
     );
 
-    if (existing.recurring_rule) {
-      await createTask({
-        title: existing.title,
-        description: existing.description,
-        priority: existing.priority,
-        status: 'todo',
-        due_date: calculateNextDueDate(existing.due_date, existing.recurring_rule),
-        product_id: existing.product_id,
-        order_id: existing.order_id,
-        listing_id: existing.listing_id,
-        recurring_rule: existing.recurring_rule,
-        parent_task_id: existing.id,
-      });
-    }
-
     const completed = await getTaskById(id);
     if (!completed) throw new Error(`Aufgabe ${id} wurde nach Abschluss nicht gefunden.`);
+    await createRecurringSuccessor(completed);
     return completed;
   } catch (error) {
     throw new Error(

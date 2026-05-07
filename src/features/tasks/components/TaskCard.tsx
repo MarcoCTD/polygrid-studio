@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import type { Task } from '../schemas';
 import { isOverdue, parseISODate } from '../utils/dateHelpers';
 import { PriorityBadge } from './PriorityBadge';
+import { RecurringBadge } from './RecurringBadge';
 
 interface TaskCardProps {
   task: Task;
@@ -81,11 +82,7 @@ export function TaskCard({ task, isOverlay = false, onCompleteTask, onOpenTask }
                 Überfällig {task.due_date ? formatDisplayDate(parseISODate(task.due_date)) : ''}
               </Badge>
             ) : null}
-            {task.recurring_rule ? (
-              <Badge variant="outline" className="border-border-subtle text-text-muted">
-                Wiederkehrend
-              </Badge>
-            ) : null}
+            {task.recurring_rule ? <RecurringBadge rule={task.recurring_rule} /> : null}
             {done ? <CheckCircle2 className="size-4 text-success" /> : null}
           </div>
         </div>

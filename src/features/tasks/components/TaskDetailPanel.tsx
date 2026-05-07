@@ -36,6 +36,7 @@ import type { RecurringRule, Task, TaskPriority, TaskStatus, TaskUpdate } from '
 import { taskUpdateSchema } from '../schemas';
 import { getRecurringHistory, softDeleteTask, updateTask } from '../services';
 import { PriorityBadge } from './PriorityBadge';
+import { RecurringBadge } from './RecurringBadge';
 
 type LinkType = 'none' | 'product' | 'order' | 'listing';
 
@@ -125,6 +126,7 @@ export function TaskDetailPanel({ task, onSaved, onDeleted }: TaskDetailPanelPro
     task.recurring_rule?.interval ?? 'weekly',
   );
   const [recurringDay, setRecurringDay] = useState<number | null>(task.recurring_rule?.day ?? 1);
+  const [showAllHistory, setShowAllHistory] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -213,6 +215,18 @@ export function TaskDetailPanel({ task, onSaved, onDeleted }: TaskDetailPanelPro
     return [];
   }, [entitySearch, linkType, listings, orders, products]);
 
+  const completedHistory = useMemo(
+    () =>
+      history
+        .filter((item) => item.id !== task.id && item.status === 'done' && item.completed_at)
+        .slice()
+        .sort((a, b) => (a.completed_at ?? '').localeCompare(b.completed_at ?? '')),
+    [history, task.id],
+  );
+  const visibleHistory = showAllHistory ? completedHistory : completedHistory.slice(-10);
+  const showHistory =
+    task.recurring_rule !== null || task.parent_task_id !== null || history.length > 1;
+
   function clearLinks() {
     form.setValue('product_id', null);
     form.setValue('order_id', null);
@@ -251,6 +265,23 @@ export function TaskDetailPanel({ task, onSaved, onDeleted }: TaskDetailPanelPro
       closeDetailPanel();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Aufgabe konnte nicht gelöscht werden');
+    }
+  }
+
+  async function handleStopRecurring() {
+    setIsSaving(true);
+    try {
+      const updated = await updateTask(task.id, { recurring_rule: null });
+      setRecurringEnabled(false);
+      form.setValue('recurring_rule', null);
+      toast.success('Wiederholung beendet');
+      onSaved(updated);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Wiederholung konnte nicht beendet werden',
+      );
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -398,9 +429,15 @@ export function TaskDetailPanel({ task, onSaved, onDeleted }: TaskDetailPanelPro
             <Repeat className="size-4" />
             Wiederkehrend
           </label>
-          <p className="text-xs text-text-muted">
-            {recurringLabel(buildRecurringRule(recurringEnabled, recurringInterval, recurringDay))}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {buildRecurringRule(recurringEnabled, recurringInterval, recurringDay) ? (
+              <RecurringBadge
+                rule={buildRecurringRule(recurringEnabled, recurringInterval, recurringDay)!}
+              />
+            ) : (
+              <p className="text-xs text-text-muted">{recurringLabel(null)}</p>
+            )}
+          </div>
 
           {recurringEnabled ? (
             <div className="space-y-3">
@@ -451,30 +488,51 @@ export function TaskDetailPanel({ task, onSaved, onDeleted }: TaskDetailPanelPro
                   onChange={(event) => setRecurringDay(Number(event.target.value))}
                 />
               ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void handleStopRecurring()}
+                disabled={isSaving}
+              >
+                Wiederholung beenden
+              </Button>
             </div>
           ) : null}
         </section>
 
-        {history.length > 1 ? (
+        {showHistory ? (
           <section className="space-y-2 rounded-lg border border-border-subtle p-3">
-            <h3 className="text-sm font-medium text-text-primary">Verlauf</h3>
-            <div className="space-y-1">
-              {history.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between gap-2 text-xs text-text-secondary"
-                >
-                  <span
-                    className={item.id === task.id ? 'font-medium text-text-primary' : undefined}
-                  >
-                    {item.title}
-                  </span>
-                  <span>
-                    {item.completed_at ? item.completed_at.slice(0, 10) : (item.due_date ?? '-')}
-                  </span>
-                </div>
-              ))}
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-medium text-text-primary">Verlauf</h3>
+              <span className="text-xs text-text-muted">{completedHistory.length} erledigt</span>
             </div>
+            {visibleHistory.length > 0 ? (
+              <div className="space-y-1">
+                {visibleHistory.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-2 text-xs text-text-secondary"
+                  >
+                    <span className="truncate">{item.title}</span>
+                    <span className="shrink-0">{item.completed_at?.slice(0, 10)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-text-muted">Noch keine erledigten Vorgänger.</p>
+            )}
+            {completedHistory.length > 10 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-0 text-xs"
+                onClick={() => setShowAllHistory((value) => !value)}
+              >
+                {showAllHistory ? 'Weniger anzeigen' : 'Alle anzeigen'}
+              </Button>
+            ) : null}
           </section>
         ) : null}
 

@@ -3,6 +3,7 @@ export { ListView } from './ListView';
 export { NewTaskModal } from './NewTaskModal';
 export { PriorityBadge } from './PriorityBadge';
 export { QuickAddInput } from './QuickAddInput';
+export { RecurringBadge } from './RecurringBadge';
 export { TaskCard } from './TaskCard';
 export { TaskDetailPanel } from './TaskDetailPanel';
 export { WeekColumn } from './WeekColumn';
