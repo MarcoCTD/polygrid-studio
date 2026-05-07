@@ -1,6 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { CheckCircle2, FileText, Package, ReceiptText, Tag } from 'lucide-react';
+import type { MouseEvent } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
@@ -18,6 +19,10 @@ interface TaskCardProps {
 
 function formatDisplayDate(date: Date): string {
   return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.`;
+}
+
+function isCheckboxEvent(event: MouseEvent<HTMLElement>): boolean {
+  return event.target instanceof Element && Boolean(event.target.closest('[data-task-checkbox]'));
 }
 
 export function TaskCard({ task, isOverlay = false, onToggleTask, onOpenTask }: TaskCardProps) {
@@ -51,21 +56,31 @@ export function TaskCard({ task, isOverlay = false, onToggleTask, onOpenTask }: 
       title={task.title}
       {...attributes}
       {...listeners}
-      onClick={() => onOpenTask?.(task)}
+      onClick={(event) => {
+        if (isCheckboxEvent(event)) return;
+        onOpenTask?.(task);
+      }}
     >
       <div className="flex items-start gap-2">
-        <Checkbox
-          checked={done}
-          disabled={cancelled}
-          aria-label={`Aufgabe ${task.title} erledigt umschalten`}
+        <span
+          data-task-checkbox
           onClick={(event) => event.stopPropagation()}
           onPointerDown={(event) => event.stopPropagation()}
-          onCheckedChange={() => {
-            if (!cancelled) {
-              onToggleTask?.(task);
-            }
-          }}
-        />
+          onPointerUp={(event) => event.stopPropagation()}
+        >
+          <Checkbox
+            checked={done}
+            disabled={cancelled}
+            aria-label={`Aufgabe ${task.title} erledigt umschalten`}
+            onClick={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+            onCheckedChange={() => {
+              if (!cancelled) {
+                onToggleTask?.(task);
+              }
+            }}
+          />
+        </span>
         <div className="min-w-0 flex-1 space-y-2">
           <p
             className={cn(
