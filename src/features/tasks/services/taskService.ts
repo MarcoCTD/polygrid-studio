@@ -75,46 +75,54 @@ function rowToTask(row: TaskRow): Task {
   });
 }
 
-function buildTaskWhere(filters?: TaskFilter): { where: string; params: unknown[] } {
+function buildTaskWhere(
+  filters?: TaskFilter,
+  tableAlias = '',
+): { where: string; params: unknown[] } {
   const input = filters ? taskFilterSchema.parse(filters) : undefined;
   const clauses: string[] = [];
   const params: unknown[] = [];
+  const column = (name: string) => `${tableAlias}${name}`;
 
   if (!input?.includeDeleted) {
-    clauses.push('deleted_at IS NULL');
+    clauses.push(`${column('deleted_at')} IS NULL`);
   }
 
   if (input?.status && input.status.length > 0) {
-    clauses.push(`status IN (${createPlaceholders(params.length + 1, input.status.length)})`);
+    clauses.push(
+      `${column('status')} IN (${createPlaceholders(params.length + 1, input.status.length)})`,
+    );
     params.push(...input.status);
   } else if (input?.includeDone === false) {
-    clauses.push(`status != 'done'`);
+    clauses.push(`${column('status')} != 'done'`);
   }
 
   if (input?.priority && input.priority.length > 0) {
-    clauses.push(`priority IN (${createPlaceholders(params.length + 1, input.priority.length)})`);
+    clauses.push(
+      `${column('priority')} IN (${createPlaceholders(params.length + 1, input.priority.length)})`,
+    );
     params.push(...input.priority);
   }
 
   if (input?.dueDateFrom) {
     params.push(input.dueDateFrom);
-    clauses.push(`due_date >= $${params.length}`);
+    clauses.push(`${column('due_date')} >= $${params.length}`);
   }
 
   if (input?.dueDateTo) {
     params.push(input.dueDateTo);
-    clauses.push(`due_date <= $${params.length}`);
+    clauses.push(`${column('due_date')} <= $${params.length}`);
   }
 
   for (const field of ['product_id', 'order_id', 'listing_id', 'parent_task_id'] as const) {
     if (input?.[field]) {
       params.push(input[field]);
-      clauses.push(`${field} = $${params.length}`);
+      clauses.push(`${column(field)} = $${params.length}`);
     }
   }
 
   if (input?.recurringOnly) {
-    clauses.push('recurring_rule IS NOT NULL');
+    clauses.push(`${column('recurring_rule')} IS NOT NULL`);
   }
 
   return {
@@ -147,6 +155,56 @@ export async function getAllTasks(filters?: TaskFilter): Promise<Task[]> {
   } catch (error) {
     throw new Error(
       `Aufgaben konnten nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+export interface TaskListItem extends Task {
+  product_name: string | null;
+  order_receipt_number: string | null;
+  listing_title: string | null;
+}
+
+function rowToTaskListItem(row: TaskRow): TaskListItem {
+  return {
+    ...rowToTask(row),
+    product_name: (row.product_name as string | null | undefined) ?? null,
+    order_receipt_number: (row.order_receipt_number as string | null | undefined) ?? null,
+    listing_title: (row.listing_title as string | null | undefined) ?? null,
+  };
+}
+
+export async function getTaskListItems(filters?: TaskFilter): Promise<TaskListItem[]> {
+  try {
+    const { where, params } = buildTaskWhere(filters, 't.');
+    const rows = await getDatabase().select<TaskRow[]>(
+      `SELECT
+         t.*,
+         p.name AS product_name,
+         o.receipt_number AS order_receipt_number,
+         l.master_title AS listing_title
+       FROM tasks t
+       LEFT JOIN products p ON p.id = t.product_id
+       LEFT JOIN orders o ON o.id = t.order_id
+       LEFT JOIN listings l ON l.id = t.listing_id
+       ${where}
+       ORDER BY
+         CASE t.priority
+           WHEN 'urgent' THEN 0
+           WHEN 'high' THEN 1
+           WHEN 'medium' THEN 2
+           ELSE 3
+         END,
+         t.due_date IS NULL,
+         t.due_date ASC,
+         t.created_at DESC`,
+      params,
+    );
+
+    return rows.map(rowToTaskListItem);
+  } catch (error) {
+    throw new Error(
+      `Aufgabenliste konnte nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }

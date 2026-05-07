@@ -1,3 +1,4 @@
+export { EntityLink } from './EntityLink';
 export { ListView } from './ListView';
 export { PriorityBadge } from './PriorityBadge';
 export { QuickAddInput } from './QuickAddInput';
