@@ -1,4 +1,12 @@
-import { sqliteTable, text, integer, real, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import {
+  sqliteTable,
+  text,
+  integer,
+  real,
+  index,
+  uniqueIndex,
+  type AnySQLiteColumn,
+} from 'drizzle-orm/sqlite-core';
 
 // ============================================================
 // 1. app_settings (Modul 01) – keine Abhängigkeiten
@@ -390,14 +398,17 @@ export const tasks = sqliteTable(
       interval: 'daily' | 'weekly' | 'monthly';
       day?: number;
     }>(),
+    parent_task_id: text('parent_task_id').references((): AnySQLiteColumn => tasks.id),
     completed_at: text('completed_at'),
     created_at: text('created_at').notNull(),
     updated_at: text('updated_at').notNull(),
+    deleted_at: text('deleted_at'),
   },
   (table) => [
     index('idx_tasks_status').on(table.status),
     index('idx_tasks_priority').on(table.priority),
     index('idx_tasks_due_date').on(table.due_date),
+    index('idx_tasks_parent_task_id').on(table.parent_task_id),
   ],
 );
 
