@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  Bot,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
@@ -8,20 +7,32 @@ import {
   EyeOff,
   ListChecks,
   Plus,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUIStore } from '@/stores';
 import type { Task } from './schemas';
+import { isTaskExtractorAvailable } from './services';
 import { useTaskBadge, useWeekNavigation } from './hooks';
-import { ListView, NewTaskModal, TaskDetailPanel, WeekView } from './components';
+import {
+  ListView,
+  NewTaskModal,
+  TaskDetailPanel,
+  TaskExtractorDialog,
+  WeekView,
+} from './components';
 
 type TaskViewMode = 'week' | 'list';
 
 export function TasksPage() {
   const openDetailPanel = useUIStore((state) => state.openDetailPanel);
   const closeDetailPanel = useUIStore((state) => state.closeDetailPanel);
+  const registerCommands = useUIStore((state) => state.registerCommands);
+  const unregisterCommands = useUIStore((state) => state.unregisterCommands);
   const [viewMode, setViewMode] = useState<TaskViewMode>('week');
   const [newTaskOpen, setNewTaskOpen] = useState(false);
+  const [taskExtractorOpen, setTaskExtractorOpen] = useState(false);
+  const [taskExtractorAvailable, setTaskExtractorAvailable] = useState(false);
   const [showDoneInWeek, setShowDoneInWeek] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const { refreshTaskBadge } = useTaskBadge();
@@ -45,6 +56,45 @@ export function TasksPage() {
       />,
     );
   }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    isTaskExtractorAvailable()
+      .then((available) => {
+        if (!cancelled) setTaskExtractorAvailable(available);
+      })
+      .catch(() => {
+        if (!cancelled) setTaskExtractorAvailable(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const commandIds = ['tasks:new', 'tasks:extract-from-text'];
+
+    registerCommands([
+      {
+        id: 'tasks:new',
+        label: 'Neue Aufgabe',
+        icon: Plus,
+        category: 'action',
+        action: () => setNewTaskOpen(true),
+      },
+      {
+        id: 'tasks:extract-from-text',
+        label: 'Aufgaben aus Text',
+        icon: Sparkles,
+        category: 'ai',
+        action: () => setTaskExtractorOpen(true),
+      },
+    ]);
+
+    return () => unregisterCommands(commandIds);
+  }, [registerCommands, unregisterCommands]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-bg-primary">
@@ -136,10 +186,15 @@ export function TasksPage() {
             variant="outline"
             size="sm"
             className="gap-1.5"
-            disabled
-            title="Folgt in Sub-Session H"
+            disabled={!taskExtractorAvailable}
+            title={
+              taskExtractorAvailable
+                ? 'Aufgaben per KI aus Freitext extrahieren'
+                : 'Kein KI-Provider konfiguriert'
+            }
+            onClick={() => setTaskExtractorOpen(true)}
           >
-            <Bot className="size-4" />
+            <Sparkles className="size-4" />
             Aufgaben aus Text
           </Button>
         </div>
@@ -161,6 +216,11 @@ export function TasksPage() {
       </main>
 
       <NewTaskModal open={newTaskOpen} onOpenChange={setNewTaskOpen} onCreated={refreshTasks} />
+      <TaskExtractorDialog
+        open={taskExtractorOpen}
+        onOpenChange={setTaskExtractorOpen}
+        onTasksCreated={refreshTasks}
+      />
     </div>
   );
 }
