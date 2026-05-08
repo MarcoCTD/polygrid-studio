@@ -1,14 +1,14 @@
 # PolyGrid Studio Business OS
 
 Projektregeln und Entwicklungsleitfaden
-Version 1.4 | Mai 2026 | Verbindlich für alle Entwicklungs-KIs
+Version 1.5 | Mai 2026 | Verbindlich für alle Entwicklungs-KIs
 
-> **Änderungen in v1.4 gegenüber v1.3:**
+> **Änderungen in v1.5 gegenüber v1.4:**
 >
-> - Modul 06 (KI-Architektur) als abgeschlossen markiert
-> - Modul 09 (Aufgaben-Modul) als nächstes Modul festgelegt (Reihenfolge 7 → jetzt aktiv)
-> - Modulreihenfolge aktualisiert (06 vor 09, 09 vor 07)
+> - Modul 09 (Aufgaben-Modul) als abgeschlossen markiert
+> - Modul 07 (Vorlagenbibliothek) als nächstes Modul festgelegt (Reihenfolge 8 → jetzt aktiv)
 > - Aktueller Entwicklungsstand aktualisiert
+> - Hinweis: `ai_jobs.agent` Enum wird in Modul 07 um `template_assistant` erweitert
 
 ---
 
@@ -100,9 +100,9 @@ Diese Eckdaten beeinflussen das Datenmodell (kein USt.-Tracking, Tax-Lock-Mechan
 
 ---
 
-## 6. Modulreihenfolge (aktualisiert v1.4)
+## 6. Modulreihenfolge (aktualisiert v1.5)
 
-Die ursprüngliche Reihenfolge wurde mehrfach geändert: Modul 08 wurde vor Modul 06 implementiert (EÜR-Bedarf). Modul 09 folgt jetzt als nächstes, da es nur von Foundation, Produkten, Listings und Aufträgen abhängt (alle fertig).
+Die ursprüngliche Reihenfolge wurde mehrfach geändert: Modul 08 wurde vor Modul 06 implementiert (EÜR-Bedarf). Modul 09 wurde vor Modul 07 implementiert (Abhängigkeiten bereits erfüllt). Modul 07 folgt jetzt als nächstes.
 
 | #   | Modul              | Inhalt                                                        | Abhängigkeiten                            | Reihenfolge |
 | --- | ------------------ | ------------------------------------------------------------- | ----------------------------------------- | ----------- |
@@ -113,8 +113,8 @@ Die ursprüngliche Reihenfolge wurde mehrfach geändert: Modul 08 wurde vor Modu
 | 5   | Listing-Verwaltung | Master+Overrides, Editor, Bilder, Sync-Stubs                  | Foundation, Produkte, Dateimanager        | ✅ 5        |
 | 8   | Auftragsverwaltung + EÜR | CRUD, Kanban, EÜR-Export, N26-Bankimport               | Foundation, Produkte, Ausgaben            | ✅ 6        |
 | 6   | KI-Architektur     | Provider-Pattern, Listing Assistant, Expense Assistant        | Foundation, Listings, Ausgaben            | ✅ 7        |
-| **9** | **Aufgaben-Modul** | **CRUD, Wochenansicht, Verknüpfungen, KI Task Extractor**  | **Foundation, Produkte, Listings, Aufträge, KI** | **🔄 8** |
-| 7   | Vorlagenbibliothek | CRUD, Platzhaltervariablen, Kategorien                        | Foundation, KI                            | ⏳ 9        |
+| 9   | Aufgaben-Modul     | CRUD, Wochenansicht, Verknüpfungen, KI Task Extractor        | Foundation, Produkte, Listings, Aufträge, KI | ✅ 8     |
+| **7** | **Vorlagenbibliothek** | **CRUD, Platzhaltervariablen, Kategorien, KI-Aktionen** | **Foundation, KI**                        | **🔄 9**   |
 | 10  | Analysen/Dashboard | KPI-Karten, Charts, Widgets                                   | Alle vorherigen Module                    | ⏳ 10       |
 | 11  | Settings           | Wächst mit jedem Modul, eigenes Dokument                      | Parallel                                  | ⏳ 11       |
 | 12  | Platform Sync      | Etsy + eBay API-Anbindung, OAuth, Push/Pull                   | Listings, Aufträge, Settings              | 📋 Post-MVP |
@@ -132,8 +132,8 @@ Die ursprüngliche Reihenfolge wurde mehrfach geändert: Modul 08 wurde vor Modu
 | Listing-Verwaltung | ✅ Abgeschlossen       | Auf main gemergt, Master+Overrides-Konzept                             |
 | Auftragsverwaltung | ✅ Abgeschlossen       | Auf main gemergt, inkl. EÜR-Export und N26-Bankimport                  |
 | KI-Architektur     | ✅ Abgeschlossen       | Auf main gemergt, Provider-Pattern, Listing/Expense/Product Agents, DiffView, Kosten-Tracking |
-| Aufgaben-Modul     | 🔄 In Bearbeitung      | Nächstes Modul, Branch: feat/modul-09-aufgaben                        |
-| Vorlagenbibliothek | ⏳ Nicht begonnen      |                                                                        |
+| Aufgaben-Modul     | ✅ Abgeschlossen       | Auf main gemergt, Wochenansicht, Listenansicht, Recurring Tasks, KI Task Extractor |
+| Vorlagenbibliothek | 🔄 In Bearbeitung      | Nächstes Modul, Branch: feat/modul-07-vorlagenbibliothek               |
 | Analysen/Dashboard | ⏳ Nicht begonnen      |                                                                        |
 | Settings           | ⏳ Wächst mit Modulen  | Minimale Settings-UI für KI-Provider und Brand existiert bereits        |
 | Platform Sync      | 📋 Stub-Spec vorhanden | Implementierung nach Modul 11                                          |
