@@ -1,6 +1,10 @@
 export type AIProviderName = 'claude' | 'openai' | 'ollama';
 
-export type AIAgentName = 'listing_assistant' | 'expense_assistant' | 'product_analyst';
+export type AIAgentName =
+  | 'listing_assistant'
+  | 'expense_assistant'
+  | 'product_analyst'
+  | 'template_assistant';
 
 export type ListingAction =
   | 'generate_title'
@@ -11,7 +15,13 @@ export type ListingAction =
 
 export type ExpenseAction = 'classify_expense' | 'detect_duplicate' | 'suggest_purpose';
 
-export type AIAction = ListingAction | ExpenseAction;
+export type TemplateAction =
+  | 'shorten_text'
+  | 'expand_text'
+  | 'reformulate_text'
+  | 'adapt_for_platform';
+
+export type AIAction = ListingAction | ExpenseAction | TemplateAction;
 
 export interface AIOptions {
   maxTokens?: number;

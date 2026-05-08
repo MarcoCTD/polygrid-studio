@@ -1,8 +1,17 @@
 import { Copy, Save, Sparkles, Trash2 } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { DiffView } from '@/components/shared/DiffView';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -13,6 +22,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useAI } from '@/features/ai-assistant/hooks/useAI';
+import { useAIStatus } from '@/features/ai-assistant/hooks/useAIStatus';
+import { useAIStore } from '@/features/ai-assistant/stores/aiStore';
+import type { AIDiffField, AIDiffResult, TemplateAction } from '@/features/ai-assistant/types';
 import type {
   Template,
   TemplateCategory,
@@ -22,7 +35,14 @@ import type {
 } from '../schemas';
 import { templateCategoryEnum } from '../schemas';
 import { extractVariables, mergeVariables } from '../utils';
-import { softDeleteTemplate, updateTemplate } from '../services';
+import {
+  adaptForPlatform,
+  expandText,
+  reformulateText,
+  shortenText,
+  softDeleteTemplate,
+  updateTemplate,
+} from '../services';
 import { HighlightTextarea } from './HighlightTextarea';
 import { LegalWarningBanner } from './LegalWarningBanner';
 import { VariablesSidebar } from './VariablesSidebar';
@@ -84,10 +104,18 @@ function normalizeDraft(draft: TemplateDraft): TemplateUpdate {
 
 export function TemplateEditor({ template, onSaved, onDeleted }: TemplateEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const initializeAI = useAIStore((state) => state.initialize);
+  const aiStatus = useAIStatus();
+  const { generate, isLoading: isAILoading } = useAI<AIDiffResult>();
   const [draft, setDraft] = useState<TemplateDraft>(() => templateToDraft(template));
   const [isSaving, setIsSaving] = useState(false);
   const [showNotes, setShowNotes] = useState(Boolean(template.notes));
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [diffResult, setDiffResult] = useState<AIDiffResult | null>(null);
+  const [isDiffOpen, setIsDiffOpen] = useState(false);
+  const [targetPlatformOpen, setTargetPlatformOpen] = useState(false);
+  const [targetPlatform, setTargetPlatform] = useState<TemplatePlatform>('etsy');
+  const [activeAIAction, setActiveAIAction] = useState<TemplateAction | null>(null);
 
   const normalizedDraft = useMemo(() => normalizeDraft(draft), [draft]);
   const isDirty = useMemo(
@@ -95,6 +123,18 @@ export function TemplateEditor({ template, onSaved, onDeleted }: TemplateEditorP
       JSON.stringify(normalizedDraft) !== JSON.stringify(normalizeDraft(templateToDraft(template))),
     [normalizedDraft, template],
   );
+  const aiDisabledReason = useMemo(() => {
+    if (aiStatus.isLoading && !aiStatus.activeProvider) return 'KI-Provider werden geprüft...';
+    if (!aiStatus.activeProvider) return 'Kein KI-Provider konfiguriert';
+    if (aiStatus.isLimitReached && aiStatus.activeProvider !== 'ollama') {
+      return 'KI-Budget ist ausgeschöpft. Ollama bleibt kostenlos nutzbar.';
+    }
+    return null;
+  }, [aiStatus.activeProvider, aiStatus.isLimitReached, aiStatus.isLoading]);
+
+  useEffect(() => {
+    void initializeAI();
+  }, [initializeAI]);
 
   function updateDraft(patch: Partial<TemplateDraft>) {
     setDraft((current) => ({ ...current, ...patch }));
@@ -149,6 +189,60 @@ export function TemplateEditor({ template, onSaved, onDeleted }: TemplateEditorP
       toast.error(error instanceof Error ? error.message : 'Vorlage konnte nicht gelöscht werden');
     }
   }
+
+  async function runAIAction(
+    action: TemplateAction,
+    label: string,
+    call: () => Promise<AIDiffResult>,
+  ) {
+    setActiveAIAction(action);
+    try {
+      const result = await generate(label, call);
+      setDiffResult(result);
+      setIsDiffOpen(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'KI-Aktion fehlgeschlagen');
+    } finally {
+      setActiveAIAction(null);
+    }
+  }
+
+  function handleAcceptDiff(fields: AIDiffField[]) {
+    const contentField = fields.find((field) => field.fieldName === 'content');
+    if (typeof contentField?.suggestedValue !== 'string') return;
+    updateDraft({ content: contentField.suggestedValue });
+    toast.success('KI-Vorschlag übernommen');
+  }
+
+  const aiActions: Array<{
+    action: TemplateAction;
+    label: string;
+    onClick: () => void;
+  }> = [
+    {
+      action: 'shorten_text',
+      label: 'Text kürzen',
+      onClick: () =>
+        void runAIAction('shorten_text', 'Text kürzen', () => shortenText(draft.content)),
+    },
+    {
+      action: 'expand_text',
+      label: 'Text verlängern',
+      onClick: () =>
+        void runAIAction('expand_text', 'Text verlängern', () => expandText(draft.content)),
+    },
+    {
+      action: 'reformulate_text',
+      label: 'Umformulieren',
+      onClick: () =>
+        void runAIAction('reformulate_text', 'Umformulieren', () => reformulateText(draft.content)),
+    },
+    {
+      action: 'adapt_for_platform',
+      label: 'Für Plattform anpassen',
+      onClick: () => setTargetPlatformOpen(true),
+    },
+  ];
 
   return (
     <div className="flex min-h-full flex-col gap-4">
@@ -219,21 +313,23 @@ export function TemplateEditor({ template, onSaved, onDeleted }: TemplateEditorP
             <Copy className="size-4" />
             Kopieren
           </Button>
-          {['Text kürzen', 'Text verlängern', 'Umformulieren', 'Für Plattform anpassen'].map(
-            (label) => (
+          {aiActions.map(({ action, label, onClick }) => {
+            const isActionLoading = isAILoading && activeAIAction === action;
+            return (
               <Button
-                key={label}
+                key={action}
                 type="button"
                 variant="outline"
                 className="gap-1.5"
-                disabled
-                title="Kommt in Sub-Session E"
+                disabled={Boolean(aiDisabledReason) || isAILoading}
+                title={aiDisabledReason ?? label}
+                onClick={onClick}
               >
                 <Sparkles className="size-4" />
-                {label}
+                {isActionLoading ? 'Arbeitet...' : label}
               </Button>
-            ),
-          )}
+            );
+          })}
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[1.2fr_220px_160px]">
@@ -312,6 +408,67 @@ export function TemplateEditor({ template, onSaved, onDeleted }: TemplateEditorP
         onOpenChange={setCopyDialogOpen}
         content={draft.content}
         variables={mergeVariables(extractVariables(draft.content), draft.variables)}
+      />
+
+      <Dialog open={targetPlatformOpen} onOpenChange={setTargetPlatformOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ziel-Plattform auswählen</DialogTitle>
+            <DialogDescription>
+              Der aktuelle Vorlagentext wird für die gewählte Plattform angepasst.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Ziel-Plattform</Label>
+            <Select
+              value={targetPlatform}
+              onValueChange={(value) => setTargetPlatform(value as TemplatePlatform)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PLATFORM_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setTargetPlatformOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button
+              type="button"
+              disabled={Boolean(aiDisabledReason) || isAILoading}
+              onClick={() => {
+                setTargetPlatformOpen(false);
+                void runAIAction('adapt_for_platform', 'Für Plattform anpassen', () =>
+                  adaptForPlatform(draft.content, targetPlatform),
+                );
+              }}
+            >
+              Anpassen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <DiffView
+        title="KI-Vorschlag"
+        agent="Template Assistant"
+        provider={
+          diffResult
+            ? `${diffResult.provider} (${diffResult.model})`
+            : (aiStatus.activeProvider ?? 'kein Provider')
+        }
+        fields={diffResult?.fields ?? []}
+        onAccept={handleAcceptDiff}
+        onReject={() => undefined}
+        isOpen={isDiffOpen}
+        onClose={() => setIsDiffOpen(false)}
       />
     </div>
   );
