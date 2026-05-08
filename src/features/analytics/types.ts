@@ -52,3 +52,64 @@ export interface RecentOrder {
   status: string;
   updated_at: string;
 }
+
+export type TimeRangePreset =
+  | 'current_month'
+  | 'last_month'
+  | 'last_3_months'
+  | 'last_6_months'
+  | 'current_year'
+  | 'all_time';
+
+export interface TimeRange {
+  preset: TimeRangePreset;
+  startDate: string;
+  endDate: string;
+}
+
+export interface AnalyticsKPIs {
+  revenueTotal: number;
+  expensesTotal: number;
+  averageMargin: number | null;
+}
+
+export interface RevenueByPlatformDatum {
+  platform: string;
+  month: string;
+  revenue: number;
+}
+
+export interface ExpensesByCategoryDatum {
+  category: string;
+  amount: number;
+}
+
+export interface MarginByProductDatum {
+  id: string;
+  name: string;
+  estimated_margin: number;
+}
+
+export interface ListingStatusDatum {
+  status: string;
+  count: number;
+}
+
+export interface KpiSnapshot {
+  id: string;
+  period_type: 'week' | 'month';
+  period_start: string;
+  period_end: string;
+  revenue: number;
+  expenses_total: number;
+  orders_count: number;
+  open_orders: number;
+  open_tasks: number;
+  completed_orders: number;
+  active_products: number;
+  active_listings: number;
+  avg_margin: number | null;
+  revenue_by_platform: Record<string, number> | null;
+  expenses_by_category: Record<string, number> | null;
+  created_at: string;
+}
