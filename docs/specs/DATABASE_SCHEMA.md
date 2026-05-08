@@ -1,16 +1,12 @@
 # Datenbank-Schema
 
-PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | April 2026 | Version 1.1
+PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Mai 2026 | Version 1.2
 
-> **Änderungen in v1.1 gegenüber v1.0:**
+> **Änderungen in v1.2 gegenüber v1.1:**
 >
-> - `orders`-Tabelle erweitert um: `receipt_number`, `shipping_revenue`, `payout_amount`, `payment_received_date`, `tax_locked`, `bank_match_id`
-> - `orders.status`-Enum reduziert auf 8 Werte (kein quoted, kein ready)
-> - Neue Tabelle `bank_transactions` (N26-Bankimport)
-> - Neue Tabelle `import_batches` (Import-Audit)
-> - Neue Junction-Tabelle `bank_payout_orders` (Sammelauszahlungen)
-> - `expenses`-Tabelle um `tax_locked` erweitert
-> - Settings-Keys für Modul 08 ergänzt
+> - `tasks`-Tabelle erweitert um: `deleted_at`, `parent_task_id`
+> - Neuer Index auf `parent_task_id`
+> - FK-Beziehungen Übersicht um `tasks.parent_task_id` ergänzt
 
 Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Schema. Alle Tabellen werden in Modul 01 (Foundation) angelegt, auch wenn sie erst in späteren Modulen befüllt werden. Das sichert korrekte FK-Beziehungen von Anfang an.
 
@@ -106,8 +102,8 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 | receipt_file_path  | TEXT                    | Nein    | Pfad zur Belegdatei                                         |
 | tax_relevant       | BOOLEAN                 | Ja      | Default: true                                               |
 | recurring          | BOOLEAN                 | Ja      | Default: false                                              |
-| tax_locked         | BOOLEAN                 | Ja      | **Neu in Modul 08**: Default false. True nach EÜR-Export    |
-| bank_match_id      | TEXT (FK → bank_transactions.id) | Nein | **Neu in Modul 08**: Verknüpfung zur Banktransaktion |
+| tax_locked         | BOOLEAN                 | Ja      | Default false. True nach EÜR-Export                         |
+| bank_match_id      | TEXT (FK → bank_transactions.id) | Nein | Verknüpfung zur Banktransaktion                      |
 | notes              | TEXT                    | Nein    | Freitext                                                    |
 | created_at         | TEXT (ISO)              | Ja      |                                                             |
 | updated_at         | TEXT (ISO)              | Ja      |                                                             |
@@ -170,8 +166,8 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 | id             | TEXT (UUID) | Ja      | Primärschlüssel                                      |
 | provider       | TEXT        | Ja      | claude, openai, ollama                                |
 | model          | TEXT        | Ja      | Modellname (z.B. claude-sonnet-4-20250514)            |
-| agent          | TEXT        | Ja      | listing_assistant, expense_assistant, product_analyst |
-| action         | TEXT        | Ja      | generate_title, classify_expense, etc.                |
+| agent          | TEXT        | Ja      | listing_assistant, expense_assistant, product_analyst, task_extractor |
+| action         | TEXT        | Ja      | generate_title, classify_expense, extract_tasks, etc. |
 | input          | TEXT        | Nein    | Input-Prompt (gekürzt)                                |
 | output         | TEXT        | Nein    | Output-Text (gekürzt)                                 |
 | tokens_used    | INTEGER     | Nein    | Gesamte Tokens                                        |
@@ -182,6 +178,8 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 | created_at     | TEXT (ISO)  | Ja      |                                                       |
 
 **Indizes**: `created_at`, `agent`, `status`
+
+**Hinweis**: `agent`-Enum erweitert in Modul 09 um `task_extractor`.
 
 ---
 
@@ -211,7 +209,7 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 | Feld                  | Typ                                  | Pflicht | Beschreibung                                                                |
 | --------------------- | ------------------------------------ | ------- | --------------------------------------------------------------------------- |
 | id                    | TEXT (UUID)                          | Ja      | Primärschlüssel                                                            |
-| receipt_number        | TEXT                                 | Ja      | **Neu**: Auto-generiert `JAHR-LFD` (z.B. `2026-0042`), unique               |
+| receipt_number        | TEXT                                 | Ja      | Auto-generiert `JAHR-LFD` (z.B. `2026-0042`), unique                       |
 | external_order_id     | TEXT                                 | Nein    | Bestell-ID der Plattform                                                    |
 | customer_name         | TEXT                                 | Nein    | Kundenname                                                                  |
 | platform              | TEXT                                 | Ja      | etsy, ebay, kleinanzeigen, direkt                                           |
@@ -219,20 +217,20 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 | variant               | TEXT                                 | Nein    | Gewählte Variante                                                           |
 | quantity              | INTEGER                              | Ja      | Default: 1                                                                  |
 | sale_price            | REAL                                 | Ja      | Verkaufspreis EUR (brutto = netto bei Kleinunternehmer)                     |
-| shipping_revenue      | REAL                                 | Nein    | **Neu**: Vom Kunden gezahlte Versandkosten                                  |
+| shipping_revenue      | REAL                                 | Nein    | Vom Kunden gezahlte Versandkosten                                           |
 | shipping_cost         | REAL                                 | Nein    | Tatsächliche Versandkosten (DHL, Hermes etc.)                               |
 | material_cost         | REAL                                 | Nein    | Materialkosten                                                              |
 | platform_fee          | REAL                                 | Nein    | Plattformgebühren                                                           |
-| payout_amount         | REAL                                 | Nein    | **Neu**: Netto-Auszahlung der Plattform                                     |
-| status                | TEXT                                 | Ja      | **Reduziert**: inquiry, ordered, paid, in_production, shipped, completed, issue, cancelled |
+| payout_amount         | REAL                                 | Nein    | Netto-Auszahlung der Plattform                                              |
+| status                | TEXT                                 | Ja      | inquiry, ordered, paid, in_production, shipped, completed, issue, cancelled |
 | payment_status        | TEXT                                 | Ja      | pending, paid, refunded, disputed                                           |
-| payment_received_date | TEXT (ISO)                           | Nein    | **Neu**: Zuflussdatum für EÜR (§11 EStG)                                    |
+| payment_received_date | TEXT (ISO)                           | Nein    | Zuflussdatum für EÜR (§11 EStG)                                            |
 | shipping_status       | TEXT                                 | Nein    | not_shipped, shipped, delivered, returned                                   |
 | tracking_number       | TEXT                                 | Nein    | Sendungsverfolgungsnummer                                                   |
 | order_date            | TEXT (ISO)                           | Ja      | Bestelldatum                                                                |
 | notes                 | TEXT                                 | Nein    | Freitext                                                                    |
-| tax_locked            | BOOLEAN                              | Ja      | **Neu**: Default false. True nach EÜR-Export                                |
-| bank_match_id         | TEXT (FK → bank_transactions.id)     | Nein    | **Neu**: Verknüpfung zur Banktransaktion (1:1)                              |
+| tax_locked            | BOOLEAN                              | Ja      | Default false. True nach EÜR-Export                                         |
+| bank_match_id         | TEXT (FK → bank_transactions.id)     | Nein    | Verknüpfung zur Banktransaktion (1:1)                                       |
 | created_at            | TEXT (ISO)                           | Ja      |                                                                             |
 | updated_at            | TEXT (ISO)                           | Ja      |                                                                             |
 | deleted_at            | TEXT (ISO)                           | Nein    | Soft-Delete (nur bei tax_locked = false erlaubt)                            |
@@ -241,7 +239,7 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 
 ---
 
-## bank_transactions (Modul 08, neu)
+## bank_transactions (Modul 08)
 
 Importierte Banktransaktionen aus N26-CSV-Export.
 
@@ -268,7 +266,7 @@ Importierte Banktransaktionen aus N26-CSV-Export.
 
 ---
 
-## import_batches (Modul 08, neu)
+## import_batches (Modul 08)
 
 Audit-Trail für CSV-Imports (N26 und zukünftige Quellen).
 
@@ -287,7 +285,7 @@ Audit-Trail für CSV-Imports (N26 und zukünftige Quellen).
 
 ---
 
-## bank_payout_orders (Modul 08, neu)
+## bank_payout_orders (Modul 08)
 
 Junction-Tabelle für Sammelauszahlungen. Eine Banktransaktion (Plattform-Auszahlung) kann sich auf mehrere Aufträge beziehen.
 
@@ -303,7 +301,7 @@ Junction-Tabelle für Sammelauszahlungen. Eine Banktransaktion (Plattform-Auszah
 
 ---
 
-## tasks (Modul 09)
+## tasks (Modul 09, erweitert in v1.2)
 
 | Feld           | Typ                     | Pflicht | Beschreibung                                                  |
 | -------------- | ----------------------- | ------- | ------------------------------------------------------------- |
@@ -312,16 +310,18 @@ Junction-Tabelle für Sammelauszahlungen. Eine Banktransaktion (Plattform-Auszah
 | description    | TEXT                    | Nein    | Beschreibung                                                  |
 | priority       | TEXT                    | Ja      | low, medium, high, urgent                                     |
 | status         | TEXT                    | Ja      | todo, in_progress, done, cancelled                            |
-| due_date       | TEXT (ISO)              | Nein    | Fälligkeitsdatum                                              |
+| due_date       | TEXT (ISO)              | Nein    | Fälligkeitsdatum (nur Datum, YYYY-MM-DD)                      |
 | product_id     | TEXT (FK → products.id) | Nein    | Referenz auf Produkt                                          |
 | order_id       | TEXT (FK → orders.id)   | Nein    | Referenz auf Auftrag                                          |
 | listing_id     | TEXT (FK → listings.id) | Nein    | Referenz auf Listing                                          |
-| recurring_rule | TEXT (JSON)             | Nein    | `{interval: daily/weekly/monthly, day?: number}`              |
+| recurring_rule | TEXT (JSON)             | Nein    | `{interval: "daily"|"weekly"|"monthly", day?: number}`        |
+| parent_task_id | TEXT (FK → tasks.id)    | Nein    | **Neu v1.2**: Eltern-Aufgabe bei wiederkehrenden Tasks        |
 | completed_at   | TEXT (ISO)              | Nein    | Abschlusszeitpunkt                                            |
 | created_at     | TEXT (ISO)              | Ja      |                                                               |
 | updated_at     | TEXT (ISO)              | Ja      |                                                               |
+| deleted_at     | TEXT (ISO)              | Nein    | **Neu v1.2**: Soft-Delete Timestamp                           |
 
-**Indizes**: `status`, `priority`, `due_date`
+**Indizes**: `status`, `priority`, `due_date`, `parent_task_id`
 
 ---
 
@@ -399,7 +399,7 @@ Diese Keys werden über verschiedene Module hinweg verwendet. Die vollständige 
 - `brand_forbidden_phrases`: Array<String>
 - `brand_reference_text`: String
 
-**Aufträge & Finanzen (Modul 08, neu):**
+**Aufträge & Finanzen (Modul 08):**
 
 - `receipt_number_prefix_format`: String (Default: `"YYYY-NNNN"`, Platzhalter für Belegnummer)
 - `receipt_number_min_digits`: Number (Default: 4)
@@ -433,6 +433,8 @@ orders   ←── tasks.order_id (optional)
          ←── bank_payout_orders.order_id (n:m via junction)
 
 listings ←── tasks.listing_id (optional)
+
+tasks    ←── tasks.parent_task_id (optional, self-referencing für Recurring-Verlauf)
 
 bank_transactions ←── orders.bank_match_id (optional, 1:1)
                   ←── expenses.bank_match_id (optional, 1:1)

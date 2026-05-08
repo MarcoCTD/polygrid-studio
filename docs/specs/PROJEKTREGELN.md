@@ -1,15 +1,14 @@
 # PolyGrid Studio Business OS
 
 Projektregeln und Entwicklungsleitfaden
-Version 1.3 | April 2026 | Verbindlich für alle Entwicklungs-KIs
+Version 1.4 | Mai 2026 | Verbindlich für alle Entwicklungs-KIs
 
-> **Änderungen in v1.3 gegenüber v1.2:**
+> **Änderungen in v1.4 gegenüber v1.3:**
 >
-> - Modul 05 (Listing-Verwaltung) als abgeschlossen markiert
-> - Modul 08 (Auftragsverwaltung) auf Modul 06 vorgezogen wegen EÜR-Bedarf
-> - Modul 08 Spec um EÜR-Export, N26-CSV-Bankimport und Tax-Lock erweitert
-> - Geschäftliche Eckdaten ergänzt (Kleinunternehmer §19 UStG)
-> - Tooling-Workflow präzisiert (Codex-Prompts pro Sub-Session)
+> - Modul 06 (KI-Architektur) als abgeschlossen markiert
+> - Modul 09 (Aufgaben-Modul) als nächstes Modul festgelegt (Reihenfolge 7 → jetzt aktiv)
+> - Modulreihenfolge aktualisiert (06 vor 09, 09 vor 07)
+> - Aktueller Entwicklungsstand aktualisiert
 
 ---
 
@@ -51,7 +50,7 @@ Diese Eckdaten beeinflussen das Datenmodell (kein USt.-Tracking, Tax-Lock-Mechan
 | Datenbank                 | SQLite via Tauri SQL Plugin               | Drizzle ORM                      |
 | Build                     | Vite                                      |                                  |
 | Charts                    | Recharts                                  | Für Modul 04, 10                 |
-| Drag-and-Drop             | dnd-kit                                   | Für Listing-Editor und Kanban    |
+| Drag-and-Drop             | dnd-kit                                   | Für Listing-Editor, Kanban, Wochenansicht |
 | CSV-Parsing               | papaparse                                 | Für Modul 04 und 08              |
 | Excel-Export              | exceljs                                   | Für Modul 08 (EÜR-Export)        |
 | KI (optional)             | Ollama / Claude API / OpenAI              | Provider-Pattern                 |
@@ -101,9 +100,9 @@ Diese Eckdaten beeinflussen das Datenmodell (kein USt.-Tracking, Tax-Lock-Mechan
 
 ---
 
-## 6. Modulreihenfolge (aktualisiert v1.3)
+## 6. Modulreihenfolge (aktualisiert v1.4)
 
-Die ursprüngliche Reihenfolge wurde geändert: Modul 08 wird vor Modul 06 implementiert, weil das EÜR-Tracking dringend für die Steuererklärung benötigt wird. Modul 08 hängt nur von Foundation und Modul 02 ab — beide sind abgeschlossen.
+Die ursprüngliche Reihenfolge wurde mehrfach geändert: Modul 08 wurde vor Modul 06 implementiert (EÜR-Bedarf). Modul 09 folgt jetzt als nächstes, da es nur von Foundation, Produkten, Listings und Aufträgen abhängt (alle fertig).
 
 | #   | Modul              | Inhalt                                                        | Abhängigkeiten                            | Reihenfolge |
 | --- | ------------------ | ------------------------------------------------------------- | ----------------------------------------- | ----------- |
@@ -112,9 +111,9 @@ Die ursprüngliche Reihenfolge wurde geändert: Modul 08 wird vor Modul 06 imple
 | 3   | Dateimanager       | OneDrive-Integration, Ordnerstruktur, Tauri-Commands          | Foundation                                | ✅ 3        |
 | 4   | Ausgabenverwaltung | CRUD, Kategorisierung, Belegverknüpfung, CSV-Export/Import    | Foundation, (Produkte optional)           | ✅ 4        |
 | 5   | Listing-Verwaltung | Master+Overrides, Editor, Bilder, Sync-Stubs                  | Foundation, Produkte, Dateimanager        | ✅ 5        |
-| **8** | **Auftragsverwaltung + EÜR** | **CRUD, Kanban, EÜR-Export, N26-Bankimport**       | **Foundation, Produkte, Ausgaben**        | **🔄 6**    |
-| 6   | KI-Architektur     | Provider-Pattern, Listing Assistant, Expense Assistant        | Foundation, Listings, Ausgaben            | ⏳ 7        |
-| 9   | Aufgaben-Modul     | CRUD, Wochenansicht, Verknüpfungen                            | Foundation, (Produkte, Aufträge optional) | ⏳ 8        |
+| 8   | Auftragsverwaltung + EÜR | CRUD, Kanban, EÜR-Export, N26-Bankimport               | Foundation, Produkte, Ausgaben            | ✅ 6        |
+| 6   | KI-Architektur     | Provider-Pattern, Listing Assistant, Expense Assistant        | Foundation, Listings, Ausgaben            | ✅ 7        |
+| **9** | **Aufgaben-Modul** | **CRUD, Wochenansicht, Verknüpfungen, KI Task Extractor**  | **Foundation, Produkte, Listings, Aufträge, KI** | **🔄 8** |
 | 7   | Vorlagenbibliothek | CRUD, Platzhaltervariablen, Kategorien                        | Foundation, KI                            | ⏳ 9        |
 | 10  | Analysen/Dashboard | KPI-Karten, Charts, Widgets                                   | Alle vorherigen Module                    | ⏳ 10       |
 | 11  | Settings           | Wächst mit jedem Modul, eigenes Dokument                      | Parallel                                  | ⏳ 11       |
@@ -131,12 +130,12 @@ Die ursprüngliche Reihenfolge wurde geändert: Modul 08 wird vor Modul 06 imple
 | Dateimanager       | ✅ Abgeschlossen       | Auf main gemergt                                                       |
 | Ausgabenverwaltung | ✅ Abgeschlossen       | Auf main gemergt, inkl. CSV-Import/Export und wiederkehrende Ausgaben  |
 | Listing-Verwaltung | ✅ Abgeschlossen       | Auf main gemergt, Master+Overrides-Konzept                             |
-| Auftragsverwaltung | ✅ Abgeschlossen | Auf main gemergt, inkl. EÜR-Export und N26-Bankimport                        |
-| KI-Architektur     | ⏳ Nicht begonnen      |                                                                        |
-| Aufgaben-Modul     | ⏳ Nicht begonnen      |                                                                        |
+| Auftragsverwaltung | ✅ Abgeschlossen       | Auf main gemergt, inkl. EÜR-Export und N26-Bankimport                  |
+| KI-Architektur     | ✅ Abgeschlossen       | Auf main gemergt, Provider-Pattern, Listing/Expense/Product Agents, DiffView, Kosten-Tracking |
+| Aufgaben-Modul     | 🔄 In Bearbeitung      | Nächstes Modul, Branch: feat/modul-09-aufgaben                        |
 | Vorlagenbibliothek | ⏳ Nicht begonnen      |                                                                        |
 | Analysen/Dashboard | ⏳ Nicht begonnen      |                                                                        |
-| Settings           | ⏳ Wächst mit Modulen  |                                                                        |
+| Settings           | ⏳ Wächst mit Modulen  | Minimale Settings-UI für KI-Provider und Brand existiert bereits        |
 | Platform Sync      | 📋 Stub-Spec vorhanden | Implementierung nach Modul 11                                          |
 
 _Dieses Dokument wird nach Abschluss jedes Moduls aktualisiert._
