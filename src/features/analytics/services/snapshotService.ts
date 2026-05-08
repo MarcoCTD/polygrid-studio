@@ -11,6 +11,10 @@ interface CountRow {
   count: number | string;
 }
 
+interface ExistsRow {
+  id: string;
+}
+
 interface AvgRow {
   avg: number | string | null;
 }
@@ -261,5 +265,27 @@ export async function getSnapshots(periodType: PeriodType, limit = 12): Promise<
     }));
   } catch (error) {
     throw new Error(error instanceof Error ? error.message : 'KPI-Snapshots konnten nicht laden');
+  }
+}
+
+export async function snapshotExists(
+  periodType: PeriodType,
+  periodStart: string,
+): Promise<boolean> {
+  try {
+    const rows = await getDatabase().select<ExistsRow[]>(
+      `SELECT id
+       FROM kpi_records
+       WHERE period_type = ?
+         AND period_start = ?
+       LIMIT 1`,
+      [periodType, periodStart],
+    );
+
+    return rows.length > 0;
+  } catch (error) {
+    throw new Error(
+      error instanceof Error ? error.message : 'KPI-Snapshot-Status konnte nicht geladen werden',
+    );
   }
 }

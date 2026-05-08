@@ -1,3 +1,4 @@
+export { generateDashboardAnalysis } from './analyticsAiService';
 export {
   getAnalyticsKPIs,
   getEarliestAnalyticsDate,
@@ -5,9 +6,10 @@ export {
   getListingStatusDistribution,
   getMarginByProduct,
   getRevenueByPlatform,
+  getTopProductsByRevenue,
 } from './chartService';
 export { getDashboardKPIs } from './kpiService';
-export { createOrUpdateSnapshot, getSnapshots } from './snapshotService';
+export { createOrUpdateSnapshot, getSnapshots, snapshotExists } from './snapshotService';
 export {
   getIncompleteListings,
   getLowMarginProducts,

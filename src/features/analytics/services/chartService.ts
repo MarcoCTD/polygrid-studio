@@ -5,6 +5,7 @@ import type {
   ListingStatusDatum,
   MarginByProductDatum,
   RevenueByPlatformDatum,
+  TopProductByRevenue,
 } from '../types';
 
 interface RevenueRow {
@@ -37,6 +38,12 @@ interface AnalyticsKpiRow {
 
 interface DateRow {
   date: string | null;
+}
+
+interface TopProductRow {
+  id: string;
+  name: string;
+  revenue: number | string | null;
 }
 
 function numberValue(value: number | string | null | undefined): number {
@@ -194,6 +201,40 @@ export async function getEarliestAnalyticsDate(): Promise<string | null> {
   } catch (error) {
     throw new Error(
       error instanceof Error ? error.message : 'Frühester Analysezeitraum konnte nicht laden',
+    );
+  }
+}
+
+export async function getTopProductsByRevenue(
+  startDate: string,
+  endDate: string,
+): Promise<TopProductByRevenue[]> {
+  try {
+    const rows = await getDatabase().select<TopProductRow[]>(
+      `SELECT
+         COALESCE(p.id, o.id) AS id,
+         COALESCE(p.name, o.receipt_number) AS name,
+         SUM(o.sale_price) AS revenue
+       FROM orders o
+       LEFT JOIN products p ON p.id = o.product_id
+       WHERE o.status = 'completed'
+         AND o.order_date >= ?
+         AND o.order_date <= ?
+         AND o.deleted_at IS NULL
+       GROUP BY p.id, name
+       ORDER BY revenue DESC
+       LIMIT 3`,
+      [startDate, endDate],
+    );
+
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      revenue: numberValue(row.revenue),
+    }));
+  } catch (error) {
+    throw new Error(
+      error instanceof Error ? error.message : 'Top-Produkte nach Umsatz konnten nicht laden',
     );
   }
 }

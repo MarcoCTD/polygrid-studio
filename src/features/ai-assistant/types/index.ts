@@ -21,7 +21,9 @@ export type TemplateAction =
   | 'reformulate_text'
   | 'adapt_for_platform';
 
-export type AIAction = ListingAction | ExpenseAction | TemplateAction;
+export type ProductAnalystAction = 'dashboard_analysis';
+
+export type AIAction = ListingAction | ExpenseAction | TemplateAction | ProductAnalystAction;
 
 export interface AIOptions {
   maxTokens?: number;

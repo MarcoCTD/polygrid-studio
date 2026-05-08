@@ -113,3 +113,19 @@ export interface KpiSnapshot {
   expenses_by_category: Record<string, number> | null;
   created_at: string;
 }
+
+export interface TopProductByRevenue {
+  id: string;
+  name: string;
+  revenue: number;
+}
+
+export interface DashboardAnalysisInput {
+  kpis: AnalyticsKPIs;
+  revenueByPlatform: RevenueByPlatformDatum[];
+  expensesByCategory: ExpensesByCategoryDatum[];
+  bottomMarginProducts: MarginByProductDatum[];
+  topProductsByRevenue: TopProductByRevenue[];
+  startDate: string;
+  endDate: string;
+}
