@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import type { Template } from './schemas';
 import { getAllTemplates } from './services';
-import { NewTemplateModal, TemplateList } from './components';
+import { NewTemplateModal, TemplateEditor, TemplateList } from './components';
 
 export function TemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -46,6 +46,18 @@ export function TemplatesPage() {
     void loadTemplates();
   }
 
+  function handleSaved(template: Template) {
+    setTemplates((current) => current.map((item) => (item.id === template.id ? template : item)));
+    setSelectedTemplate(template);
+    void loadTemplates();
+  }
+
+  function handleDeleted(templateId: string) {
+    setTemplates((current) => current.filter((template) => template.id !== templateId));
+    setSelectedTemplate(null);
+    void loadTemplates();
+  }
+
   return (
     <div className="flex h-full flex-col overflow-hidden bg-bg-primary">
       <header className="flex items-center justify-between gap-4 border-b border-border-subtle px-6 py-4">
@@ -73,28 +85,12 @@ export function TemplatesPage() {
 
         <section className="min-h-0 overflow-auto p-6">
           {selectedTemplateSnapshot ? (
-            <div className="flex min-h-full flex-col rounded-lg border border-dashed border-border-subtle bg-bg-elevated p-8">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
-                    Editor
-                  </p>
-                  <h2 className="mt-2 text-xl font-semibold text-text-primary">
-                    {selectedTemplateSnapshot.name}
-                  </h2>
-                  <p className="mt-1 text-sm text-text-secondary">
-                    Version {selectedTemplateSnapshot.version}
-                  </p>
-                </div>
-                <FileText className="size-5 text-text-muted" />
-              </div>
-              <div className="mt-8 flex flex-1 items-center justify-center rounded-lg border border-border-subtle bg-bg-secondary p-8 text-center">
-                <p className="max-w-sm text-sm text-text-secondary">
-                  Der Vorlagen-Editor wird in der nächsten Sub-Session umgesetzt. Die Auswahl ist
-                  vorbereitet.
-                </p>
-              </div>
-            </div>
+            <TemplateEditor
+              key={selectedTemplateSnapshot.id}
+              template={selectedTemplateSnapshot}
+              onSaved={handleSaved}
+              onDeleted={handleDeleted}
+            />
           ) : (
             <div className="flex min-h-full items-center justify-center rounded-lg border border-dashed border-border-subtle bg-bg-elevated p-8 text-center">
               <div>
