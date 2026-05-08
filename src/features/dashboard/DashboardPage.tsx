@@ -1,9 +1,38 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { CheckSquare, Receipt, ShoppingCart, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
-import { KpiCard, QuickActions } from '@/features/analytics/components';
-import { getDashboardKPIs } from '@/features/analytics/services';
-import type { DashboardKPIs } from '@/features/analytics/types';
+import {
+  IncompleteListingsWidget,
+  KpiCard,
+  LowMarginWidget,
+  OrderTimelineWidget,
+  PipelineWidget,
+  QuickActions,
+  RecentProductsWidget,
+} from '@/features/analytics/components';
+import {
+  getDashboardKPIs,
+  getIncompleteListings,
+  getLowMarginProducts,
+  getPipelineProducts,
+  getRecentOrders,
+  getRecentProducts,
+} from '@/features/analytics/services';
+import type {
+  DashboardKPIs,
+  IncompleteListing,
+  LowMarginProduct,
+  PipelineProductGroup,
+  RecentOrder,
+  RecentProduct,
+} from '@/features/analytics/types';
+import { ExpenseDetailPanel } from '@/features/expenses/components/ExpenseDetailPanel';
+import { NewListingModal } from '@/features/listings/components';
+import { NewOrderModal } from '@/features/orders/components';
+import { NewProductDialog } from '@/features/products/components/NewProductDialog';
+import { getSetting } from '@/services/database';
+import { useUIStore } from '@/stores';
 
 const EMPTY_KPIS: DashboardKPIs = {
   revenueCurrentMonth: 0,
@@ -52,8 +81,20 @@ function previousMonthText(value: number): string {
 }
 
 export function DashboardPage() {
+  const navigate = useNavigate();
+  const openDetailPanel = useUIStore((state) => state.openDetailPanel);
+  const closeDetailPanel = useUIStore((state) => state.closeDetailPanel);
   const [kpis, setKpis] = useState<DashboardKPIs>(EMPTY_KPIS);
   const [isLoading, setIsLoading] = useState(true);
+  const [recentProducts, setRecentProducts] = useState<RecentProduct[]>([]);
+  const [lowMarginProducts, setLowMarginProducts] = useState<LowMarginProduct[]>([]);
+  const [incompleteListings, setIncompleteListings] = useState<IncompleteListing[]>([]);
+  const [pipelineGroups, setPipelineGroups] = useState<PipelineProductGroup[]>([]);
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+  const [lowMarginThreshold, setLowMarginThreshold] = useState(30);
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [listingModalOpen, setListingModalOpen] = useState(false);
+  const [orderModalOpen, setOrderModalOpen] = useState(false);
 
   const loadKpis = useCallback(async () => {
     setIsLoading(true);
@@ -67,13 +108,113 @@ export function DashboardPage() {
     }
   }, []);
 
-  useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      void loadKpis();
-    }, 0);
+  const loadRecentProducts = useCallback(async () => {
+    try {
+      setRecentProducts(await getRecentProducts());
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Produkt-Widget konnte nicht laden');
+    }
+  }, []);
 
+  const loadLowMarginProducts = useCallback(async () => {
+    try {
+      const threshold = (await getSetting<number>('dashboard_low_margin_threshold')) ?? 30;
+      setLowMarginThreshold(threshold);
+      setLowMarginProducts(await getLowMarginProducts(threshold));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Margen-Widget konnte nicht laden');
+    }
+  }, []);
+
+  const loadIncompleteListings = useCallback(async () => {
+    try {
+      setIncompleteListings(await getIncompleteListings());
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Listing-Widget konnte nicht laden');
+    }
+  }, []);
+
+  const loadPipelineProducts = useCallback(async () => {
+    try {
+      setPipelineGroups(await getPipelineProducts());
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Pipeline-Widget konnte nicht laden');
+    }
+  }, []);
+
+  const loadRecentOrders = useCallback(async () => {
+    try {
+      setRecentOrders(await getRecentOrders());
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Auftrags-Widget konnte nicht laden');
+    }
+  }, []);
+
+  const refreshDashboard = useCallback(() => {
+    void loadKpis();
+    void loadRecentProducts();
+    void loadLowMarginProducts();
+    void loadIncompleteListings();
+    void loadPipelineProducts();
+    void loadRecentOrders();
+  }, [
+    loadIncompleteListings,
+    loadKpis,
+    loadLowMarginProducts,
+    loadPipelineProducts,
+    loadRecentOrders,
+    loadRecentProducts,
+  ]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => void loadKpis(), 0);
     return () => window.clearTimeout(timeout);
   }, [loadKpis]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => void loadRecentProducts(), 0);
+    return () => window.clearTimeout(timeout);
+  }, [loadRecentProducts]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => void loadLowMarginProducts(), 0);
+    return () => window.clearTimeout(timeout);
+  }, [loadLowMarginProducts]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => void loadIncompleteListings(), 0);
+    return () => window.clearTimeout(timeout);
+  }, [loadIncompleteListings]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => void loadPipelineProducts(), 0);
+    return () => window.clearTimeout(timeout);
+  }, [loadPipelineProducts]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => void loadRecentOrders(), 0);
+    return () => window.clearTimeout(timeout);
+  }, [loadRecentOrders]);
+
+  function handleNewExpense() {
+    openDetailPanel(
+      <ExpenseDetailPanel
+        expense="new"
+        onSaved={() => {
+          refreshDashboard();
+          closeDetailPanel();
+        }}
+        onDeleted={() => {
+          refreshDashboard();
+          closeDetailPanel();
+        }}
+        onRestored={() => {
+          refreshDashboard();
+          closeDetailPanel();
+        }}
+      />,
+    );
+  }
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-auto bg-bg-primary p-6">
@@ -117,16 +258,45 @@ export function DashboardPage() {
         />
       </section>
 
-      <QuickActions onActionComplete={() => void loadKpis()} />
+      <QuickActions
+        onNewExpense={handleNewExpense}
+        onNewProduct={() => setProductModalOpen(true)}
+        onNewListing={() => setListingModalOpen(true)}
+        onNewOrder={() => setOrderModalOpen(true)}
+      />
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border border-dashed border-border-subtle bg-bg-elevated p-5 dark:border-border">
-          <h2 className="text-base font-semibold text-text-primary">Widgets</h2>
-          <p className="mt-2 text-sm text-text-secondary">
-            Dashboard-Widgets folgen in Sub-Session B.
-          </p>
-        </div>
+        <RecentProductsWidget
+          products={recentProducts}
+          onCreateProduct={() => setProductModalOpen(true)}
+        />
+        <LowMarginWidget products={lowMarginProducts} threshold={lowMarginThreshold} />
+        <IncompleteListingsWidget listings={incompleteListings} />
+        <PipelineWidget groups={pipelineGroups} />
+        <OrderTimelineWidget orders={recentOrders} onCreateOrder={() => setOrderModalOpen(true)} />
       </section>
+
+      <NewProductDialog
+        open={productModalOpen}
+        onOpenChange={setProductModalOpen}
+        onCreated={refreshDashboard}
+      />
+      <NewListingModal
+        open={listingModalOpen}
+        onOpenChange={setListingModalOpen}
+        onCreated={(listing) => {
+          refreshDashboard();
+          void navigate({ to: '/listings/$listingId', params: { listingId: listing.id } });
+        }}
+      />
+      <NewOrderModal
+        open={orderModalOpen}
+        onOpenChange={setOrderModalOpen}
+        onCreated={() => {
+          refreshDashboard();
+          void navigate({ to: '/orders' });
+        }}
+      />
     </div>
   );
 }
