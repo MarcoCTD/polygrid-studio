@@ -522,10 +522,21 @@ export const kpiRecords = sqliteTable(
     revenue: real('revenue').notNull(),
     expenses_total: real('expenses_total').notNull(),
     orders_count: integer('orders_count').notNull(),
+    open_orders: integer('open_orders').notNull().default(0),
+    open_tasks: integer('open_tasks').notNull().default(0),
+    completed_orders: integer('completed_orders').notNull().default(0),
     active_products: integer('active_products').notNull(),
     active_listings: integer('active_listings').notNull(),
     avg_margin: real('avg_margin'),
+    revenue_by_platform: text('revenue_by_platform', { mode: 'json' }).$type<
+      Record<string, number>
+    >(),
+    expenses_by_category: text('expenses_by_category', { mode: 'json' }).$type<
+      Record<string, number>
+    >(),
     created_at: text('created_at').notNull(),
   },
-  (table) => [index('idx_kpi_records_period').on(table.period_type, table.period_start)],
+  (table) => [
+    uniqueIndex('idx_kpi_records_period_unique').on(table.period_type, table.period_start),
+  ],
 );

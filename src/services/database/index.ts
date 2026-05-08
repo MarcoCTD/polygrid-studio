@@ -92,6 +92,8 @@ export async function initDatabase(): Promise<void> {
     ['bank_match_time_window_days_expenses', '7'],
     ['payout_keywords_etsy', '["Etsy","Etsy Ireland","Etsy Inc"]'],
     ['payout_keywords_ebay', '["eBay","Ebay Marketplaces"]'],
+    ['dashboard_kpi_snapshot_auto', 'true'],
+    ['dashboard_low_margin_threshold', '30'],
   ];
 
   for (const [key, value] of defaults) {
