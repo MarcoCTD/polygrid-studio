@@ -1,3 +1,4 @@
+export { CopyDialog } from './CopyDialog';
 export { HighlightTextarea } from './HighlightTextarea';
 export { LegalWarningBanner } from './LegalWarningBanner';
 export { NewTemplateModal } from './NewTemplateModal';

@@ -2,6 +2,7 @@ import { FileText, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { useUIStore } from '@/stores';
 import type { Template } from './schemas';
 import { getAllTemplates } from './services';
 import { NewTemplateModal, TemplateEditor, TemplateList } from './components';
@@ -11,6 +12,8 @@ export function TemplatesPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [newTemplateOpen, setNewTemplateOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const registerCommands = useUIStore((state) => state.registerCommands);
+  const unregisterCommands = useUIStore((state) => state.unregisterCommands);
 
   async function loadTemplates() {
     setIsLoading(true);
@@ -33,6 +36,22 @@ export function TemplatesPage() {
     void loadTemplates();
   }, []);
 
+  useEffect(() => {
+    const commandIds = ['templates:new'];
+
+    registerCommands([
+      {
+        id: 'templates:new',
+        label: 'Neue Vorlage',
+        icon: Plus,
+        category: 'action',
+        action: () => setNewTemplateOpen(true),
+      },
+    ]);
+
+    return () => unregisterCommands(commandIds);
+  }, [registerCommands, unregisterCommands]);
+
   const selectedTemplateId = selectedTemplate?.id ?? null;
   const selectedTemplateSnapshot = useMemo(
     () => templates.find((template) => template.id === selectedTemplateId) ?? selectedTemplate,
@@ -53,8 +72,10 @@ export function TemplatesPage() {
   }
 
   function handleDeleted(templateId: string) {
-    setTemplates((current) => current.filter((template) => template.id !== templateId));
-    setSelectedTemplate(null);
+    const index = templates.findIndex((template) => template.id === templateId);
+    const nextTemplates = templates.filter((template) => template.id !== templateId);
+    setTemplates(nextTemplates);
+    setSelectedTemplate(nextTemplates[index] ?? nextTemplates[index - 1] ?? null);
     void loadTemplates();
   }
 

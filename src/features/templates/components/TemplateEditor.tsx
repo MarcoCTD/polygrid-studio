@@ -26,6 +26,7 @@ import { softDeleteTemplate, updateTemplate } from '../services';
 import { HighlightTextarea } from './HighlightTextarea';
 import { LegalWarningBanner } from './LegalWarningBanner';
 import { VariablesSidebar } from './VariablesSidebar';
+import { CopyDialog } from './CopyDialog';
 
 interface TemplateEditorProps {
   template: Template;
@@ -86,6 +87,7 @@ export function TemplateEditor({ template, onSaved, onDeleted }: TemplateEditorP
   const [draft, setDraft] = useState<TemplateDraft>(() => templateToDraft(template));
   const [isSaving, setIsSaving] = useState(false);
   const [showNotes, setShowNotes] = useState(Boolean(template.notes));
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
 
   const normalizedDraft = useMemo(() => normalizeDraft(draft), [draft]);
   const isDirty = useMemo(
@@ -213,7 +215,7 @@ export function TemplateEditor({ template, onSaved, onDeleted }: TemplateEditorP
 
       <div className="rounded-lg border border-border-subtle bg-bg-elevated p-4">
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <Button type="button" className="gap-1.5" disabled title="Kommt in Sub-Session D">
+          <Button type="button" className="gap-1.5" onClick={() => setCopyDialogOpen(true)}>
             <Copy className="size-4" />
             Kopieren
           </Button>
@@ -304,6 +306,13 @@ export function TemplateEditor({ template, onSaved, onDeleted }: TemplateEditorP
           ) : null}
         </div>
       </div>
+
+      <CopyDialog
+        open={copyDialogOpen}
+        onOpenChange={setCopyDialogOpen}
+        content={draft.content}
+        variables={mergeVariables(extractVariables(draft.content), draft.variables)}
+      />
     </div>
   );
 }

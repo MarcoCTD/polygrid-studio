@@ -43,6 +43,7 @@ export function TemplateList({
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<CategoryTabValue>('all');
 
+  const activeTabLabel = CATEGORY_TABS.find((item) => item.value === activeTab)?.label ?? 'Alle';
   const filteredTemplates = useMemo(() => {
     const tab = CATEGORY_TABS.find((item) => item.value === activeTab);
     const categories = tab?.categories;
@@ -102,7 +103,11 @@ export function TemplateList({
           </div>
         ) : filteredTemplates.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border-subtle p-4 text-sm text-text-muted">
-            Keine Vorlagen gefunden.
+            {search.trim()
+              ? 'Keine Vorlagen für diese Suche.'
+              : activeTab === 'all'
+                ? 'Noch keine Vorlagen angelegt.'
+                : `Keine Vorlagen in dieser Kategorie: ${activeTabLabel}.`}
           </div>
         ) : (
           <div className="space-y-2">
