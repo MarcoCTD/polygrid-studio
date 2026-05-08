@@ -1,12 +1,13 @@
 # Datenbank-Schema
 
-PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Mai 2026 | Version 1.2
+PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Mai 2026 | Version 1.3
 
-> **Änderungen in v1.2 gegenüber v1.1:**
+> **Änderungen in v1.3 gegenüber v1.2:**
 >
-> - `tasks`-Tabelle erweitert um: `deleted_at`, `parent_task_id`
-> - Neuer Index auf `parent_task_id`
-> - FK-Beziehungen Übersicht um `tasks.parent_task_id` ergänzt
+> - `ai_jobs.agent` Enum um `template_assistant` erweitert (Modul 07)
+> - `kpi_records` Tabelle erweitert um: `open_orders`, `open_tasks`, `completed_orders`, `revenue_by_platform` (JSON), `expenses_by_category` (JSON)
+> - Neuer Unique-Index auf `kpi_records (period_type, period_start)` zur Vermeidung doppelter Snapshots
+> - Settings-Keys um Dashboard-spezifische Keys ergänzt
 
 Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Schema. Alle Tabellen werden in Modul 01 (Foundation) angelegt, auch wenn sie erst in späteren Modulen befüllt werden. Das sichert korrekte FK-Beziehungen von Anfang an.
 
@@ -166,8 +167,8 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 | id             | TEXT (UUID) | Ja      | Primärschlüssel                                      |
 | provider       | TEXT        | Ja      | claude, openai, ollama                                |
 | model          | TEXT        | Ja      | Modellname (z.B. claude-sonnet-4-20250514)            |
-| agent          | TEXT        | Ja      | listing_assistant, expense_assistant, product_analyst, task_extractor |
-| action         | TEXT        | Ja      | generate_title, classify_expense, extract_tasks, etc. |
+| agent          | TEXT        | Ja      | listing_assistant, expense_assistant, product_analyst, task_extractor, template_assistant |
+| action         | TEXT        | Ja      | generate_title, classify_expense, extract_tasks, rewrite_template, etc. |
 | input          | TEXT        | Nein    | Input-Prompt (gekürzt)                                |
 | output         | TEXT        | Nein    | Output-Text (gekürzt)                                 |
 | tokens_used    | INTEGER     | Nein    | Gesamte Tokens                                        |
@@ -179,7 +180,7 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 
 **Indizes**: `created_at`, `agent`, `status`
 
-**Hinweis**: `agent`-Enum erweitert in Modul 09 um `task_extractor`.
+**Hinweis**: `agent`-Enum erweitert in Modul 07 um `template_assistant`, in Modul 09 um `task_extractor`.
 
 ---
 
@@ -315,33 +316,38 @@ Junction-Tabelle für Sammelauszahlungen. Eine Banktransaktion (Plattform-Auszah
 | order_id       | TEXT (FK → orders.id)   | Nein    | Referenz auf Auftrag                                          |
 | listing_id     | TEXT (FK → listings.id) | Nein    | Referenz auf Listing                                          |
 | recurring_rule | TEXT (JSON)             | Nein    | `{interval: "daily"|"weekly"|"monthly", day?: number}`        |
-| parent_task_id | TEXT (FK → tasks.id)    | Nein    | **Neu v1.2**: Eltern-Aufgabe bei wiederkehrenden Tasks        |
+| parent_task_id | TEXT (FK → tasks.id)    | Nein    | Eltern-Aufgabe bei wiederkehrenden Tasks                      |
 | completed_at   | TEXT (ISO)              | Nein    | Abschlusszeitpunkt                                            |
 | created_at     | TEXT (ISO)              | Ja      |                                                               |
 | updated_at     | TEXT (ISO)              | Ja      |                                                               |
-| deleted_at     | TEXT (ISO)              | Nein    | **Neu v1.2**: Soft-Delete Timestamp                           |
+| deleted_at     | TEXT (ISO)              | Nein    | Soft-Delete Timestamp                                         |
 
 **Indizes**: `status`, `priority`, `due_date`, `parent_task_id`
 
 ---
 
-## kpi_records (Modul 10)
+## kpi_records (Modul 10, erweitert in v1.3)
 
-| Feld            | Typ         | Pflicht | Beschreibung                       |
-| --------------- | ----------- | ------- | ---------------------------------- |
-| id              | TEXT (UUID) | Ja      | Primärschlüssel                   |
-| period_type     | TEXT        | Ja      | week, month                        |
-| period_start    | TEXT (ISO)  | Ja      | Beginn des Zeitraums               |
-| period_end      | TEXT (ISO)  | Ja      | Ende des Zeitraums                 |
-| revenue         | REAL        | Ja      | Umsatz in EUR                      |
-| expenses_total  | REAL        | Ja      | Ausgaben in EUR                    |
-| orders_count    | INTEGER     | Ja      | Anzahl Aufträge                    |
-| active_products | INTEGER     | Ja      | Anzahl aktiver Produkte            |
-| active_listings | INTEGER     | Ja      | Anzahl aktiver Listings            |
-| avg_margin      | REAL        | Nein    | Durchschnittliche Marge in %       |
-| created_at      | TEXT (ISO)  | Ja      |                                    |
+| Feld                 | Typ         | Pflicht | Beschreibung                                          |
+| -------------------- | ----------- | ------- | ----------------------------------------------------- |
+| id                   | TEXT (UUID) | Ja      | Primärschlüssel                                      |
+| period_type          | TEXT        | Ja      | week, month                                           |
+| period_start         | TEXT (ISO)  | Ja      | Beginn des Zeitraums (YYYY-MM-DD)                     |
+| period_end           | TEXT (ISO)  | Ja      | Ende des Zeitraums (YYYY-MM-DD)                       |
+| revenue              | REAL        | Ja      | Umsatz in EUR (Summe sale_price completed Orders)     |
+| expenses_total       | REAL        | Ja      | Ausgaben in EUR                                       |
+| orders_count         | INTEGER     | Ja      | Anzahl abgeschlossener Aufträge im Zeitraum           |
+| open_orders          | INTEGER     | Ja      | Anzahl offener Aufträge zum Stichtag period_end       |
+| open_tasks           | INTEGER     | Ja      | Anzahl offener Tasks zum Stichtag period_end          |
+| completed_orders     | INTEGER     | Ja      | Anzahl in diesem Zeitraum abgeschlossener Aufträge    |
+| active_products      | INTEGER     | Ja      | Anzahl aktiver Produkte (status=online)               |
+| active_listings      | INTEGER     | Ja      | Anzahl aktiver Listings (status=online)               |
+| avg_margin           | REAL        | Nein    | Durchschnittliche Marge in %                          |
+| revenue_by_platform  | TEXT (JSON) | Nein    | `{"etsy": 150.00, "ebay": 80.00, "direkt": 20.00}`   |
+| expenses_by_category | TEXT (JSON) | Nein    | `{"Filament": 45.00, "Verpackung": 12.00, ...}`      |
+| created_at           | TEXT (ISO)  | Ja      |                                                       |
 
-**Indizes**: `(period_type, period_start)`
+**Indizes**: `(period_type, period_start)` (unique)
 
 ---
 
@@ -412,6 +418,11 @@ Diese Keys werden über verschiedene Module hinweg verwendet. Die vollständige 
 - `bank_match_time_window_days_expenses`: Number (Default: 7)
 - `payout_keywords_etsy`: Array<String> (Default: `["Etsy", "Etsy Ireland", "Etsy Inc"]`)
 - `payout_keywords_ebay`: Array<String> (Default: `["eBay", "Ebay Marketplaces"]`)
+
+**Dashboard (Modul 10):**
+
+- `dashboard_kpi_snapshot_auto`: Boolean (Default: true). Automatische Snapshot-Erstellung bei App-Start wenn neuer Monat/neue Woche.
+- `dashboard_low_margin_threshold`: Number (Default: 30). Unter diesem Wert erscheinen Produkte im Widget "Schwache Margen".
 
 **Sicherheit (Modul 11):**
 
