@@ -10,7 +10,20 @@ import {
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { Monitor, Moon, Package, Palette, Settings, Shield, Sparkles, Sun } from 'lucide-react';
+import {
+  Check,
+  Edit2,
+  Monitor,
+  Moon,
+  Package,
+  Palette,
+  Plus,
+  Settings,
+  Shield,
+  Sparkles,
+  Sun,
+  Trash2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +53,43 @@ interface GeneralSettingsState {
   oneDrivePath: string;
   autoSnapshot: boolean;
   marginWarningThreshold: number;
+}
+
+interface MaterialPrice {
+  id: string;
+  name: string;
+  pricePerKg: number;
+}
+
+interface ShippingClassSetting {
+  id: string;
+  name: string;
+  price: number;
+}
+
+interface ColorVariantSetting {
+  id: string;
+  name: string;
+  hex: string;
+}
+
+type PlatformKey = 'etsy' | 'ebay' | 'kleinanzeigen';
+
+interface PlatformFeeSetting {
+  percentFee: number;
+  fixedFee: number;
+}
+
+type PlatformFeesSetting = Record<PlatformKey, PlatformFeeSetting>;
+
+interface MaterialsSettingsState {
+  materials: MaterialPrice[];
+  shippingClasses: ShippingClassSetting[];
+  colorVariants: ColorVariantSetting[];
+  printerPowerWatts: number;
+  electricityPricePerKwh: number;
+  shippingPaidByBuyer: boolean;
+  platformFees: PlatformFeesSetting;
 }
 
 interface TabConfig {
@@ -73,8 +123,134 @@ const EMPTY_GENERAL_SETTINGS: GeneralSettingsState = {
   marginWarningThreshold: DEFAULTS.margin_warning_threshold,
 };
 
+const EMPTY_MATERIALS_SETTINGS: MaterialsSettingsState = {
+  materials: DEFAULTS.filament_prices.map((material) => ({
+    id: crypto.randomUUID(),
+    ...material,
+  })),
+  shippingClasses: DEFAULTS.shipping_classes.map((shippingClass) => ({
+    id: crypto.randomUUID(),
+    ...shippingClass,
+  })),
+  colorVariants: [],
+  printerPowerWatts: DEFAULTS.printer_power_watts,
+  electricityPricePerKwh: DEFAULTS.electricity_price_per_kwh,
+  shippingPaidByBuyer: DEFAULTS.shipping_paid_by_buyer,
+  platformFees: DEFAULTS.platform_fees,
+};
+
+const PLATFORM_LABELS: Record<PlatformKey, string> = {
+  etsy: 'Etsy',
+  ebay: 'eBay',
+  kleinanzeigen: 'Kleinanzeigen',
+};
+
 function isSettingsTab(value: string | undefined): value is SettingsTab {
   return value !== undefined && VALID_TABS.has(value as SettingsTab);
+}
+
+function numberValue(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeHex(value: string): string {
+  const nextValue = value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(nextValue)) return nextValue.toUpperCase();
+  if (/^[0-9a-fA-F]{6}$/.test(nextValue)) return `#${nextValue.toUpperCase()}`;
+  return '#000000';
+}
+
+function normalizeMaterials(value: unknown): MaterialPrice[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => {
+      const record = item as Record<string, unknown>;
+      return {
+        id: crypto.randomUUID(),
+        name: String(record.name ?? ''),
+        pricePerKg: numberValue(record.pricePerKg),
+      };
+    });
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>).map(([name, price]) => ({
+      id: crypto.randomUUID(),
+      name,
+      pricePerKg: numberValue(price),
+    }));
+  }
+
+  return EMPTY_MATERIALS_SETTINGS.materials;
+}
+
+function normalizeShippingClasses(value: unknown): ShippingClassSetting[] {
+  if (!Array.isArray(value)) return EMPTY_MATERIALS_SETTINGS.shippingClasses;
+  return value.map((item) => {
+    const record = item as Record<string, unknown>;
+    return {
+      id: crypto.randomUUID(),
+      name: String(record.name ?? ''),
+      price: numberValue(record.price),
+    };
+  });
+}
+
+function normalizeColorVariants(value: unknown): ColorVariantSetting[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    const record = item as Record<string, unknown>;
+    return {
+      id: crypto.randomUUID(),
+      name: String(record.name ?? ''),
+      hex: normalizeHex(String(record.hex ?? '#000000')),
+    };
+  });
+}
+
+function normalizePlatformFees(value: unknown): PlatformFeesSetting {
+  const defaults = DEFAULTS.platform_fees;
+  if (!value || typeof value !== 'object') return defaults;
+
+  const record = value as Record<string, Record<string, unknown>>;
+  return (Object.keys(defaults) as PlatformKey[]).reduce<PlatformFeesSetting>(
+    (result, platform) => {
+      const fees = record[platform] ?? {};
+      result[platform] = {
+        percentFee: numberValue(fees.percentFee ?? fees.percent, defaults[platform].percentFee),
+        fixedFee: numberValue(fees.fixedFee ?? fees.fixed, defaults[platform].fixedFee),
+      };
+      return result;
+    },
+    { ...defaults },
+  );
+}
+
+function materialPayload(materials: MaterialPrice[]) {
+  return materials
+    .filter((material) => material.name.trim().length > 0)
+    .map((material) => ({
+      name: material.name.trim(),
+      pricePerKg: numberValue(material.pricePerKg),
+    }));
+}
+
+function shippingPayload(shippingClasses: ShippingClassSetting[]) {
+  return shippingClasses
+    .filter((shippingClass) => shippingClass.name.trim().length > 0)
+    .map((shippingClass) => ({
+      name: shippingClass.name.trim(),
+      price: numberValue(shippingClass.price),
+    }));
+}
+
+function colorPayload(colorVariants: ColorVariantSetting[]) {
+  return colorVariants
+    .filter((color) => color.name.trim().length > 0)
+    .map((color) => ({
+      name: color.name.trim(),
+      hex: normalizeHex(color.hex),
+    }));
 }
 
 function SettingsSection({
@@ -172,8 +348,13 @@ export function SettingsPage() {
   const { theme, accentColor, changeTheme, changeAccentColor } = useTheme();
   const { scheduleSave } = useAutoSave();
   const [settings, setSettings] = useState<GeneralSettingsState>(EMPTY_GENERAL_SETTINGS);
+  const [materialsSettings, setMaterialsSettings] =
+    useState<MaterialsSettingsState>(EMPTY_MATERIALS_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
   const [pathExists, setPathExists] = useState<boolean | null>(null);
+  const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null);
+  const [editingShippingClassId, setEditingShippingClassId] = useState<string | null>(null);
+  const [editingColorId, setEditingColorId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isSettingsTab(params.tab)) {
@@ -195,6 +376,14 @@ export function SettingsPage() {
           oneDriveBasePath,
           autoSnapshot,
           marginWarningThreshold,
+          filamentPrices,
+          printerPowerWatts,
+          electricityPricePerKwh,
+          shippingPaidByBuyer,
+          shippingPaidByCustomerDefault,
+          platformFees,
+          shippingClasses,
+          colorVariants,
         ] = await Promise.all([
           getSettingWithDefault('company_name'),
           getSettingWithDefault('language'),
@@ -203,6 +392,14 @@ export function SettingsPage() {
           getSettingWithDefault('onedrive_base_path'),
           getSettingWithDefault('dashboard_auto_snapshot'),
           getSettingWithDefault('margin_warning_threshold'),
+          getSettingWithDefault('filament_prices'),
+          getSettingWithDefault('printer_power_watts'),
+          getSettingWithDefault('electricity_price_per_kwh'),
+          getSettingWithDefault('shipping_paid_by_buyer'),
+          getSettingWithDefault('shipping_paid_by_customer_default'),
+          getSettingWithDefault('platform_fees'),
+          getSettingWithDefault('shipping_classes'),
+          getSettingWithDefault('color_variants_library'),
         ]);
 
         if (cancelled) return;
@@ -213,6 +410,15 @@ export function SettingsPage() {
           oneDrivePath: oneDriveRootPath || oneDriveBasePath,
           autoSnapshot,
           marginWarningThreshold,
+        });
+        setMaterialsSettings({
+          materials: normalizeMaterials(filamentPrices),
+          printerPowerWatts,
+          electricityPricePerKwh,
+          shippingPaidByBuyer: shippingPaidByBuyer ?? shippingPaidByCustomerDefault,
+          platformFees: normalizePlatformFees(platformFees),
+          shippingClasses: normalizeShippingClasses(shippingClasses),
+          colorVariants: normalizeColorVariants(colorVariants),
         });
       } catch (error) {
         toast.error(
@@ -269,6 +475,141 @@ export function SettingsPage() {
     },
     [scheduleSave],
   );
+
+  const updateMaterialsSetting = useCallback(
+    <K extends keyof MaterialsSettingsState>(
+      key: K,
+      value: MaterialsSettingsState[K],
+      settingKey: string,
+      persistedValue: unknown = value,
+      aliases: string[] = [],
+    ) => {
+      setMaterialsSettings((current) => ({ ...current, [key]: value }));
+      scheduleSave(settingKey, persistedValue, { aliases });
+    },
+    [scheduleSave],
+  );
+
+  function commitMaterials(nextMaterials: MaterialPrice[]) {
+    updateMaterialsSetting(
+      'materials',
+      nextMaterials,
+      'filament_prices',
+      materialPayload(nextMaterials),
+    );
+  }
+
+  function commitShippingClasses(nextShippingClasses: ShippingClassSetting[]) {
+    updateMaterialsSetting(
+      'shippingClasses',
+      nextShippingClasses,
+      'shipping_classes',
+      shippingPayload(nextShippingClasses),
+    );
+  }
+
+  function commitColorVariants(nextColorVariants: ColorVariantSetting[]) {
+    updateMaterialsSetting(
+      'colorVariants',
+      nextColorVariants,
+      'color_variants_library',
+      colorPayload(nextColorVariants),
+    );
+  }
+
+  function updateMaterial(id: string, patch: Partial<MaterialPrice>) {
+    setMaterialsSettings((current) => ({
+      ...current,
+      materials: current.materials.map((material) =>
+        material.id === id ? { ...material, ...patch } : material,
+      ),
+    }));
+  }
+
+  function updateShippingClass(id: string, patch: Partial<ShippingClassSetting>) {
+    setMaterialsSettings((current) => ({
+      ...current,
+      shippingClasses: current.shippingClasses.map((shippingClass) =>
+        shippingClass.id === id ? { ...shippingClass, ...patch } : shippingClass,
+      ),
+    }));
+  }
+
+  function updateColorVariant(id: string, patch: Partial<ColorVariantSetting>) {
+    setMaterialsSettings((current) => ({
+      ...current,
+      colorVariants: current.colorVariants.map((color) =>
+        color.id === id ? { ...color, ...patch } : color,
+      ),
+    }));
+  }
+
+  function addMaterial() {
+    const id = crypto.randomUUID();
+    const nextMaterials = [...materialsSettings.materials, { id, name: '', pricePerKg: 0 }];
+    setMaterialsSettings((current) => ({ ...current, materials: nextMaterials }));
+    setEditingMaterialId(id);
+  }
+
+  function addShippingClass() {
+    const id = crypto.randomUUID();
+    const nextShippingClasses = [...materialsSettings.shippingClasses, { id, name: '', price: 0 }];
+    setMaterialsSettings((current) => ({ ...current, shippingClasses: nextShippingClasses }));
+    setEditingShippingClassId(id);
+  }
+
+  function addColorVariant() {
+    const id = crypto.randomUUID();
+    const nextColorVariants = [
+      ...materialsSettings.colorVariants,
+      { id, name: '', hex: '#000000' },
+    ];
+    setMaterialsSettings((current) => ({ ...current, colorVariants: nextColorVariants }));
+    setEditingColorId(id);
+  }
+
+  function deleteMaterial(id: string) {
+    if (!window.confirm('Material wirklich löschen?')) return;
+    const nextMaterials = materialsSettings.materials.filter((material) => material.id !== id);
+    commitMaterials(nextMaterials);
+  }
+
+  function deleteShippingClass(id: string) {
+    if (!window.confirm('Versandklasse wirklich löschen?')) return;
+    const nextShippingClasses = materialsSettings.shippingClasses.filter(
+      (shippingClass) => shippingClass.id !== id,
+    );
+    commitShippingClasses(nextShippingClasses);
+  }
+
+  function deleteColorVariant(id: string) {
+    if (!window.confirm('Farbvariante wirklich löschen?')) return;
+    const nextColorVariants = materialsSettings.colorVariants.filter((color) => color.id !== id);
+    commitColorVariants(nextColorVariants);
+  }
+
+  function commitCurrentMaterials() {
+    commitMaterials(materialsSettings.materials);
+    setEditingMaterialId(null);
+  }
+
+  function commitCurrentShippingClasses() {
+    commitShippingClasses(materialsSettings.shippingClasses);
+    setEditingShippingClassId(null);
+  }
+
+  function commitCurrentColorVariants() {
+    commitColorVariants(materialsSettings.colorVariants);
+    setEditingColorId(null);
+  }
+
+  function updatePlatformFee(platform: PlatformKey, patch: Partial<PlatformFeeSetting>) {
+    const nextPlatformFees: PlatformFeesSetting = {
+      ...materialsSettings.platformFees,
+      [platform]: { ...materialsSettings.platformFees[platform], ...patch },
+    };
+    updateMaterialsSetting('platformFees', nextPlatformFees, 'platform_fees', nextPlatformFees);
+  }
 
   async function handleFolderChange() {
     try {
@@ -472,6 +813,421 @@ export function SettingsPage() {
     );
   }
 
+  function renderMaterialsTab() {
+    if (isLoading) {
+      return <div className="text-sm text-text-secondary">Einstellungen werden geladen...</div>;
+    }
+
+    return (
+      <div className="space-y-5">
+        <SettingsSection title="Materialien">
+          <div className="overflow-hidden rounded-lg border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-bg-secondary text-left text-xs uppercase tracking-wide text-text-secondary">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Material</th>
+                  <th className="px-3 py-2 font-medium">Preis pro kg</th>
+                  <th className="w-28 px-3 py-2 text-right font-medium">Aktionen</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {materialsSettings.materials.map((material) => {
+                  const isEditing = editingMaterialId === material.id;
+                  return (
+                    <tr key={material.id} onDoubleClick={() => setEditingMaterialId(material.id)}>
+                      <td className="px-3 py-2">
+                        <Input
+                          value={material.name}
+                          disabled={!isEditing}
+                          onChange={(event) =>
+                            updateMaterial(material.id, { name: event.target.value })
+                          }
+                          onBlur={() => commitMaterials(materialsSettings.materials)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') commitCurrentMaterials();
+                          }}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={material.pricePerKg}
+                            disabled={!isEditing}
+                            className="pr-12"
+                            onChange={(event) =>
+                              updateMaterial(material.id, {
+                                pricePerKg: Number(event.target.value),
+                              })
+                            }
+                            onBlur={() => commitMaterials(materialsSettings.materials)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') commitCurrentMaterials();
+                            }}
+                          />
+                          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-secondary">
+                            EUR
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            title={isEditing ? 'Speichern' : 'Bearbeiten'}
+                            onClick={() =>
+                              isEditing
+                                ? commitCurrentMaterials()
+                                : setEditingMaterialId(material.id)
+                            }
+                          >
+                            {isEditing ? (
+                              <Check className="size-4" />
+                            ) : (
+                              <Edit2 className="size-4" />
+                            )}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            title="Löschen"
+                            onClick={() => deleteMaterial(material.id)}
+                          >
+                            <Trash2 className="size-4 text-danger" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <Button type="button" variant="outline" className="gap-2" onClick={addMaterial}>
+            <Plus className="size-4" />
+            Material hinzufügen
+          </Button>
+        </SettingsSection>
+
+        <SettingsSection title="Drucker-Setup">
+          <FieldRow label="Druckerleistung">
+            <div className="relative max-w-48">
+              <Input
+                type="number"
+                min={0}
+                value={materialsSettings.printerPowerWatts}
+                className="pr-14"
+                onChange={(event) =>
+                  updateMaterialsSetting(
+                    'printerPowerWatts',
+                    Number(event.target.value),
+                    'printer_power_watts',
+                  )
+                }
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary">
+                Watt
+              </span>
+            </div>
+          </FieldRow>
+          <FieldRow label="Strompreis">
+            <div className="relative max-w-52">
+              <Input
+                type="number"
+                min={0}
+                step={0.01}
+                value={materialsSettings.electricityPricePerKwh}
+                className="pr-20"
+                onChange={(event) =>
+                  updateMaterialsSetting(
+                    'electricityPricePerKwh',
+                    Number(event.target.value),
+                    'electricity_price_per_kwh',
+                  )
+                }
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary">
+                EUR/kWh
+              </span>
+            </div>
+          </FieldRow>
+          <FieldRow label="Versand-Default">
+            <SwitchControl
+              checked={materialsSettings.shippingPaidByBuyer}
+              label="Versand wird standardmäßig vom Käufer bezahlt"
+              onCheckedChange={(checked) =>
+                updateMaterialsSetting(
+                  'shippingPaidByBuyer',
+                  checked,
+                  'shipping_paid_by_buyer',
+                  checked,
+                  ['shipping_paid_by_customer_default'],
+                )
+              }
+            />
+          </FieldRow>
+        </SettingsSection>
+
+        <SettingsSection title="Plattformgebühren">
+          <div className="grid gap-3 lg:grid-cols-3">
+            {(Object.keys(PLATFORM_LABELS) as PlatformKey[]).map((platform) => (
+              <div key={platform} className="rounded-lg border border-border bg-bg-primary p-4">
+                <h3 className="mb-4 text-sm font-semibold text-text-primary">
+                  {PLATFORM_LABELS[platform]}
+                </h3>
+                <div className="space-y-3">
+                  <Label className="space-y-1">
+                    <span className="text-xs text-text-secondary">Gebühr</span>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        min={0}
+                        step={0.1}
+                        value={materialsSettings.platformFees[platform].percentFee}
+                        className="pr-8"
+                        onChange={(event) =>
+                          updatePlatformFee(platform, {
+                            percentFee: Number(event.target.value),
+                          })
+                        }
+                      />
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary">
+                        %
+                      </span>
+                    </div>
+                  </Label>
+                  <Label className="space-y-1">
+                    <span className="text-xs text-text-secondary">Fixbetrag</span>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={materialsSettings.platformFees[platform].fixedFee}
+                        className="pr-12"
+                        onChange={(event) =>
+                          updatePlatformFee(platform, {
+                            fixedFee: Number(event.target.value),
+                          })
+                        }
+                      />
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary">
+                        EUR
+                      </span>
+                    </div>
+                  </Label>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SettingsSection>
+
+        <SettingsSection title="Versandklassen">
+          <div className="overflow-hidden rounded-lg border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-bg-secondary text-left text-xs uppercase tracking-wide text-text-secondary">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Name</th>
+                  <th className="px-3 py-2 font-medium">Preis</th>
+                  <th className="w-28 px-3 py-2 text-right font-medium">Aktionen</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {materialsSettings.shippingClasses.map((shippingClass) => {
+                  const isEditing = editingShippingClassId === shippingClass.id;
+                  return (
+                    <tr
+                      key={shippingClass.id}
+                      onDoubleClick={() => setEditingShippingClassId(shippingClass.id)}
+                    >
+                      <td className="px-3 py-2">
+                        <Input
+                          value={shippingClass.name}
+                          disabled={!isEditing}
+                          onChange={(event) =>
+                            updateShippingClass(shippingClass.id, { name: event.target.value })
+                          }
+                          onBlur={() => commitShippingClasses(materialsSettings.shippingClasses)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') commitCurrentShippingClasses();
+                          }}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={shippingClass.price}
+                            disabled={!isEditing}
+                            className="pr-12"
+                            onChange={(event) =>
+                              updateShippingClass(shippingClass.id, {
+                                price: Number(event.target.value),
+                              })
+                            }
+                            onBlur={() => commitShippingClasses(materialsSettings.shippingClasses)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') commitCurrentShippingClasses();
+                            }}
+                          />
+                          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-secondary">
+                            EUR
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            title={isEditing ? 'Speichern' : 'Bearbeiten'}
+                            onClick={() =>
+                              isEditing
+                                ? commitCurrentShippingClasses()
+                                : setEditingShippingClassId(shippingClass.id)
+                            }
+                          >
+                            {isEditing ? (
+                              <Check className="size-4" />
+                            ) : (
+                              <Edit2 className="size-4" />
+                            )}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            title="Löschen"
+                            onClick={() => deleteShippingClass(shippingClass.id)}
+                          >
+                            <Trash2 className="size-4 text-danger" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <Button type="button" variant="outline" className="gap-2" onClick={addShippingClass}>
+            <Plus className="size-4" />
+            Versandklasse hinzufügen
+          </Button>
+        </SettingsSection>
+
+        <SettingsSection title="Farbvarianten-Bibliothek">
+          <div className="overflow-hidden rounded-lg border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-bg-secondary text-left text-xs uppercase tracking-wide text-text-secondary">
+                <tr>
+                  <th className="w-16 px-3 py-2 font-medium">Farbe</th>
+                  <th className="px-3 py-2 font-medium">Name</th>
+                  <th className="px-3 py-2 font-medium">Hex-Code</th>
+                  <th className="w-28 px-3 py-2 text-right font-medium">Aktionen</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {materialsSettings.colorVariants.map((color) => {
+                  const isEditing = editingColorId === color.id;
+                  return (
+                    <tr key={color.id} onDoubleClick={() => setEditingColorId(color.id)}>
+                      <td className="px-3 py-2">
+                        <span
+                          className="block size-5 rounded-full border border-border"
+                          style={{ backgroundColor: normalizeHex(color.hex) }}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <Input
+                          value={color.name}
+                          disabled={!isEditing}
+                          onChange={(event) =>
+                            updateColorVariant(color.id, { name: event.target.value })
+                          }
+                          onBlur={() => commitColorVariants(materialsSettings.colorVariants)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') commitCurrentColorVariants();
+                          }}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={color.hex}
+                            disabled={!isEditing}
+                            onChange={(event) =>
+                              updateColorVariant(color.id, { hex: event.target.value })
+                            }
+                            onBlur={() => commitColorVariants(materialsSettings.colorVariants)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') commitCurrentColorVariants();
+                            }}
+                          />
+                          <input
+                            type="color"
+                            value={normalizeHex(color.hex)}
+                            disabled={!isEditing}
+                            onChange={(event) =>
+                              updateColorVariant(color.id, { hex: event.target.value })
+                            }
+                            onBlur={() => commitColorVariants(materialsSettings.colorVariants)}
+                            className="h-8 w-10 rounded border border-border bg-transparent"
+                            aria-label="Farbe wählen"
+                          />
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            title={isEditing ? 'Speichern' : 'Bearbeiten'}
+                            onClick={() =>
+                              isEditing ? commitCurrentColorVariants() : setEditingColorId(color.id)
+                            }
+                          >
+                            {isEditing ? (
+                              <Check className="size-4" />
+                            ) : (
+                              <Edit2 className="size-4" />
+                            )}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            title="Löschen"
+                            onClick={() => deleteColorVariant(color.id)}
+                          >
+                            <Trash2 className="size-4 text-danger" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <Button type="button" variant="outline" className="gap-2" onClick={addColorVariant}>
+            <Plus className="size-4" />
+            Farbe hinzufügen
+          </Button>
+        </SettingsSection>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full overflow-hidden bg-bg-primary">
       <aside className="w-[200px] shrink-0 border-r border-border-subtle bg-bg-secondary p-3">
@@ -505,7 +1261,11 @@ export function SettingsPage() {
 
       <main className="flex-1 overflow-auto p-6">
         <div className="max-w-[800px]">
-          {activeTab === 'general' ? renderGeneralTab() : <PlaceholderTab tab={activeTabConfig} />}
+          {activeTab === 'general' && renderGeneralTab()}
+          {activeTab === 'materials' && renderMaterialsTab()}
+          {activeTab !== 'general' && activeTab !== 'materials' && (
+            <PlaceholderTab tab={activeTabConfig} />
+          )}
         </div>
       </main>
     </div>

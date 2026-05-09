@@ -15,26 +15,27 @@ export const DEFAULTS = {
   dashboard_kpi_snapshot_auto: true,
   dashboard_low_margin_threshold: 30,
 
-  filament_prices: {
-    PLA: 22,
-    PETG: 25,
-    TPU: 28,
-    ABS: 24,
-    Resin: 45,
-  },
+  filament_prices: [
+    { name: 'PLA', pricePerKg: 22 },
+    { name: 'PETG', pricePerKg: 25 },
+    { name: 'TPU', pricePerKg: 28 },
+    { name: 'ABS', pricePerKg: 24 },
+    { name: 'Resin', pricePerKg: 45 },
+  ],
   platform_fees: {
-    etsy: { percent: 6.5, fixed: 0.2 },
-    ebay: { percent: 11, fixed: 0 },
-    kleinanzeigen: { percent: 0, fixed: 0 },
+    etsy: { percentFee: 6.5, fixedFee: 0.2 },
+    ebay: { percentFee: 11, fixedFee: 0 },
+    kleinanzeigen: { percentFee: 0, fixedFee: 0 },
   },
   shipping_classes: [
     { name: 'Brief', price: 1.6 },
     { name: 'Warensendung', price: 2.25 },
-    { name: 'Paeckchen S', price: 3.99 },
+    { name: 'Päckchen S', price: 3.99 },
     { name: 'Paket', price: 6.99 },
   ],
   printer_power_watts: 200,
   electricity_price_per_kwh: 0.35,
+  shipping_paid_by_buyer: true,
   shipping_paid_by_customer_default: true,
   color_variants_library: [],
 
