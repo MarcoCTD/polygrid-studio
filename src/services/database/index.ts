@@ -6,6 +6,7 @@
  * Queries laufen direkt ueber die Tauri SQL Plugin API.
  */
 import Database from '@tauri-apps/plugin-sql';
+import { DEFAULTS } from '@/services/settings/defaults';
 import { MIGRATIONS } from './migrations';
 
 const DB_PATH = 'sqlite:polygrid.db';
@@ -77,29 +78,10 @@ export async function initDatabase(): Promise<void> {
 
   // Default-Settings einfuegen, ohne bestehende Nutzerwerte zu ueberschreiben.
   const now = new Date().toISOString();
-  const defaults: [string, string][] = [
-    ['theme', '"system"'],
-    ['accent_color', '"sap_blue"'],
-    ['sidebar_collapsed', 'false'],
-    ['receipt_number_prefix_format', '"YYYY-NNNN"'],
-    ['receipt_number_min_digits', '4'],
-    ['tax_lock_default_for_yearly_export', 'true'],
-    ['tax_lock_default_for_monthly_export', 'false'],
-    ['tax_status', '"kleinunternehmer_19_ustg"'],
-    ['bank_csv_format_default', '"n26"'],
-    ['bank_match_amount_tolerance_eur', '0.02'],
-    ['bank_match_time_window_days_orders', '14'],
-    ['bank_match_time_window_days_expenses', '7'],
-    ['payout_keywords_etsy', '["Etsy","Etsy Ireland","Etsy Inc"]'],
-    ['payout_keywords_ebay', '["eBay","Ebay Marketplaces"]'],
-    ['dashboard_kpi_snapshot_auto', 'true'],
-    ['dashboard_low_margin_threshold', '30'],
-  ];
-
-  for (const [key, value] of defaults) {
+  for (const [key, value] of Object.entries(DEFAULTS)) {
     await db.execute(
       'INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES ($1, $2, $3)',
-      [key, value, now],
+      [key, JSON.stringify(value), now],
     );
   }
 

@@ -1,4 +1,4 @@
-import { createRoute } from '@tanstack/react-router';
+import { createRoute, redirect } from '@tanstack/react-router';
 import { rootRoute } from './routes/__root';
 import { DashboardPage } from '@/features/dashboard';
 import { ProductsPage } from '@/features/products';
@@ -102,6 +102,14 @@ const aiRoute = createRoute({
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/settings',
+  beforeLoad: () => {
+    throw redirect({ to: '/settings/$tab', params: { tab: 'general' } });
+  },
+});
+
+const settingsTabRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings/$tab',
   component: SettingsPage,
 });
 
@@ -121,4 +129,5 @@ export const routeTree = rootRoute.addChildren([
   financeRoute,
   aiRoute,
   settingsRoute,
+  settingsTabRoute,
 ]);

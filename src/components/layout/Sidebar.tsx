@@ -112,12 +112,19 @@ function NavButton({
 }
 
 export function Sidebar() {
+  const router = useRouter();
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const openOrdersCount = useUIStore((s) => s.openOrdersCount);
   const overdueTasksCount = useUIStore((s) => s.overdueTasksCount);
   const matches = useMatches();
-  const currentPath = matches[matches.length - 1]?.fullPath ?? '/';
+  const currentPath = router.state.location.pathname;
+  const currentRoutePath = matches[matches.length - 1]?.fullPath ?? '/';
+  const isNavItemActive = (route: string) => {
+    if (route === '/') return currentRoutePath === '/';
+    if (route === '/settings') return currentPath.startsWith('/settings');
+    return currentPath === route;
+  };
   const navItems = mainNavItems.map((item) => {
     if (item.route === '/orders') return { ...item, badge: openOrdersCount };
     if (item.route === '/tasks') {
@@ -150,7 +157,7 @@ export function Sidebar() {
           <NavButton
             key={item.route}
             item={item}
-            isActive={currentPath === item.route}
+            isActive={isNavItemActive(item.route)}
             collapsed={collapsed}
           />
         ))}
@@ -162,7 +169,7 @@ export function Sidebar() {
           <NavButton
             key={item.route}
             item={item}
-            isActive={currentPath === item.route}
+            isActive={isNavItemActive(item.route)}
             collapsed={collapsed}
           />
         ))}
