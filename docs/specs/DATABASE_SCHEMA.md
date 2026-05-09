@@ -1,13 +1,13 @@
 # Datenbank-Schema
 
-PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Mai 2026 | Version 1.3
+PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Mai 2026 | Version 1.4
 
-> **Änderungen in v1.3 gegenüber v1.2:**
+> **Änderungen in v1.4 gegenüber v1.3:**
 >
-> - `ai_jobs.agent` Enum um `template_assistant` erweitert (Modul 07)
-> - `kpi_records` Tabelle erweitert um: `open_orders`, `open_tasks`, `completed_orders`, `revenue_by_platform` (JSON), `expenses_by_category` (JSON)
-> - Neuer Unique-Index auf `kpi_records (period_type, period_start)` zur Vermeidung doppelter Snapshots
-> - Settings-Keys um Dashboard-spezifische Keys ergänzt
+> - Modul 10 als abgeschlossen markiert, Modul 11 als aktiv
+> - Settings-Keys um fehlende Modul-11-Keys ergänzt: `backup_directory`, `last_backup_at`
+> - Klarstellung: `app_settings` Tabelle bleibt Key-Value-basiert, kein neues Schema nötig für Modul 11
+> - Hinweis: API-Keys und OAuth-Tokens werden NICHT in `app_settings` gespeichert, sondern im OS-Keychain (Tauri `keyring` Crate). Settings-UI liest/schreibt über dedizierte Tauri-Commands.
 
 Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Schema. Alle Tabellen werden in Modul 01 (Foundation) angelegt, auch wenn sie erst in späteren Modulen befüllt werden. Das sichert korrekte FK-Beziehungen von Anfang an.
 
@@ -371,9 +371,9 @@ Diese Keys werden über verschiedene Module hinweg verwendet. Die vollständige 
 
 **Allgemein (Modul 11):**
 
-- `company_name`: String
-- `date_format`: `"DD.MM.YYYY"` | `"YYYY-MM-DD"`
-- `language`: `"de"` | `"en"`
+- `company_name`: String (Default: `"PolyGrid Studio"`)
+- `date_format`: `"DD.MM.YYYY"` | `"YYYY-MM-DD"` (Default: `"DD.MM.YYYY"`)
+- `language`: `"de"` | `"en"` (Default: `"de"`)
 
 **OneDrive (Modul 03):**
 
@@ -382,32 +382,35 @@ Diese Keys werden über verschiedene Module hinweg verwendet. Die vollständige 
 **Material & Plattform (Modul 02, 11):**
 
 - `filament_prices`: `{ "PLA": 22, "PETG": 25, ... }`
-- `platform_fees`: `{ "etsy": { "percent": 6.5, "fixed": 0.20 }, "ebay": { "percent": 11, "fixed": 0 } }`
-- `shipping_classes`: Array `[{ name, price }]`
+- `platform_fees`: `{ "etsy": { "percent": 6.5, "fixed": 0.20 }, "ebay": { "percent": 11, "fixed": 0 }, "kleinanzeigen": { "percent": 0, "fixed": 0 } }`
+- `shipping_classes`: Array `[{ name, price }]` (Default: `[{"name": "Brief", "price": 1.60}, {"name": "Warensendung", "price": 2.25}, {"name": "Päckchen S", "price": 3.99}, {"name": "Paket", "price": 6.99}]`)
 - `printer_power_watts`: Number (Default: 200)
 - `electricity_price_per_kwh`: Number (Default: 0.35)
 - `shipping_paid_by_customer_default`: Boolean (Default: true)
-- `color_variants_library`: Array `[{ name, hex }]`
+- `color_variants_library`: Array `[{ name, hex }]` (Default: `[]`)
 
 **KI (Modul 06, 11):**
 
-- `ai_preferred_provider`: `"claude"` | `"openai"` | `"ollama"`
+- `ai_preferred_provider`: `"claude"` | `"openai"` | `"ollama"` (Default: `"claude"`)
+- `ai_preferred_model_claude`: String (Default: `"claude-sonnet-4-20250514"`)
+- `ai_preferred_model_openai`: String (Default: `"gpt-4o"`)
+- `ai_preferred_model_ollama`: String (Default: `"llama3"`)
 - `ai_monthly_limit_eur`: Number (Default: 10)
 - `ai_logging_enabled`: boolean (Default: true)
 - `ai_mode`: `"suggest_only"` | `"suggest_confirm"` (MVP: immer `suggest_confirm`)
 - `ai_ollama_endpoint`: String (Default: `"http://localhost:11434"`)
-- **API-Keys werden NICHT hier gespeichert**, sondern im OS-Keychain.
+- **API-Keys werden NICHT hier gespeichert**, sondern im OS-Keychain (Tauri `keyring` Crate).
 
 **Markenstil (Modul 06, 11):**
 
-- `brand_writing_style`: `"sachlich-minimalistisch"` | `"technisch-präzise"` | `"freundlich-professionell"`
-- `brand_preferred_words`: Array<String>
-- `brand_forbidden_phrases`: Array<String>
-- `brand_reference_text`: String
+- `brand_writing_style`: `"sachlich-minimalistisch"` | `"technisch-präzise"` | `"freundlich-professionell"` (Default: `"sachlich-minimalistisch"`)
+- `brand_preferred_words`: Array\<String\> (Default: `[]`)
+- `brand_forbidden_phrases`: Array\<String\> (Default: `[]`)
+- `brand_reference_text`: String (Default: `""`)
 
 **Aufträge & Finanzen (Modul 08):**
 
-- `receipt_number_prefix_format`: String (Default: `"YYYY-NNNN"`, Platzhalter für Belegnummer)
+- `receipt_number_prefix_format`: String (Default: `"YYYY-NNNN"`)
 - `receipt_number_min_digits`: Number (Default: 4)
 - `tax_lock_default_for_yearly_export`: Boolean (Default: true)
 - `tax_lock_default_for_monthly_export`: Boolean (Default: false)
@@ -416,18 +419,20 @@ Diese Keys werden über verschiedene Module hinweg verwendet. Die vollständige 
 - `bank_match_amount_tolerance_eur`: Number (Default: 0.02)
 - `bank_match_time_window_days_orders`: Number (Default: 14)
 - `bank_match_time_window_days_expenses`: Number (Default: 7)
-- `payout_keywords_etsy`: Array<String> (Default: `["Etsy", "Etsy Ireland", "Etsy Inc"]`)
-- `payout_keywords_ebay`: Array<String> (Default: `["eBay", "Ebay Marketplaces"]`)
+- `payout_keywords_etsy`: Array\<String\> (Default: `["Etsy", "Etsy Ireland", "Etsy Inc"]`)
+- `payout_keywords_ebay`: Array\<String\> (Default: `["eBay", "Ebay Marketplaces"]`)
 
 **Dashboard (Modul 10):**
 
-- `dashboard_kpi_snapshot_auto`: Boolean (Default: true). Automatische Snapshot-Erstellung bei App-Start wenn neuer Monat/neue Woche.
-- `dashboard_low_margin_threshold`: Number (Default: 30). Unter diesem Wert erscheinen Produkte im Widget "Schwache Margen".
+- `dashboard_kpi_snapshot_auto`: Boolean (Default: true)
+- `dashboard_low_margin_threshold`: Number (Default: 30)
 
-**Sicherheit (Modul 11):**
+**Sicherheit & Backup (Modul 11):**
 
 - `backup_interval_hours`: Number (Default: 24)
 - `backup_max_count`: Number (Default: 30)
+- `backup_directory`: String (Default: leer, wird auf Tauri App-Datenverzeichnis + `/backups` gesetzt)
+- `last_backup_at`: String ISO (Default: `""`, wird nach jedem Backup aktualisiert)
 - `archive_retention_days`: Number (Default: 30)
 
 ---

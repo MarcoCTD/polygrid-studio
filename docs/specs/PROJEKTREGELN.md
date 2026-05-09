@@ -1,14 +1,14 @@
 # PolyGrid Studio Business OS
 
 Projektregeln und Entwicklungsleitfaden
-Version 1.6 | Mai 2026 | Verbindlich für alle Entwicklungs-KIs
+Version 1.7 | Mai 2026 | Verbindlich für alle Entwicklungs-KIs
 
-> **Änderungen in v1.6 gegenüber v1.5:**
+> **Änderungen in v1.7 gegenüber v1.6:**
 >
-> - Modul 07 (Vorlagenbibliothek) als abgeschlossen markiert
-> - Modul 10 (Analysen/Dashboard) als nächstes Modul festgelegt (Reihenfolge → jetzt aktiv)
+> - Modul 10 (Analysen/Dashboard) als abgeschlossen markiert
+> - Modul 11 (Settings) als nächstes aktives Modul festgelegt (Branch: `feat/modul-11-settings`)
 > - Aktueller Entwicklungsstand aktualisiert
-> - Hinweis: `ai_jobs.agent` Enum wird in Modul 10 optional um `dashboard_analyst` erweitert (nur wenn KI-Zusammenfassung implementiert wird)
+> - Hinweis: Modul 11 konsolidiert alle bestehenden Settings-Keys in einer vollständigen Settings-UI mit 5 Tabs
 
 ---
 
@@ -100,9 +100,9 @@ Diese Eckdaten beeinflussen das Datenmodell (kein USt.-Tracking, Tax-Lock-Mechan
 
 ---
 
-## 6. Modulreihenfolge (aktualisiert v1.6)
+## 6. Modulreihenfolge (aktualisiert v1.7)
 
-Die ursprüngliche Reihenfolge wurde mehrfach geändert: Modul 08 wurde vor Modul 06 implementiert (EÜR-Bedarf). Modul 09 wurde vor Modul 07 implementiert (Abhängigkeiten bereits erfüllt). Modul 07 ist jetzt abgeschlossen. Modul 10 folgt als nächstes.
+Die ursprüngliche Reihenfolge wurde mehrfach geändert: Modul 08 wurde vor Modul 06 implementiert (EÜR-Bedarf). Modul 09 wurde vor Modul 07 implementiert (Abhängigkeiten bereits erfüllt). Module 07 und 10 sind jetzt abgeschlossen. Modul 11 folgt als nächstes.
 
 | #   | Modul              | Inhalt                                                        | Abhängigkeiten                            | Reihenfolge |
 | --- | ------------------ | ------------------------------------------------------------- | ----------------------------------------- | ----------- |
@@ -115,8 +115,8 @@ Die ursprüngliche Reihenfolge wurde mehrfach geändert: Modul 08 wurde vor Modu
 | 6   | KI-Architektur     | Provider-Pattern, Listing Assistant, Expense Assistant        | Foundation, Listings, Ausgaben            | ✅ 7        |
 | 9   | Aufgaben-Modul     | CRUD, Wochenansicht, Verknüpfungen, KI Task Extractor        | Foundation, Produkte, Listings, Aufträge, KI | ✅ 8     |
 | 7   | Vorlagenbibliothek | CRUD, Platzhaltervariablen, Kategorien, KI-Aktionen           | Foundation, KI                            | ✅ 9        |
-| **10** | **Analysen/Dashboard** | **KPI-Karten, Charts, Widgets, KPI-Snapshots**           | **Alle vorherigen Module**                | **🔄 10**  |
-| 11  | Settings           | Wächst mit jedem Modul, eigenes Dokument                      | Parallel                                  | ⏳ 11       |
+| 10  | Analysen/Dashboard | KPI-Karten, Charts, Widgets, KPI-Snapshots                    | Alle vorherigen Module                    | ✅ 10       |
+| **11** | **Settings**    | **Vollständige Settings-UI mit 5 Tabs, Backup, Export**       | **Parallel (konsolidiert alle Module)**   | **🔄 11**  |
 | 12  | Platform Sync      | Etsy + eBay API-Anbindung, OAuth, Push/Pull                   | Listings, Aufträge, Settings              | 📋 Post-MVP |
 
 ---
@@ -134,8 +134,8 @@ Die ursprüngliche Reihenfolge wurde mehrfach geändert: Modul 08 wurde vor Modu
 | KI-Architektur     | ✅ Abgeschlossen       | Auf main gemergt, Provider-Pattern, Listing/Expense/Product Agents, DiffView, Kosten-Tracking |
 | Aufgaben-Modul     | ✅ Abgeschlossen       | Auf main gemergt, Wochenansicht, Listenansicht, Recurring Tasks, KI Task Extractor |
 | Vorlagenbibliothek | ✅ Abgeschlossen       | Auf main gemergt, Kategorien, {{variablen}}-System, KI-Aktionen, CopyDialog |
-| Analysen/Dashboard | 🔄 In Bearbeitung      | Nächstes Modul, Branch: feat/modul-10-analysen-dashboard               |
-| Settings           | ⏳ Wächst mit Modulen  | Minimale Settings-UI für KI-Provider und Brand existiert bereits        |
+| Analysen/Dashboard | ✅ Abgeschlossen       | Auf main gemergt, KPI-Karten, 5 Widgets, 4 Charts, KPI-Snapshots, KI-Zusammenfassung |
+| Settings           | 🔄 In Bearbeitung      | Nächstes Modul, Branch: feat/modul-11-settings                         |
 | Platform Sync      | 📋 Stub-Spec vorhanden | Implementierung nach Modul 11                                          |
 
 _Dieses Dokument wird nach Abschluss jedes Moduls aktualisiert._
@@ -167,7 +167,7 @@ _Dieses Dokument wird nach Abschluss jedes Moduls aktualisiert._
 - Feature-Branch pro Modul: `feat/modul-XX-name`
 - Sub-Session-Commits direkt auf Feature-Branch
 - Nach Abschluss aller Sub-Sessions: PR-Review und Merge auf main
-- Tag bei Merge: `module-10-complete`
+- Tag bei Merge: `module-XX-complete`
 
 ### 8.3 Gate-Regel
 
