@@ -55,12 +55,20 @@ function cleanJson(text: string): string {
 
 export class GeminiProvider implements AIProvider {
   name = 'gemini' as const;
+  lastError: string | null = null;
 
   async isAvailable(): Promise<boolean> {
     try {
+      this.lastError = null;
+      const key = await invoke<string | null>('get_api_key', { provider: this.name });
+      if (!key?.trim()) {
+        this.lastError = 'Kein API-Key konfiguriert';
+        return false;
+      }
       await invoke<string>('ai_test_connection', { provider: this.name });
       return true;
-    } catch {
+    } catch (error) {
+      this.lastError = error instanceof Error ? error.message : String(error);
       return false;
     }
   }

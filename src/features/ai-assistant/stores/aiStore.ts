@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { getSetting } from '@/services/database';
-import { aiTestConnection, keychainGet } from '../services/aiService';
+import { aiTestConnection, apiKeyGet, keychainGet } from '../services/aiService';
 import { getMonthlyLimit, getMonthlySpent } from '../services/costTracker';
 import type { AIProviderName } from '../types';
 
@@ -42,7 +42,7 @@ async function providerAvailable(provider: AIProviderName): Promise<boolean> {
       if (!key) return false;
     }
     if (provider === 'gemini') {
-      const key = await keychainGet('ai_gemini');
+      const key = await apiKeyGet('gemini');
       if (!key) return false;
     }
     await aiTestConnection(provider);

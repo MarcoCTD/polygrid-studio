@@ -170,6 +170,18 @@ export async function keychainDelete(key: string): Promise<void> {
   await invokeWithTimeout('keychain_delete', { service: KEYCHAIN_SERVICE, key });
 }
 
+export async function apiKeySet(provider: AIProviderName, key: string): Promise<void> {
+  await invokeWithTimeout('set_api_key', { provider, key }, provider);
+}
+
+export async function apiKeyGet(provider: AIProviderName): Promise<string | null> {
+  return invokeWithTimeout<string | null>('get_api_key', { provider }, provider);
+}
+
+export async function apiKeyDelete(provider: AIProviderName): Promise<void> {
+  await invokeWithTimeout('delete_api_key', { provider }, provider);
+}
+
 export async function aiEstimateCost(
   provider: string,
   model: string,

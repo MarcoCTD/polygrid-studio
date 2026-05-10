@@ -28,6 +28,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  apiKeyDelete,
+  apiKeyGet,
+  apiKeySet,
   aiListOllamaModels,
   aiTestConnection,
   keychainDelete,
@@ -362,7 +365,7 @@ export function AiSettingsTab() {
           getSettingWithDefault('ai_mode'),
           keychainGet(keyName('claude')),
           keychainGet(keyName('openai')),
-          keychainGet(keyName('gemini')),
+          apiKeyGet('gemini'),
         ]);
 
         if (cancelled) return;
@@ -487,7 +490,11 @@ export function AiSettingsTab() {
 
     statusFor(provider, { state: 'loading', message: 'API-Key wird gespeichert...' });
     try {
-      await keychainSet(keyName(provider), key);
+      if (provider === 'gemini') {
+        await apiKeySet('gemini', key);
+      } else {
+        await keychainSet(keyName(provider), key);
+      }
       setKeyState({ hasKey: true, masked: maskKey(key), draft: '', editing: false });
       statusFor(provider, { state: 'success', message: 'API-Key gespeichert.' });
       await initializeAI();
@@ -509,7 +516,11 @@ export function AiSettingsTab() {
       provider === 'claude' ? setClaudeKey : provider === 'openai' ? setOpenaiKey : setGeminiKey;
     statusFor(provider, { state: 'loading', message: 'API-Key wird gelöscht...' });
     try {
-      await keychainDelete(keyName(provider));
+      if (provider === 'gemini') {
+        await apiKeyDelete('gemini');
+      } else {
+        await keychainDelete(keyName(provider));
+      }
       setKeyState({ hasKey: false, masked: '', draft: '', editing: true });
       statusFor(provider, { state: 'success', message: 'API-Key gelöscht.' });
       await initializeAI();
