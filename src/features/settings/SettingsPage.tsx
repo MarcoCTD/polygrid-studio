@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useState,
   type ComponentType,
   type CSSProperties,
@@ -41,6 +40,8 @@ import { DEFAULTS, getSettingWithDefault } from '@/services/settings';
 import type { AccentColor, Theme } from '@/types';
 import { ACCENT_PRESETS, type AccentPresetKey } from '@/utils/colors';
 import { AiSettingsTab } from './components/AiSettingsTab';
+import { BrandSettingsTab } from './components/BrandSettingsTab';
+import { DataSecuritySettingsTab } from './components/DataSecuritySettingsTab';
 import { useAutoSave } from './hooks/useAutoSave';
 
 type SettingsTab = 'general' | 'materials' | 'ai' | 'brand' | 'data';
@@ -329,19 +330,6 @@ function SwitchControl({
   );
 }
 
-function PlaceholderTab({ tab }: { tab: TabConfig }) {
-  const Icon = tab.icon;
-  return (
-    <div className="flex min-h-[420px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-bg-elevated p-8 text-center">
-      <Icon size={28} className="mb-3 text-pg-accent" />
-      <h2 className="text-lg font-semibold text-text-primary">{tab.label}</h2>
-      <p className="mt-2 text-sm text-text-secondary">
-        Wird in einer späteren Session implementiert
-      </p>
-    </div>
-  );
-}
-
 export function SettingsPage() {
   const params = useParams({ strict: false }) as { tab?: string };
   const navigate = useNavigate();
@@ -458,11 +446,6 @@ export function SettingsPage() {
       cancelled = true;
     };
   }, [settings.oneDrivePath]);
-
-  const activeTabConfig = useMemo(
-    () => TABS.find((tab) => tab.id === activeTab) ?? TABS[0],
-    [activeTab],
-  );
 
   const updateSetting = useCallback(
     <K extends keyof GeneralSettingsState>(
@@ -1265,9 +1248,8 @@ export function SettingsPage() {
           {activeTab === 'general' && renderGeneralTab()}
           {activeTab === 'materials' && renderMaterialsTab()}
           {activeTab === 'ai' && <AiSettingsTab />}
-          {activeTab !== 'general' && activeTab !== 'materials' && activeTab !== 'ai' && (
-            <PlaceholderTab tab={activeTabConfig} />
-          )}
+          {activeTab === 'brand' && <BrandSettingsTab />}
+          {activeTab === 'data' && <DataSecuritySettingsTab />}
         </div>
       </main>
     </div>
