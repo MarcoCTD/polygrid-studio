@@ -43,9 +43,13 @@ export const DEFAULTS = {
   ai_preferred_model_claude: 'claude-sonnet-4-20250514',
   ai_preferred_model_openai: 'gpt-4o',
   ai_preferred_model_ollama: 'llama3',
+  ai_ollama_model: 'llama3',
+  ai_cost_limit_monthly: 10,
   ai_monthly_limit_eur: 10,
   ai_logging_enabled: true,
+  ai_operation_mode: 'suggest_confirm',
   ai_mode: 'suggest_confirm',
+  ollama_endpoint: 'http://localhost:11434',
   ai_ollama_endpoint: 'http://localhost:11434',
 
   brand_writing_style: 'sachlich-minimalistisch',

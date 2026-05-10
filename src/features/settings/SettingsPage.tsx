@@ -40,6 +40,7 @@ import { cn } from '@/lib/utils';
 import { DEFAULTS, getSettingWithDefault } from '@/services/settings';
 import type { AccentColor, Theme } from '@/types';
 import { ACCENT_PRESETS, type AccentPresetKey } from '@/utils/colors';
+import { AiSettingsTab } from './components/AiSettingsTab';
 import { useAutoSave } from './hooks/useAutoSave';
 
 type SettingsTab = 'general' | 'materials' | 'ai' | 'brand' | 'data';
@@ -1263,7 +1264,8 @@ export function SettingsPage() {
         <div className="max-w-[800px]">
           {activeTab === 'general' && renderGeneralTab()}
           {activeTab === 'materials' && renderMaterialsTab()}
-          {activeTab !== 'general' && activeTab !== 'materials' && (
+          {activeTab === 'ai' && <AiSettingsTab />}
+          {activeTab !== 'general' && activeTab !== 'materials' && activeTab !== 'ai' && (
             <PlaceholderTab tab={activeTabConfig} />
           )}
         </div>
