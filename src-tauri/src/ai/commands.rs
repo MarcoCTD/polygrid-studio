@@ -1,5 +1,6 @@
 use super::claude::{claude_generate, claude_test_connection};
 use super::cost::estimate_cost_eur;
+use super::gemini::{gemini_generate, gemini_test_connection};
 use super::keychain::keychain_get_secret;
 use super::ollama::{
     default_endpoint, ollama_generate, ollama_list_models, ollama_test_connection,
@@ -10,6 +11,7 @@ use super::provider::{AIRequest, AIResponse};
 const KEYCHAIN_SERVICE: &str = "polygrid-studio";
 const CLAUDE_KEY: &str = "claude_api_key";
 const OPENAI_KEY: &str = "openai_api_key";
+const GEMINI_KEY: &str = "ai_gemini";
 
 #[tauri::command]
 pub async fn ai_generate_text(
@@ -64,6 +66,10 @@ pub async fn ai_test_connection(provider: String) -> Result<String, String> {
             let api_key = required_key(OPENAI_KEY)?;
             openai_test_connection(&api_key).await
         }
+        "gemini" => {
+            let api_key = required_key(GEMINI_KEY)?;
+            gemini_test_connection(&api_key).await
+        }
         "ollama" => ollama_test_connection(default_endpoint()).await,
         other => Err(format!("Unbekannter KI-Provider: {other}")),
     }
@@ -111,6 +117,10 @@ async fn generate(
         "openai" => {
             let api_key = required_key(OPENAI_KEY)?;
             openai_generate(&api_key, &request).await
+        }
+        "gemini" => {
+            let api_key = required_key(GEMINI_KEY)?;
+            gemini_generate(&api_key, &request).await
         }
         "ollama" => ollama_generate(default_endpoint(), &request).await,
         other => Err(format!("Unbekannter KI-Provider: {other}")),

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import {
   flexRender,
   getCoreRowModel,
@@ -40,7 +41,7 @@ import { getDatabase } from '@/services/database';
 import { DEFAULTS, getSettingWithDefault } from '@/services/settings';
 import { useAutoSave } from '../hooks/useAutoSave';
 
-type CloudProvider = 'claude' | 'openai';
+type CloudProvider = 'claude' | 'openai' | 'gemini';
 type ProviderStatusState = 'idle' | 'loading' | 'success' | 'error';
 type OperationMode = 'suggest_only' | 'suggest_confirm';
 type AIJobStatus = 'success' | 'error' | 'cancelled';
@@ -72,6 +73,7 @@ interface AISettingsState {
   preferredProvider: AIProviderName;
   claudeModel: string;
   openaiModel: string;
+  geminiModel: string;
   ollamaModel: string;
   ollamaEndpoint: string;
   monthlyLimit: number;
@@ -103,11 +105,17 @@ interface SummaryRow {
 const PROVIDERS: Array<{ value: AIProviderName; label: string }> = [
   { value: 'claude', label: 'Claude' },
   { value: 'openai', label: 'OpenAI' },
+  { value: 'gemini', label: 'Gemini (Google AI Studio)' },
   { value: 'ollama', label: 'Ollama' },
 ];
 
 const CLAUDE_MODELS = ['claude-sonnet-4-20250514', 'claude-opus-4-20250514'];
 const OPENAI_MODELS = ['gpt-4o', 'gpt-4o-mini'];
+const GEMINI_MODELS = [
+  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash — empfohlen' },
+  { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite — schnell & günstig' },
+  { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro — leistungsstark' },
+];
 const OLLAMA_MODEL_SUGGESTIONS = ['llama3', 'mistral', 'phi3'];
 const PAGE_SIZE = 25;
 
@@ -115,6 +123,7 @@ const DEFAULT_AI_SETTINGS: AISettingsState = {
   preferredProvider: DEFAULTS.ai_preferred_provider,
   claudeModel: DEFAULTS.ai_preferred_model_claude,
   openaiModel: DEFAULTS.ai_preferred_model_openai,
+  geminiModel: DEFAULTS.ai_preferred_model_gemini,
   ollamaModel: DEFAULTS.ai_preferred_model_ollama,
   ollamaEndpoint: DEFAULTS.ollama_endpoint,
   monthlyLimit: DEFAULTS.ai_cost_limit_monthly,
@@ -137,6 +146,7 @@ function maskKey(key: string | null): string {
 }
 
 function keyName(provider: CloudProvider): string {
+  if (provider === 'gemini') return 'ai_gemini';
   return `${provider}_api_key`;
 }
 
@@ -292,10 +302,17 @@ export function AiSettingsTab() {
     draft: '',
     editing: false,
   });
+  const [geminiKey, setGeminiKey] = useState<ApiKeyState>({
+    hasKey: false,
+    masked: '',
+    draft: '',
+    editing: false,
+  });
   const [expandedProvider, setExpandedProvider] = useState<AIProviderName | null>('claude');
   const [providerStatus, setProviderStatus] = useState<Record<AIProviderName, ProviderStatus>>({
     claude: { state: 'idle', message: '' },
     openai: { state: 'idle', message: '' },
+    gemini: { state: 'idle', message: '' },
     ollama: { state: 'idle', message: '' },
   });
   const [jobs, setJobs] = useState<AIJob[]>([]);
@@ -316,6 +333,7 @@ export function AiSettingsTab() {
           preferredProvider,
           claudeModel,
           openaiModel,
+          geminiModel,
           ollamaModel,
           legacyOllamaModel,
           endpoint,
@@ -327,10 +345,12 @@ export function AiSettingsTab() {
           legacyOperationMode,
           storedClaudeKey,
           storedOpenaiKey,
+          storedGeminiKey,
         ] = await Promise.all([
           getSettingWithDefault('ai_preferred_provider'),
           getSettingWithDefault('ai_preferred_model_claude'),
           getSettingWithDefault('ai_preferred_model_openai'),
+          getSettingWithDefault('ai_preferred_model_gemini'),
           getSettingWithDefault('ai_preferred_model_ollama'),
           getSettingWithDefault('ai_ollama_model'),
           getSettingWithDefault('ollama_endpoint'),
@@ -342,6 +362,7 @@ export function AiSettingsTab() {
           getSettingWithDefault('ai_mode'),
           keychainGet(keyName('claude')),
           keychainGet(keyName('openai')),
+          keychainGet(keyName('gemini')),
         ]);
 
         if (cancelled) return;
@@ -349,6 +370,7 @@ export function AiSettingsTab() {
           preferredProvider,
           claudeModel,
           openaiModel,
+          geminiModel,
           ollamaModel:
             ollamaModel === DEFAULTS.ai_preferred_model_ollama &&
             legacyOllamaModel !== DEFAULTS.ai_ollama_model
@@ -378,6 +400,12 @@ export function AiSettingsTab() {
         setOpenaiKey({
           hasKey: Boolean(storedOpenaiKey),
           masked: maskKey(storedOpenaiKey),
+          draft: '',
+          editing: false,
+        });
+        setGeminiKey({
+          hasKey: Boolean(storedGeminiKey),
+          masked: maskKey(storedGeminiKey),
           draft: '',
           editing: false,
         });
@@ -447,8 +475,10 @@ export function AiSettingsTab() {
   }
 
   async function saveApiKey(provider: CloudProvider) {
-    const keyState = provider === 'claude' ? claudeKey : openaiKey;
-    const setKeyState = provider === 'claude' ? setClaudeKey : setOpenaiKey;
+    const keyState =
+      provider === 'claude' ? claudeKey : provider === 'openai' ? openaiKey : geminiKey;
+    const setKeyState =
+      provider === 'claude' ? setClaudeKey : provider === 'openai' ? setOpenaiKey : setGeminiKey;
     const key = keyState.draft.trim();
     if (!key) {
       statusFor(provider, { state: 'error', message: 'Bitte API-Key eingeben.' });
@@ -470,13 +500,13 @@ export function AiSettingsTab() {
   }
 
   async function deleteApiKey(provider: CloudProvider) {
-    if (
-      !window.confirm(`${provider === 'claude' ? 'Claude' : 'OpenAI'} API-Key wirklich löschen?`)
-    ) {
+    const label = provider === 'claude' ? 'Claude' : provider === 'openai' ? 'OpenAI' : 'Gemini';
+    if (!window.confirm(`${label} API-Key wirklich löschen?`)) {
       return;
     }
 
-    const setKeyState = provider === 'claude' ? setClaudeKey : setOpenaiKey;
+    const setKeyState =
+      provider === 'claude' ? setClaudeKey : provider === 'openai' ? setOpenaiKey : setGeminiKey;
     statusFor(provider, { state: 'loading', message: 'API-Key wird gelöscht...' });
     try {
       await keychainDelete(keyName(provider));
@@ -591,7 +621,8 @@ export function AiSettingsTab() {
   });
 
   function renderApiKeyControls(provider: CloudProvider, state: ApiKeyState) {
-    const setKeyState = provider === 'claude' ? setClaudeKey : setOpenaiKey;
+    const setKeyState =
+      provider === 'claude' ? setClaudeKey : provider === 'openai' ? setOpenaiKey : setGeminiKey;
     if (state.hasKey && !state.editing) {
       return (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -705,6 +736,41 @@ export function AiSettingsTab() {
               </>
             ) : null}
 
+            {provider === 'gemini' ? (
+              <>
+                <FieldRow label="API-Key">{renderApiKeyControls('gemini', geminiKey)}</FieldRow>
+                <FieldRow label="Bevorzugtes Modell">
+                  <Select
+                    value={settings.geminiModel}
+                    onValueChange={(value) => {
+                      if (value) updateSetting('geminiModel', value, 'ai_preferred_model_gemini');
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GEMINI_MODELS.map((model) => (
+                        <SelectItem key={model.value} value={model.value}>
+                          {model.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldRow>
+                <p className="text-xs text-text-secondary">
+                  API-Key kostenlos erstellen:{' '}
+                  <button
+                    type="button"
+                    className="text-pg-accent underline-offset-2 hover:underline"
+                    onClick={() => void openUrl('https://aistudio.google.com')}
+                  >
+                    aistudio.google.com
+                  </button>
+                </p>
+              </>
+            ) : null}
+
             {provider === 'ollama' ? (
               <>
                 <FieldRow label="Endpoint-URL">
@@ -800,6 +866,7 @@ export function AiSettingsTab() {
         <div className="space-y-3">
           {renderProviderPanel('claude')}
           {renderProviderPanel('openai')}
+          {renderProviderPanel('gemini')}
           {renderProviderPanel('ollama')}
         </div>
       </Section>
@@ -891,6 +958,7 @@ export function AiSettingsTab() {
               <SelectItem value="all">Alle Provider</SelectItem>
               <SelectItem value="claude">Claude</SelectItem>
               <SelectItem value="openai">OpenAI</SelectItem>
+              <SelectItem value="gemini">Gemini</SelectItem>
               <SelectItem value="ollama">Ollama</SelectItem>
             </SelectContent>
           </Select>

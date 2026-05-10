@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { DEFAULTS, getSettingWithDefault } from '@/services/settings';
 import type { AIOptions, AIProviderName, AIResponse } from '../types';
 
 const KEYCHAIN_SERVICE = 'polygrid-studio';
@@ -27,19 +28,33 @@ function toAIResponse(response: RustAIResponse): AIResponse {
   };
 }
 
-function commandArgs(
+async function preferredModel(
+  provider: AIProviderName,
+  explicitModel?: string,
+): Promise<string | null> {
+  if (explicitModel) return explicitModel;
+  if (provider === 'claude') return getSettingWithDefault('ai_preferred_model_claude');
+  if (provider === 'openai') return getSettingWithDefault('ai_preferred_model_openai');
+  if (provider === 'gemini') return getSettingWithDefault('ai_preferred_model_gemini');
+  if (provider === 'ollama') {
+    return getSettingWithDefault('ai_preferred_model_ollama', DEFAULTS.ai_preferred_model_ollama);
+  }
+  return null;
+}
+
+async function commandArgs(
   provider: AIProviderName,
   systemPrompt: string,
   userPrompt: string,
   options?: AIOptions,
-) {
+): Promise<Record<string, unknown>> {
   return {
     provider,
     system_prompt: systemPrompt,
     user_prompt: userPrompt,
     max_tokens: options?.maxTokens ?? null,
     temperature: options?.temperature ?? null,
-    model: options?.model ?? null,
+    model: await preferredModel(provider, options?.model),
   };
 }
 
@@ -111,7 +126,7 @@ export async function aiGenerateText(
 ): Promise<AIResponse> {
   const response = await invokeWithTimeout<RustAIResponse>(
     'ai_generate_text',
-    commandArgs(provider, systemPrompt, userPrompt, options),
+    await commandArgs(provider, systemPrompt, userPrompt, options),
     provider,
   );
   return ensureNonEmptyResponse(toAIResponse(response));
@@ -125,7 +140,7 @@ export async function aiGenerateStructured(
 ): Promise<AIResponse> {
   const response = await invokeWithTimeout<RustAIResponse>(
     'ai_generate_structured',
-    commandArgs(provider, systemPrompt, userPrompt, options),
+    await commandArgs(provider, systemPrompt, userPrompt, options),
     provider,
   );
   return ensureNonEmptyResponse(toAIResponse(response));

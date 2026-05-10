@@ -29,6 +29,7 @@ type ProviderStatus = {
 const PROVIDER_OPTIONS: { value: AIProviderName; label: string }[] = [
   { value: 'claude', label: 'Claude' },
   { value: 'openai', label: 'OpenAI' },
+  { value: 'gemini', label: 'Gemini' },
   { value: 'ollama', label: 'Ollama' },
 ];
 
@@ -59,10 +60,13 @@ export function ProviderSettings() {
 
   const [claudeKey, setClaudeKey] = useState('');
   const [openaiKey, setOpenaiKey] = useState('');
+  const [geminiKey, setGeminiKey] = useState('');
   const [claudeSaved, setClaudeSaved] = useState(false);
   const [openaiSaved, setOpenaiSaved] = useState(false);
+  const [geminiSaved, setGeminiSaved] = useState(false);
   const [claudeStatus, setClaudeStatus] = useState<ProviderStatus>(idleStatus());
   const [openaiStatus, setOpenaiStatus] = useState<ProviderStatus>(idleStatus());
+  const [geminiStatus, setGeminiStatus] = useState<ProviderStatus>(idleStatus());
   const [ollamaStatus, setOllamaStatus] = useState<ProviderStatus>(idleStatus());
   const [preferredProvider, setPreferredProvider] = useState<AIProviderName>('ollama');
   const [monthlyLimit, setMonthlyLimit] = useState('10');
@@ -79,6 +83,7 @@ export function ProviderSettings() {
         const [
           storedClaudeKey,
           storedOpenaiKey,
+          storedGeminiKey,
           storedProvider,
           storedLimit,
           storedEndpoint,
@@ -86,6 +91,7 @@ export function ProviderSettings() {
         ] = await Promise.all([
           keychainGet('claude_api_key'),
           keychainGet('openai_api_key'),
+          keychainGet('ai_gemini'),
           getSetting<AIProviderName>('ai_preferred_provider'),
           getSetting<number>('ai_monthly_limit_eur'),
           getSetting<string>('ai_ollama_endpoint'),
@@ -96,8 +102,10 @@ export function ProviderSettings() {
 
         setClaudeSaved(Boolean(storedClaudeKey));
         setOpenaiSaved(Boolean(storedOpenaiKey));
+        setGeminiSaved(Boolean(storedGeminiKey));
         setClaudeStatus(idleStatus(storedClaudeKey ? 'API-Key gespeichert' : 'Kein API-Key'));
         setOpenaiStatus(idleStatus(storedOpenaiKey ? 'API-Key gespeichert' : 'Kein API-Key'));
+        setGeminiStatus(idleStatus(storedGeminiKey ? 'API-Key gespeichert' : 'Kein API-Key'));
         setPreferredProvider(storedProvider ?? 'ollama');
         setMonthlyLimit(String(storedLimit ?? monthlyLimitStore ?? 10));
         setOllamaEndpoint(storedEndpoint ?? DEFAULT_ENDPOINT);
@@ -130,11 +138,27 @@ export function ProviderSettings() {
     return Math.min(100, Math.round((monthlySpent / limit) * 100));
   }, [monthlyLimit, monthlySpent]);
 
-  async function saveApiKey(provider: 'claude' | 'openai') {
-    const key = provider === 'claude' ? claudeKey.trim() : openaiKey.trim();
-    const setStatus = provider === 'claude' ? setClaudeStatus : setOpenaiStatus;
-    const setSaved = provider === 'claude' ? setClaudeSaved : setOpenaiSaved;
-    const clearKey = provider === 'claude' ? setClaudeKey : setOpenaiKey;
+  async function saveApiKey(provider: 'claude' | 'openai' | 'gemini') {
+    const key =
+      provider === 'claude'
+        ? claudeKey.trim()
+        : provider === 'openai'
+          ? openaiKey.trim()
+          : geminiKey.trim();
+    const setStatus =
+      provider === 'claude'
+        ? setClaudeStatus
+        : provider === 'openai'
+          ? setOpenaiStatus
+          : setGeminiStatus;
+    const setSaved =
+      provider === 'claude'
+        ? setClaudeSaved
+        : provider === 'openai'
+          ? setOpenaiSaved
+          : setGeminiSaved;
+    const clearKey =
+      provider === 'claude' ? setClaudeKey : provider === 'openai' ? setOpenaiKey : setGeminiKey;
 
     if (!key) {
       setStatus({ state: 'error', message: 'Bitte API-Key eingeben.' });
@@ -143,7 +167,7 @@ export function ProviderSettings() {
 
     setStatus({ state: 'loading', message: 'Speichere API-Key...' });
     try {
-      await keychainSet(`${provider}_api_key`, key);
+      await keychainSet(provider === 'gemini' ? 'ai_gemini' : `${provider}_api_key`, key);
       setSaved(true);
       clearKey('');
       setStatus({ state: 'success', message: 'API-Key gespeichert.' });
@@ -156,14 +180,25 @@ export function ProviderSettings() {
     }
   }
 
-  async function deleteApiKey(provider: 'claude' | 'openai') {
-    const setStatus = provider === 'claude' ? setClaudeStatus : setOpenaiStatus;
-    const setSaved = provider === 'claude' ? setClaudeSaved : setOpenaiSaved;
-    const clearKey = provider === 'claude' ? setClaudeKey : setOpenaiKey;
+  async function deleteApiKey(provider: 'claude' | 'openai' | 'gemini') {
+    const setStatus =
+      provider === 'claude'
+        ? setClaudeStatus
+        : provider === 'openai'
+          ? setOpenaiStatus
+          : setGeminiStatus;
+    const setSaved =
+      provider === 'claude'
+        ? setClaudeSaved
+        : provider === 'openai'
+          ? setOpenaiSaved
+          : setGeminiSaved;
+    const clearKey =
+      provider === 'claude' ? setClaudeKey : provider === 'openai' ? setOpenaiKey : setGeminiKey;
 
     setStatus({ state: 'loading', message: 'Lösche API-Key...' });
     try {
-      await keychainDelete(`${provider}_api_key`);
+      await keychainDelete(provider === 'gemini' ? 'ai_gemini' : `${provider}_api_key`);
       setSaved(false);
       clearKey('');
       setStatus({ state: 'success', message: 'API-Key gelöscht.' });
@@ -182,7 +217,9 @@ export function ProviderSettings() {
         ? setClaudeStatus
         : provider === 'openai'
           ? setOpenaiStatus
-          : setOllamaStatus;
+          : provider === 'gemini'
+            ? setGeminiStatus
+            : setOllamaStatus;
     setStatus({ state: 'loading', message: 'Verbindung wird getestet...' });
 
     try {
@@ -235,7 +272,7 @@ export function ProviderSettings() {
   }
 
   const renderKeySection = (
-    provider: 'claude' | 'openai',
+    provider: 'claude' | 'openai' | 'gemini',
     label: string,
     value: string,
     onChange: (value: string) => void,
@@ -295,6 +332,14 @@ export function ProviderSettings() {
             setOpenaiKey,
             openaiSaved,
             openaiStatus,
+          )}
+          {renderKeySection(
+            'gemini',
+            'Gemini API-Key',
+            geminiKey,
+            setGeminiKey,
+            geminiSaved,
+            geminiStatus,
           )}
         </div>
 

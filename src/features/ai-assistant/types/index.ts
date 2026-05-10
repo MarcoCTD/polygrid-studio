@@ -1,4 +1,4 @@
-export type AIProviderName = 'claude' | 'openai' | 'ollama';
+export type AIProviderName = 'claude' | 'openai' | 'gemini' | 'ollama';
 
 export type AIAgentName =
   | 'listing_assistant'

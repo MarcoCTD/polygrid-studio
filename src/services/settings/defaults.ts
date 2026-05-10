@@ -42,6 +42,7 @@ export const DEFAULTS = {
   ai_preferred_provider: 'claude',
   ai_preferred_model_claude: 'claude-sonnet-4-20250514',
   ai_preferred_model_openai: 'gpt-4o',
+  ai_preferred_model_gemini: 'gemini-2.0-flash',
   ai_preferred_model_ollama: 'llama3',
   ai_ollama_model: 'llama3',
   ai_cost_limit_monthly: 10,

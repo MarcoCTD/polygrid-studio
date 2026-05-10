@@ -11,6 +11,7 @@ pub fn estimate_cost_eur(
         ("claude", "claude-haiku-4-5-20251001") => (0.80, 4.00),
         ("openai", "gpt-4o") => (2.50, 10.00),
         ("openai", "gpt-4o-mini") => (0.15, 0.60),
+        ("gemini", _) => (0.15, 0.15),
         ("ollama", _) => (0.00, 0.00),
         _ => (0.00, 0.00),
     };

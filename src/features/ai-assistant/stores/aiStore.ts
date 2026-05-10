@@ -4,8 +4,8 @@ import { aiTestConnection, keychainGet } from '../services/aiService';
 import { getMonthlyLimit, getMonthlySpent } from '../services/costTracker';
 import type { AIProviderName } from '../types';
 
-const PROVIDERS: AIProviderName[] = ['claude', 'openai', 'ollama'];
-const CLOUD_PROVIDERS: AIProviderName[] = ['claude', 'openai'];
+const PROVIDERS: AIProviderName[] = ['claude', 'openai', 'gemini', 'ollama'];
+const CLOUD_PROVIDERS: AIProviderName[] = ['claude', 'openai', 'gemini'];
 
 interface AIState {
   activeProvider: AIProviderName | null;
@@ -39,6 +39,10 @@ async function providerAvailable(provider: AIProviderName): Promise<boolean> {
     }
     if (provider === 'openai') {
       const key = await keychainGet('openai_api_key');
+      if (!key) return false;
+    }
+    if (provider === 'gemini') {
+      const key = await keychainGet('ai_gemini');
       if (!key) return false;
     }
     await aiTestConnection(provider);
