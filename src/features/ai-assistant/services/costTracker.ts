@@ -1,4 +1,5 @@
-import { getDatabase, getSetting } from '@/services/database';
+import { getDatabase } from '@/services/database';
+import { DEFAULTS, getSettingWithDefault } from '@/services/settings';
 import type { AIJobLogInput } from '../types';
 
 interface SumRow {
@@ -28,7 +29,10 @@ export async function getMonthlySpent(): Promise<number> {
 
 export async function getMonthlyLimit(): Promise<number> {
   try {
-    const limit = await getSetting<number>('ai_monthly_limit_eur');
+    const limit = await getSettingWithDefault(
+      'ai_cost_limit_monthly',
+      DEFAULTS.ai_cost_limit_monthly,
+    );
     return typeof limit === 'number' && Number.isFinite(limit) && limit > 0 ? limit : 10;
   } catch {
     return 10;

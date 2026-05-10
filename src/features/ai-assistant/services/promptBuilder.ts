@@ -1,4 +1,4 @@
-import { getSetting } from '@/services/database';
+import { DEFAULTS, getSettingWithDefault } from '@/services/settings';
 
 export interface BrandSettings {
   writingStyle: string;
@@ -25,20 +25,38 @@ export async function loadBrandSettings(): Promise<BrandSettings> {
   const settings = { ...DEFAULT_BRAND_SETTINGS };
 
   try {
-    const writingStyle = await getSetting<string>('brand_writing_style');
-    if (writingStyle) settings.writingStyle = writingStyle;
+    const [
+      writingStyle,
+      preferredWords,
+      legacyPreferredWords,
+      forbiddenPhrases,
+      legacyForbiddenPhrases,
+      referenceText,
+    ] = await Promise.all([
+      getSettingWithDefault('brand_writing_style', DEFAULTS.brand_writing_style),
+      getSettingWithDefault('brand_keywords', DEFAULTS.brand_keywords),
+      getSettingWithDefault('brand_preferred_words', DEFAULTS.brand_preferred_words),
+      getSettingWithDefault('brand_no_go_phrases', DEFAULTS.brand_no_go_phrases),
+      getSettingWithDefault('brand_forbidden_phrases', DEFAULTS.brand_forbidden_phrases),
+      getSettingWithDefault('brand_reference_text', DEFAULTS.brand_reference_text),
+    ]);
 
-    const preferredWords = await getSetting<string[]>('brand_preferred_words');
-    if (Array.isArray(preferredWords)) settings.preferredWords = preferredWords;
-
-    const forbiddenPhrases = await getSetting<string[]>('brand_forbidden_phrases');
-    if (Array.isArray(forbiddenPhrases)) settings.forbiddenPhrases = forbiddenPhrases;
-
-    const referenceText = await getSetting<string>('brand_reference_text');
-    if (referenceText !== null) settings.referenceText = referenceText;
+    settings.writingStyle = writingStyle;
+    settings.preferredWords =
+      preferredWords.length > 0 ? [...preferredWords] : [...legacyPreferredWords];
+    settings.forbiddenPhrases =
+      forbiddenPhrases.length > 0 ? [...forbiddenPhrases] : [...legacyForbiddenPhrases];
+    settings.referenceText = referenceText;
   } catch {
     return settings;
   }
+
+  console.info('[AI] Brand settings injected into system prompt', {
+    writingStyle: settings.writingStyle,
+    preferredWords: settings.preferredWords,
+    forbiddenPhrases: settings.forbiddenPhrases,
+    hasReferenceText: settings.referenceText.trim().length > 0,
+  });
 
   return settings;
 }

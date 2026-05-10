@@ -2,19 +2,25 @@ import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 import { Plus, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import type { ProductUpdate } from '../schema';
+import type { ColorVariant, ProductUpdate } from '../schema';
 
 interface ColorVariantsEditorProps {
   form: UseFormReturn<ProductUpdate>;
+  suggestions?: ColorVariant[];
 }
 
-export function ColorVariantsEditor({ form }: ColorVariantsEditorProps) {
+export function ColorVariantsEditor({ form, suggestions = [] }: ColorVariantsEditorProps) {
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'color_variants' as never,
   });
 
   const variants = form.watch('color_variants') ?? [];
+
+  function appendSuggestion(variant: ColorVariant) {
+    if (variants.some((item) => item.name === variant.name)) return;
+    append(variant as never);
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -73,6 +79,27 @@ export function ColorVariantsEditor({ form }: ColorVariantsEditorProps) {
         <Plus size={14} />
         Variante hinzufügen
       </Button>
+
+      {suggestions.length > 0 ? (
+        <div className="flex flex-wrap gap-2 pt-1">
+          {suggestions.map((variant) => (
+            <Button
+              key={variant.name}
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => appendSuggestion(variant)}
+              className="gap-1"
+            >
+              <span
+                className="size-3 rounded-full border border-border-subtle"
+                style={{ backgroundColor: variant.hex }}
+              />
+              {variant.name}
+            </Button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

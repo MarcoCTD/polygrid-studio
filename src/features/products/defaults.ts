@@ -1,4 +1,5 @@
-import type { MaterialType, ShippingClass, Platform } from './schema';
+import type { Platform } from './schema';
+import type { ColorVariant } from './schema';
 
 /**
  * Default-Parameter für die Margenberechnung.
@@ -7,11 +8,14 @@ import type { MaterialType, ShippingClass, Platform } from './schema';
  */
 
 export interface ProductSettings {
-  filamentPrices: Record<MaterialType, number>; // EUR pro kg
+  filamentPrices: Record<string, number>; // EUR pro kg
+  materialOptions: string[];
   electricityPricePerKwh: number;
   printerPowerWatts: number;
-  shippingPrices: Record<ShippingClass, number>;
+  shippingPrices: Record<string, number>;
+  shippingClassOptions: string[];
   platformFees: Record<Platform, { percent: number; fixed: number }>;
+  colorVariantLibrary: ColorVariant[];
   /** true = Käufer zahlt Versand (Versand NICHT in Marge), false = wir zahlen */
   shippingPaidByCustomerDefault: boolean;
 }
@@ -25,21 +29,25 @@ export const DEFAULT_PRODUCT_SETTINGS: ProductSettings = {
   filamentPrices: {
     PLA: 22.0,
     PETG: 25.0,
-    TPU: 35.0,
-    ABS: 28.0,
+    TPU: 28.0,
+    ABS: 24.0,
     Resin: 45.0,
   },
+  materialOptions: ['PLA', 'PETG', 'TPU', 'ABS', 'Resin'],
   electricityPricePerKwh: 0.35,
   printerPowerWatts: 200,
   shippingPrices: {
-    Brief: 1.95,
-    Warensendung: 2.75,
-    Paket: 6.0,
+    Brief: 1.6,
+    Warensendung: 2.25,
+    'Päckchen S': 3.99,
+    Paket: 6.99,
   },
+  shippingClassOptions: ['Brief', 'Warensendung', 'Päckchen S', 'Paket'],
   platformFees: {
     etsy: { percent: 6.5, fixed: 0.2 },
     ebay: { percent: 11.0, fixed: 0.0 },
     kleinanzeigen: { percent: 0.0, fixed: 0.0 },
   },
+  colorVariantLibrary: [],
   shippingPaidByCustomerDefault: SHIPPING_PAID_BY_CUSTOMER_DEFAULT_VALUE,
 };

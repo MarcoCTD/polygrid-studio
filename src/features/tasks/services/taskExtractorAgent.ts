@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { z } from 'zod';
 import { getDatabase, getSetting } from '@/services/database';
+import { loadBrandSettings } from '@/features/ai-assistant/services/promptBuilder';
 import { taskPriorityEnum, type TaskPriority } from '../schemas';
 
 const AI_PROVIDER_KEYS = ['ai_preferred_provider', 'active_ai_provider', 'ai_active_provider'];
@@ -42,18 +43,24 @@ interface AIJobLogInput {
   errorMessage: string | null;
 }
 
-function buildSystemPrompt(brandWritingStyle: string | null): string {
-  const brandHint = brandWritingStyle
-    ? `Berücksichtige die Brand-Sprache: ${brandWritingStyle}.`
-    : 'Nutze klare, sachliche deutsche Sprache.';
-
+async function buildSystemPrompt(): Promise<string> {
+  const brand = await loadBrandSettings();
   return [
-    brandHint,
+    `Berücksichtige die Brand-Sprache: ${brand.writingStyle}.`,
+    brand.preferredWords.length > 0
+      ? `Bevorzugte Formulierungen: ${brand.preferredWords.join(', ')}.`
+      : '',
+    brand.forbiddenPhrases.length > 0
+      ? `Verbotene Formulierungen/Wörter: ${brand.forbiddenPhrases.join(', ')}.`
+      : '',
+    brand.referenceText ? `Stilreferenz: ${brand.referenceText}` : '',
     'Du extrahierst konkrete, actionable Aufgaben aus dem folgenden Text.',
     'Pro Aufgabe: Titel (kurz, max 100 Zeichen), Priorität (low/medium/high/urgent), optionales Fälligkeitsdatum (ISO-Format YYYY-MM-DD), optionale Beschreibung.',
     'Ignoriere allgemeine Aussagen die keine Handlungsaufforderung enthalten.',
     'Antworte ausschließlich als JSON-Array.',
-  ].join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 function buildUserPrompt(text: string): string {
@@ -121,8 +128,7 @@ export async function extractTasks(text: string): Promise<TaskSuggestion[]> {
   }
 
   const provider = await getConfiguredProvider();
-  const brandWritingStyle = await getSetting<string>('brand_writing_style');
-  const systemPrompt = buildSystemPrompt(brandWritingStyle);
+  const systemPrompt = await buildSystemPrompt();
   const userPrompt = buildUserPrompt(inputText);
   const logInput = JSON.stringify({ systemPrompt, userPrompt });
 

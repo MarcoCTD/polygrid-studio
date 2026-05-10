@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { type UseFormReturn } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,14 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  statusEnum,
-  materialTypeEnum,
-  licenseTypeEnum,
-  licenseRiskEnum,
-  shippingClassEnum,
-  platformEnum,
-} from '../schema';
+import { statusEnum, licenseTypeEnum, licenseRiskEnum, platformEnum } from '../schema';
 import type {
   ProductUpdate,
   Status,
@@ -38,6 +31,8 @@ import {
 } from '../labels';
 import { ColorVariantsEditor } from './ColorVariantsEditor';
 import { LicenseWarningDialog } from './LicenseWarningDialog';
+import { getProductSettings } from '../settings';
+import type { ProductSettings } from '../defaults';
 
 interface OverviewTabProps {
   form: UseFormReturn<ProductUpdate>;
@@ -113,6 +108,21 @@ export function OverviewTab({ form }: OverviewTabProps) {
   } = form;
 
   const [showLicenseWarning, setShowLicenseWarning] = useState(false);
+  const [settings, setSettings] = useState<ProductSettings | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getProductSettings()
+      .then((value) => {
+        if (!cancelled) setSettings(value);
+      })
+      .catch(() => {
+        if (!cancelled) setSettings(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const platforms = watch('platforms') ?? [];
   const status = watch('status');
@@ -122,6 +132,8 @@ export function OverviewTab({ form }: OverviewTabProps) {
   const licenseSource = watch('license_source');
   const shippingClass = watch('shipping_class');
   const shippingPaidByCustomer = watch('shipping_paid_by_customer');
+  const materialOptions = settings?.materialOptions ?? ['PLA', 'PETG', 'TPU', 'ABS', 'Resin'];
+  const shippingClassOptions = settings?.shippingClassOptions ?? ['Brief', 'Warensendung', 'Paket'];
 
   const handleStatusChange = (newStatus: Status) => {
     if (newStatus === 'online') {
@@ -202,13 +214,13 @@ export function OverviewTab({ form }: OverviewTabProps) {
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Material wählen">
-                {materialType ? MATERIAL_LABELS[materialType] : 'Material wählen'}
+                {materialType ? (MATERIAL_LABELS[materialType] ?? materialType) : 'Material wählen'}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {materialTypeEnum.options.map((m) => (
+              {materialOptions.map((m) => (
                 <SelectItem key={m} value={m}>
-                  {MATERIAL_LABELS[m]}
+                  {MATERIAL_LABELS[m] ?? m}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -237,13 +249,13 @@ export function OverviewTab({ form }: OverviewTabProps) {
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Keine">
-                {shippingClass ? SHIPPING_LABELS[shippingClass] : 'Keine'}
+                {shippingClass ? (SHIPPING_LABELS[shippingClass] ?? shippingClass) : 'Keine'}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {shippingClassEnum.options.map((s) => (
+              {shippingClassOptions.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {SHIPPING_LABELS[s]}
+                  {SHIPPING_LABELS[s] ?? s}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -290,7 +302,7 @@ export function OverviewTab({ form }: OverviewTabProps) {
         </FormField>
 
         <FormField label="Farbvarianten" span2>
-          <ColorVariantsEditor form={form} />
+          <ColorVariantsEditor form={form} suggestions={settings?.colorVariantLibrary ?? []} />
         </FormField>
       </FormSection>
 

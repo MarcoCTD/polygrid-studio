@@ -35,16 +35,15 @@ import {
 import { cn } from '@/lib/utils';
 import {
   statusEnum,
-  materialTypeEnum,
   licenseTypeEnum,
   licenseRiskEnum,
-  shippingClassEnum,
   type ProductCreate,
   type Status,
   type MaterialType,
   type LicenseType,
   type LicenseRisk,
   type ShippingClass,
+  type ColorVariant,
 } from '../schema';
 import { createProduct } from '../db';
 import { calculateMargin, getMarginColor, getMarginLabel } from '../margin';
@@ -67,7 +66,7 @@ const step1Schema = z.object({
   name: z.string().min(2, 'Name muss mindestens 2 Zeichen haben').max(200),
   category: z.string().min(1, 'Kategorie ist erforderlich'),
   subcategory: z.string().optional().nullable(),
-  material_type: materialTypeEnum,
+  material_type: z.string().min(1, 'Material ist erforderlich'),
   status: statusEnum,
   collection: z.string().optional().nullable(),
 });
@@ -76,7 +75,7 @@ const step2Schema = z.object({
   print_time_minutes: z.number().int().min(0).max(10080).optional().nullable(),
   material_grams: z.number().min(0).max(10000).optional().nullable(),
   packaging_cost: z.number().min(0).optional().nullable(),
-  shipping_class: shippingClassEnum.optional().nullable(),
+  shipping_class: z.string().min(1).optional().nullable(),
   target_price: z.number().min(0).optional().nullable(),
   min_price: z.number().min(0).optional().nullable(),
 });
@@ -137,6 +136,88 @@ function NumberField({
         onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
       />
     </FormField>
+  );
+}
+
+function ColorVariantPicker({
+  value,
+  suggestions,
+  onChange,
+}: {
+  value: ColorVariant[];
+  suggestions: ColorVariant[];
+  onChange: (value: ColorVariant[]) => void;
+}) {
+  function addVariant(variant: ColorVariant) {
+    if (value.some((item) => item.name === variant.name)) return;
+    onChange([...value, variant]);
+  }
+
+  function updateVariant(index: number, patch: Partial<ColorVariant>) {
+    onChange(value.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
+  }
+
+  return (
+    <div className="col-span-2 space-y-2">
+      {value.map((variant, index) => (
+        <div key={`${variant.name}-${index}`} className="flex items-center gap-2">
+          <span
+            className="size-7 rounded border border-border-subtle"
+            style={{ backgroundColor: variant.hex }}
+          />
+          <Input
+            value={variant.hex}
+            className="w-28 font-mono text-xs"
+            onChange={(event) => updateVariant(index, { hex: event.target.value })}
+          />
+          <input
+            type="color"
+            value={/^#[0-9a-fA-F]{6}$/.test(variant.hex) ? variant.hex : '#000000'}
+            onChange={(event) => updateVariant(index, { hex: event.target.value })}
+            className="size-8 rounded border border-border-subtle bg-transparent"
+            aria-label="Farbe wählen"
+          />
+          <Input
+            value={variant.name}
+            placeholder="Farbname"
+            onChange={(event) => updateVariant(index, { name: event.target.value })}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onChange(value.filter((_, itemIndex) => itemIndex !== index))}
+          >
+            Entfernen
+          </Button>
+        </div>
+      ))}
+      <div className="flex flex-wrap gap-2">
+        {suggestions.map((variant) => (
+          <Button
+            key={variant.name}
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => addVariant(variant)}
+          >
+            <span
+              className="size-3 rounded-full border border-border-subtle"
+              style={{ backgroundColor: variant.hex }}
+            />
+            {variant.name}
+          </Button>
+        ))}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => addVariant({ name: '', hex: '#000000' })}
+        >
+          Eigene Farbe
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -201,6 +282,7 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
   } | null>(null);
   const [folderError, setFolderError] = useState<string | null>(null);
   const [settings, setSettings] = useState<ProductSettings | null>(null);
+  const [colorVariants, setColorVariants] = useState<ColorVariant[]>([]);
 
   // Per-step form instances
   const form1 = useForm<Step1Data>({
@@ -249,6 +331,7 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
       form1.reset();
       form2.reset();
       form3.reset();
+      setColorVariants([]);
     }
   }, [open, form1, form2, form3]);
 
@@ -304,7 +387,7 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
         collection: data.collection ?? null,
         short_name: null,
         description_internal: null,
-        color_variants: null,
+        color_variants: colorVariants.length > 0 ? colorVariants : null,
         print_time_minutes: data.print_time_minutes ?? null,
         material_grams: data.material_grams ?? null,
         electricity_cost: null,
@@ -380,7 +463,7 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
       collection: null,
       status: data.status,
       material_type: data.material_type,
-      color_variants: null,
+      color_variants: colorVariants.length > 0 ? colorVariants : null,
       print_time_minutes: data.print_time_minutes ?? null,
       material_grams: data.material_grams ?? null,
       electricity_cost: null,
@@ -406,7 +489,11 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
       deleted_at: null,
     };
     return calculateMargin(mockProduct, settings, null);
-  }, [allData, settings]);
+  }, [allData, colorVariants, settings]);
+
+  const materialOptions = settings?.materialOptions ?? ['PLA', 'PETG', 'TPU', 'ABS', 'Resin'];
+  const shippingClassOptions = settings?.shippingClassOptions ?? ['Brief', 'Warensendung', 'Paket'];
+  const colorVariantSuggestions = settings?.colorVariantLibrary ?? [];
 
   return (
     <>
@@ -439,12 +526,15 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
                       }}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue>{MATERIAL_LABELS[form1.watch('material_type')]}</SelectValue>
+                        <SelectValue>
+                          {MATERIAL_LABELS[form1.watch('material_type')] ??
+                            form1.watch('material_type')}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        {materialTypeEnum.options.map((m) => (
+                        {materialOptions.map((m) => (
                           <SelectItem key={m} value={m}>
-                            {MATERIAL_LABELS[m]}
+                            {MATERIAL_LABELS[m] ?? m}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -507,18 +597,26 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Keine">
                         {form2.watch('shipping_class')
-                          ? SHIPPING_LABELS[form2.watch('shipping_class')!]
+                          ? (SHIPPING_LABELS[form2.watch('shipping_class')!] ??
+                            form2.watch('shipping_class')!)
                           : 'Keine'}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {shippingClassEnum.options.map((s) => (
+                      {shippingClassOptions.map((s) => (
                         <SelectItem key={s} value={s}>
-                          {SHIPPING_LABELS[s]}
+                          {SHIPPING_LABELS[s] ?? s}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                </FormField>
+                <FormField label="Farbvarianten">
+                  <ColorVariantPicker
+                    value={colorVariants}
+                    suggestions={colorVariantSuggestions}
+                    onChange={setColorVariants}
+                  />
                 </FormField>
                 <NumberField
                   label="Zielpreis (EUR)"
@@ -605,7 +703,10 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
                 <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                   <SummaryRow label="Name" value={allData.name} />
                   <SummaryRow label="Kategorie" value={allData.category} />
-                  <SummaryRow label="Material" value={MATERIAL_LABELS[allData.material_type]} />
+                  <SummaryRow
+                    label="Material"
+                    value={MATERIAL_LABELS[allData.material_type] ?? allData.material_type}
+                  />
                   <SummaryRow label="Status" value={STATUS_LABELS[allData.status]} />
                   {allData.target_price != null && (
                     <SummaryRow label="Zielpreis" value={formatEUR(allData.target_price)} />

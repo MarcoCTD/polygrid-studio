@@ -23,6 +23,7 @@ import { useAI } from '../hooks/useAI';
 import { useAIStatus } from '../hooks/useAIStatus';
 import { updateAIJobStatus } from '../services/costTracker';
 import type { AIDiffField, AIDiffResult } from '../types';
+import { DEFAULTS, getSettingWithDefault } from '@/services/settings';
 
 interface AIToolbarProps {
   product: Product;
@@ -79,8 +80,18 @@ export function AIToolbar({ product, listing, platform, language, onApplyDiff }:
     setActiveAction(action);
     try {
       const result = await generate(action, call);
-      setDiffResult(result);
-      setIsDiffOpen(true);
+      const operationMode = await getSettingWithDefault<string>(
+        'ai_operation_mode',
+        DEFAULTS.ai_operation_mode,
+      );
+      if (operationMode === 'suggest_only' || operationMode === 'suggestions_only') {
+        onApplyDiff(result.fields);
+        if (result.jobId) await updateAIJobStatus(result.jobId, 'success');
+        toast.success('KI-Vorschlag übernommen');
+      } else {
+        setDiffResult(result);
+        setIsDiffOpen(true);
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'KI-Aktion fehlgeschlagen');
     } finally {

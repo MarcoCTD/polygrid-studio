@@ -54,13 +54,13 @@ export const productSchema = z.object({
   description_internal: z.string().nullable(),
   collection: z.string().nullable(),
   status: statusEnum,
-  material_type: materialTypeEnum,
+  material_type: z.string().min(1),
   color_variants: z.array(colorVariantSchema).nullable(),
   print_time_minutes: z.number().int().min(0).max(10080).nullable(),
   material_grams: z.number().min(0).max(10000).nullable(),
   electricity_cost: z.number().min(0).nullable(),
   packaging_cost: z.number().min(0).nullable(),
-  shipping_class: shippingClassEnum.nullable(),
+  shipping_class: z.string().min(1).nullable(),
   target_price: z.number().min(0).nullable(),
   min_price: z.number().min(0).nullable(),
   price_etsy: z.number().min(0).nullable(),
@@ -109,9 +109,9 @@ export type Product = z.infer<typeof productSchema>;
 export type ProductCreate = z.infer<typeof productCreateSchema>;
 export type ProductUpdate = z.infer<typeof productUpdateSchema>;
 export type Status = z.infer<typeof statusEnum>;
-export type MaterialType = z.infer<typeof materialTypeEnum>;
+export type MaterialType = string;
 export type LicenseType = z.infer<typeof licenseTypeEnum>;
 export type LicenseRisk = z.infer<typeof licenseRiskEnum>;
-export type ShippingClass = z.infer<typeof shippingClassEnum>;
+export type ShippingClass = string;
 export type Platform = z.infer<typeof platformEnum>;
 export type ColorVariant = z.infer<typeof colorVariantSchema>;

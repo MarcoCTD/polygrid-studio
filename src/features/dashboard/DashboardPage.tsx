@@ -31,7 +31,7 @@ import { ExpenseDetailPanel } from '@/features/expenses/components/ExpenseDetail
 import { NewListingModal } from '@/features/listings/components';
 import { NewOrderModal } from '@/features/orders/components';
 import { NewProductDialog } from '@/features/products/components/NewProductDialog';
-import { getSetting } from '@/services/database';
+import { DEFAULTS, getSettingWithDefault } from '@/services/settings';
 import { useUIStore } from '@/stores';
 
 const EMPTY_KPIS: DashboardKPIs = {
@@ -118,7 +118,10 @@ export function DashboardPage() {
 
   const loadLowMarginProducts = useCallback(async () => {
     try {
-      const threshold = (await getSetting<number>('dashboard_low_margin_threshold')) ?? 30;
+      const threshold = await getSettingWithDefault(
+        'margin_warning_threshold',
+        DEFAULTS.margin_warning_threshold,
+      );
       setLowMarginThreshold(threshold);
       setLowMarginProducts(await getLowMarginProducts(threshold));
     } catch (error) {

@@ -23,7 +23,7 @@ export const STATUS_LABELS: Record<Status, string> = {
   discontinued: 'Eingestellt',
 };
 
-export const MATERIAL_LABELS: Record<MaterialType, string> = {
+export const MATERIAL_LABELS: Record<string, string> = {
   PLA: 'PLA',
   PETG: 'PETG',
   TPU: 'TPU',
@@ -46,7 +46,7 @@ export const LICENSE_RISK_LABELS: Record<LicenseRisk, string> = {
   risky: 'Riskant',
 };
 
-export const SHIPPING_LABELS: Record<ShippingClass, string> = {
+export const SHIPPING_LABELS: Record<string, string> = {
   Brief: 'Brief',
   Warensendung: 'Warensendung',
   Paket: 'Paket',
@@ -63,7 +63,7 @@ export function getStatusLabel(status: Status): string {
 }
 
 export function getMaterialLabel(material: MaterialType): string {
-  return MATERIAL_LABELS[material];
+  return MATERIAL_LABELS[material] ?? material;
 }
 
 export function getLicenseTypeLabel(type: LicenseType): string {
@@ -75,7 +75,7 @@ export function getLicenseRiskLabel(risk: LicenseRisk): string {
 }
 
 export function getShippingLabel(shipping: ShippingClass): string {
-  return SHIPPING_LABELS[shipping];
+  return SHIPPING_LABELS[shipping] ?? shipping;
 }
 
 export function getPlatformLabel(platform: Platform): string {

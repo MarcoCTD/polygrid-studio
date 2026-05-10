@@ -1,5 +1,6 @@
 import { aiEstimateCost, aiGenerateText } from '@/features/ai-assistant/services/aiService';
 import { checkBudget, logAIJob } from '@/features/ai-assistant/services/costTracker';
+import { loadBrandSettings } from '@/features/ai-assistant/services/promptBuilder';
 import { getAIProviderFallbackChain, useAIStore } from '@/features/ai-assistant/stores/aiStore';
 import type { AIProviderName, AIResponse } from '@/features/ai-assistant/types';
 import type { DashboardAnalysisInput } from '../types';
@@ -79,6 +80,7 @@ async function runDashboardAnalysisCall(
   for (const provider of providers) {
     try {
       await ensureBudget(provider);
+      const brand = await loadBrandSettings();
       const response = await aiGenerateText(
         provider,
         [
@@ -86,7 +88,17 @@ async function runDashboardAnalysisCall(
           'Analysiere Dashboard- und Geschäftsdaten für ein deutsches 3D-Druck-Einzelunternehmen.',
           'Antworte mit 3-5 kurzen, konkreten Sätzen auf Deutsch.',
           'Benutze keine Markdown-Tabelle und keine übertriebene Werbesprache.',
-        ].join('\n'),
+          `Schreibstil: ${brand.writingStyle}.`,
+          brand.preferredWords.length > 0
+            ? `Bevorzugte Formulierungen: ${brand.preferredWords.join(', ')}.`
+            : '',
+          brand.forbiddenPhrases.length > 0
+            ? `Verbotene Formulierungen/Wörter: ${brand.forbiddenPhrases.join(', ')}.`
+            : '',
+          brand.referenceText ? `Stilreferenz: ${brand.referenceText}` : '',
+        ]
+          .filter(Boolean)
+          .join('\n'),
         userPrompt,
         { temperature: 0.2, maxTokens: 700 },
       );
