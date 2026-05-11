@@ -9,6 +9,13 @@ export const InventoryModeEnum = z.enum(['made_to_order', 'stock']);
 export const ListingStatusEnum = z.enum(['draft', 'ready', 'online', 'paused', 'archived']);
 export const ConditionEnum = z.enum(['new', 'used_like_new']);
 export const SyncStatusEnum = z.enum(['manual', 'pending', 'synced', 'error']);
+export const ListingSyncStatusEnum = z.enum([
+  'not_synced',
+  'synced',
+  'pending',
+  'error',
+  'conflict',
+]);
 
 // ============================================================
 // Shared sub-schemas
@@ -52,6 +59,12 @@ export const listingSelectSchema = z.object({
   status: ListingStatusEnum,
   seo_notes: nullableText,
   append_legal_texts: z.boolean(),
+  platform: PlatformEnum,
+  external_id: nullableText,
+  sync_status: ListingSyncStatusEnum,
+  sync_error_message: nullableText,
+  last_synced_at: z.string().nullable(),
+  platform_metadata: listingPlatformMetadataSchema.nullable(),
   created_at: isoDateString,
   updated_at: isoDateString,
   deleted_at: z.string().nullable(),
@@ -80,6 +93,12 @@ export const listingInsertSchema = z.object({
   status: ListingStatusEnum.optional(),
   seo_notes: optionalNullableText,
   append_legal_texts: z.boolean().optional(),
+  platform: PlatformEnum,
+  external_id: optionalNullableText,
+  sync_status: ListingSyncStatusEnum.optional(),
+  sync_error_message: optionalNullableText,
+  last_synced_at: z.string().nullable().optional(),
+  platform_metadata: listingPlatformMetadataSchema.nullable().optional(),
 });
 
 // ============================================================
@@ -195,6 +214,7 @@ export type InventoryMode = z.infer<typeof InventoryModeEnum>;
 export type ListingStatus = z.infer<typeof ListingStatusEnum>;
 export type Condition = z.infer<typeof ConditionEnum>;
 export type SyncStatus = z.infer<typeof SyncStatusEnum>;
+export type ListingSyncStatus = z.infer<typeof ListingSyncStatusEnum>;
 export type ListingPlatformMetadata = z.infer<typeof listingPlatformMetadataSchema>;
 
 export type Listing = z.infer<typeof listingSelectSchema>;

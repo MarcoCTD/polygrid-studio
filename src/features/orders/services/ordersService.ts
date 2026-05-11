@@ -42,6 +42,7 @@ const UPDATE_FIELDS = [
   'order_date',
   'notes',
   'bank_match_id',
+  'external_synced',
 ] satisfies (keyof UpdateOrderInput)[];
 const UPDATE_FIELD_SET = new Set<string>(UPDATE_FIELDS);
 
@@ -98,6 +99,7 @@ function rowToOrder(row: OrderRow): Order {
     notes: row.notes ?? null,
     tax_locked: Boolean(row.tax_locked),
     bank_match_id: row.bank_match_id ?? null,
+    external_synced: Boolean(row.external_synced),
     created_at: row.created_at,
     updated_at: row.updated_at,
     deleted_at: row.deleted_at ?? null,
@@ -275,13 +277,14 @@ export async function createOrder(data: NewOrderInput): Promise<Order> {
         product_id, variant, quantity, sale_price, shipping_revenue,
         shipping_cost, material_cost, platform_fee, payout_amount, status,
         payment_status, payment_received_date, shipping_status, tracking_number,
-        order_date, notes, tax_locked, bank_match_id, created_at, updated_at, deleted_at
+        order_date, notes, tax_locked, bank_match_id, external_synced, created_at, updated_at,
+        deleted_at
       ) VALUES (
         $1, $2, $3, $4, $5,
         $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15,
         $16, $17, $18, $19,
-        $20, $21, $22, $23, $24, $25, $26
+        $20, $21, $22, $23, $24, $25, $26, $27
       )`,
         [
           id,
@@ -307,6 +310,7 @@ export async function createOrder(data: NewOrderInput): Promise<Order> {
           input.notes ?? null,
           input.tax_locked ? 1 : 0,
           input.bank_match_id ?? null,
+          input.external_synced ? 1 : 0,
           timestamp,
           timestamp,
           null,

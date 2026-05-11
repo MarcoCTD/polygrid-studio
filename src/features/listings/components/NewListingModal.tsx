@@ -9,7 +9,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -43,7 +42,7 @@ export function NewListingModal({
   const [selectedProductId, setSelectedProductId] = useState('');
   const [language, setLanguage] = useState<'de' | 'en'>('de');
   const [inventoryMode, setInventoryMode] = useState<InventoryMode>('made_to_order');
-  const [platforms, setPlatforms] = useState<Platform[]>([...PLATFORMS]);
+  const [platform, setPlatform] = useState<Platform | ''>('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -69,7 +68,7 @@ export function NewListingModal({
           );
           setLanguage('de');
           setInventoryMode('made_to_order');
-          setPlatforms([...PLATFORMS]);
+          setPlatform('');
         })
         .catch((err) => {
           if (!cancelled) {
@@ -88,16 +87,8 @@ export function NewListingModal({
     };
   }, [initialProductId, open]);
 
-  function togglePlatform(platform: Platform) {
-    setPlatforms((current) =>
-      current.includes(platform)
-        ? current.filter((item) => item !== platform)
-        : [...current, platform],
-    );
-  }
-
   async function handleCreate() {
-    if (!selectedProduct) return;
+    if (!selectedProduct || !platform) return;
 
     setIsCreating(true);
     try {
@@ -109,7 +100,8 @@ export function NewListingModal({
         inventory_mode: inventoryMode,
         stock_quantity: inventoryMode === 'stock' ? 0 : null,
         language,
-        platforms,
+        platform,
+        platforms: [platform],
       });
       toast.success('Listing erstellt');
       onOpenChange(false);
@@ -205,20 +197,21 @@ export function NewListingModal({
           </div>
 
           <div>
-            <p className="mb-1.5 text-xs font-medium text-text-secondary">
-              Plattformen vorbereiten
-            </p>
-            <div className="grid gap-2 sm:grid-cols-3">
-              {PLATFORMS.map((platform) => (
-                <label key={platform} className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={platforms.includes(platform)}
-                    onCheckedChange={() => togglePlatform(platform)}
-                  />
-                  <span>{PLATFORM_LABELS[platform]}</span>
-                </label>
-              ))}
-            </div>
+            <label className="mb-1.5 block text-xs font-medium text-text-secondary">
+              Plattform
+            </label>
+            <Select value={platform} onValueChange={(value) => setPlatform(value as Platform)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Plattform wählen" />
+              </SelectTrigger>
+              <SelectContent>
+                {PLATFORMS.map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {PLATFORM_LABELS[item]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -228,7 +221,7 @@ export function NewListingModal({
           </Button>
           <Button
             onClick={() => void handleCreate()}
-            disabled={!selectedProduct || isCreating || platforms.length === 0}
+            disabled={!selectedProduct || !platform || isCreating}
           >
             {isCreating ? 'Erstellt...' : 'Erstellen'}
           </Button>

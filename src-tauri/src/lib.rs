@@ -1,5 +1,6 @@
 mod ai;
 mod filesystem;
+mod platform_sync;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -11,6 +12,7 @@ fn greet(name: &str) -> String {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_oauth::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -27,6 +29,10 @@ pub fn run() {
             ai::commands::ai_test_connection,
             ai::commands::ai_list_ollama_models,
             ai::commands::ai_estimate_cost,
+            platform_sync::commands::start_oauth_server,
+            platform_sync::commands::stop_oauth_server,
+            platform_sync::commands::read_file_binary,
+            platform_sync::commands::open_external_url,
             filesystem::commands::list_directory,
             filesystem::commands::get_file_info,
             filesystem::commands::create_directory,

@@ -15,6 +15,7 @@ import migration0009 from '../../../drizzle/0009_modul_08_order_events.sql?raw';
 import migration0010 from '../../../drizzle/0010_fix_expense_receipt_attached.sql?raw';
 import migration0011 from '../../../drizzle/0011_modul_09_tasks_soft_delete_recurring.sql?raw';
 import migration0012 from '../../../drizzle/0012_modul_10_kpi_records.sql?raw';
+import migration0013 from '../../../drizzle/0013_modul_12_platform_sync.sql?raw';
 
 export interface Migration {
   tag: string;
@@ -35,4 +36,5 @@ export const MIGRATIONS: Migration[] = [
   { tag: '0010_fix_expense_receipt_attached', sql: migration0010 },
   { tag: '0011_modul_09_tasks_soft_delete_recurring', sql: migration0011 },
   { tag: '0012_modul_10_kpi_records', sql: migration0012 },
+  { tag: '0013_modul_12_platform_sync', sql: migration0013 },
 ];

@@ -85,6 +85,22 @@ export const DEFAULTS = {
 
   backup_directory: '',
   last_backup_at: '',
+
+  etsy_shop_id: '',
+  etsy_default_shipping_profile_id: '',
+  etsy_default_return_policy_id: '',
+  etsy_default_taxonomy_id: null,
+  etsy_who_made: 'i_did',
+  etsy_when_made: '2020_2026',
+  ebay_marketplace_id: 'EBAY_DE',
+  ebay_inventory_location_key: '',
+  ebay_default_fulfillment_policy_id: '',
+  ebay_default_payment_policy_id: '',
+  ebay_default_return_policy_id: '',
+  ebay_default_category_id: '',
+  sync_interval_minutes: 30,
+  sync_auto_enabled: false,
+  sync_pull_orders_enabled: false,
 } as const;
 
 export type SettingKey = keyof typeof DEFAULTS;

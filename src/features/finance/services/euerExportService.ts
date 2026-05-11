@@ -128,6 +128,7 @@ function rowToOrder(row: Row): OrderListItem {
     notes: (row.notes as string | null) ?? null,
     tax_locked: Boolean(row.tax_locked),
     bank_match_id: (row.bank_match_id as string | null) ?? null,
+    external_synced: Boolean(row.external_synced),
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
     deleted_at: (row.deleted_at as string | null) ?? null,

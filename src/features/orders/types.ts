@@ -48,6 +48,7 @@ export const OrderSchema = z.object({
   notes: nullableText,
   tax_locked: z.boolean(),
   bank_match_id: nullableUuid,
+  external_synced: z.boolean(),
   created_at: z.string().min(1),
   updated_at: z.string().min(1),
   deleted_at: z.string().nullable(),
@@ -76,6 +77,7 @@ export const NewOrderSchema = z.object({
   notes: optionalNullableText,
   tax_locked: z.boolean().optional(),
   bank_match_id: nullableUuid.optional(),
+  external_synced: z.boolean().optional(),
 });
 
 const LOCKED_ALLOWED_FIELDS = new Set([

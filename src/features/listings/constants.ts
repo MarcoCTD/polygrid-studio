@@ -70,4 +70,4 @@ export const DEFAULT_LISTING_VALUES = {
   status: 'draft',
   seo_notes: null,
   append_legal_texts: true,
-} as const satisfies Omit<ListingInsert, 'product_id' | 'master_title'>;
+} as const satisfies Omit<ListingInsert, 'product_id' | 'master_title' | 'platform'>;

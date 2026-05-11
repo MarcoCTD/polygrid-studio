@@ -100,11 +100,20 @@ export const listings = sqliteTable(
     created_at: text('created_at').notNull(),
     updated_at: text('updated_at').notNull(),
     deleted_at: text('deleted_at'),
+    platform: text('platform').notNull(),
+    external_id: text('external_id'),
+    sync_status: text('sync_status').notNull().default('not_synced'),
+    sync_error_message: text('sync_error_message'),
+    last_synced_at: text('last_synced_at'),
+    platform_metadata: text('platform_metadata', { mode: 'json' }).$type<Record<string, unknown>>(),
   },
   (table) => [
     uniqueIndex('idx_listings_product_id_unique').on(table.product_id),
     index('idx_listings_status').on(table.status),
     index('idx_listings_language').on(table.language),
+    index('idx_listings_platform').on(table.platform),
+    index('idx_listings_sync_status').on(table.sync_status),
+    index('idx_listings_external_id').on(table.external_id),
   ],
 );
 
@@ -318,6 +327,7 @@ export const orders = sqliteTable(
     notes: text('notes'),
     tax_locked: integer('tax_locked', { mode: 'boolean' }).notNull().default(false),
     bank_match_id: text('bank_match_id').references(() => bankTransactions.id),
+    external_synced: integer('external_synced', { mode: 'boolean' }).notNull().default(false),
     created_at: text('created_at').notNull(),
     updated_at: text('updated_at').notNull(),
     deleted_at: text('deleted_at'),
@@ -329,6 +339,7 @@ export const orders = sqliteTable(
     index('idx_orders_order_date').on(table.order_date),
     index('idx_orders_payment_received_date').on(table.payment_received_date),
     index('idx_orders_tax_locked').on(table.tax_locked),
+    index('idx_orders_external_synced').on(table.external_synced),
   ],
 );
 
@@ -538,5 +549,37 @@ export const kpiRecords = sqliteTable(
   },
   (table) => [
     uniqueIndex('idx_kpi_records_period_unique').on(table.period_type, table.period_start),
+  ],
+);
+
+// ============================================================
+// 13. sync_jobs (Modul 12) – Plattform-Sync-Protokoll
+// ============================================================
+export const syncJobs = sqliteTable(
+  'sync_jobs',
+  {
+    id: text('id').primaryKey(),
+    platform: text('platform').notNull(),
+    operation: text('operation').notNull(),
+    listing_id: text('listing_id').references(() => listings.id, { onDelete: 'set null' }),
+    order_id: text('order_id').references(() => orders.id, { onDelete: 'set null' }),
+    direction: text('direction').notNull(),
+    status: text('status').notNull().default('pending'),
+    request_payload: text('request_payload'),
+    response_payload: text('response_payload'),
+    error_message: text('error_message'),
+    http_status_code: integer('http_status_code'),
+    retry_count: integer('retry_count').notNull().default(0),
+    started_at: text('started_at').notNull(),
+    completed_at: text('completed_at'),
+    created_at: text('created_at').notNull(),
+  },
+  (table) => [
+    index('idx_sync_jobs_platform').on(table.platform),
+    index('idx_sync_jobs_operation').on(table.operation),
+    index('idx_sync_jobs_status').on(table.status),
+    index('idx_sync_jobs_listing_id').on(table.listing_id),
+    index('idx_sync_jobs_started_at').on(table.started_at),
+    index('idx_sync_jobs_platform_started_at').on(table.platform, table.started_at),
   ],
 );

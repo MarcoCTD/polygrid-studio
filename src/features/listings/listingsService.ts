@@ -11,6 +11,7 @@ import {
   type ListingInsert,
   type ListingPlatformOverride,
   type ListingStatus,
+  type ListingSyncStatus,
   type ListingVariant,
   type Platform,
 } from './schemas';
@@ -22,7 +23,7 @@ export interface CompletenessResult {
   hints: string[];
 }
 export type PlatformStatusFilter =
-  `${Platform}:${ListingStatus | 'manual' | 'pending' | 'synced' | 'error'}`;
+  `${Platform}:${ListingStatus | ListingSyncStatus | 'manual' | 'pending' | 'synced' | 'error'}`;
 export type ListingCompletenessFilter = 'green' | 'yellow' | 'red';
 
 export interface ListingFilters {
@@ -214,6 +215,12 @@ function rowToListing(row: Record<string, unknown>): Listing {
     status: row.status,
     seo_notes: nullableString(row.seo_notes),
     append_legal_texts: toBoolean(row.append_legal_texts),
+    platform: row.platform,
+    external_id: nullableString(row.external_id),
+    sync_status: row.sync_status,
+    sync_error_message: nullableString(row.sync_error_message),
+    last_synced_at: nullableString(row.last_synced_at),
+    platform_metadata: parseJsonRecord(row.platform_metadata),
     created_at: row.created_at,
     updated_at: row.updated_at,
     deleted_at: nullableString(row.deleted_at),
@@ -476,7 +483,7 @@ export async function createListing(data: CreateListingInput): Promise<ListingDe
   const parsed = listingInsertSchema.parse(data);
   const timestamp = now();
   const id = createId();
-  const platforms = data.platforms ?? [];
+  const platforms = data.platforms ?? [parsed.platform];
 
   try {
     await db.execute(
@@ -485,10 +492,12 @@ export async function createListing(data: CreateListingInput): Promise<ListingDe
         master_bullet_points, master_tags, base_price, currency, inventory_mode, stock_quantity,
         sku_base, processing_time_min_days, processing_time_max_days, weight_grams,
         dimension_length_cm, dimension_width_cm, dimension_height_cm, condition, language,
-        status, seo_notes, append_legal_texts, created_at, updated_at, deleted_at
+        status, seo_notes, append_legal_texts, created_at, updated_at, deleted_at,
+        platform, external_id, sync_status, sync_error_message, last_synced_at, platform_metadata
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-        $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, NULL
+        $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, NULL,
+        $26, $27, $28, $29, $30, $31
       )`,
       [
         id,
@@ -516,6 +525,12 @@ export async function createListing(data: CreateListingInput): Promise<ListingDe
         parsed.append_legal_texts ?? true,
         timestamp,
         timestamp,
+        parsed.platform,
+        parsed.external_id ?? null,
+        parsed.sync_status ?? 'not_synced',
+        parsed.sync_error_message ?? null,
+        parsed.last_synced_at ?? null,
+        parsed.platform_metadata ? JSON.stringify(parsed.platform_metadata) : null,
       ],
     );
 
@@ -605,10 +620,12 @@ export async function duplicateListing(
         master_bullet_points, master_tags, base_price, currency, inventory_mode, stock_quantity,
         sku_base, processing_time_min_days, processing_time_max_days, weight_grams,
         dimension_length_cm, dimension_width_cm, dimension_height_cm, condition, language,
-        status, seo_notes, append_legal_texts, created_at, updated_at, deleted_at
+        status, seo_notes, append_legal_texts, created_at, updated_at, deleted_at,
+        platform, external_id, sync_status, sync_error_message, last_synced_at, platform_metadata
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NULL, $11, $12, $13, $14,
-        $15, $16, $17, $18, $19, 'draft', $20, $21, $22, $22, NULL
+        $15, $16, $17, $18, $19, 'draft', $20, $21, $22, $22, NULL,
+        $23, NULL, 'not_synced', NULL, NULL, NULL
       )`,
       [
         newListingId,
@@ -633,6 +650,7 @@ export async function duplicateListing(
         source.seo_notes,
         source.append_legal_texts,
         timestamp,
+        source.platform,
       ],
     );
 
