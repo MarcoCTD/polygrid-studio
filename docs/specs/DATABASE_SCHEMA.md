@@ -1,13 +1,15 @@
 # Datenbank-Schema
 
-PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Mai 2026 | Version 1.4
+PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Mai 2026 | Version 1.5
 
-> **Änderungen in v1.4 gegenüber v1.3:**
+> **Änderungen in v1.5 gegenüber v1.4:**
 >
-> - Modul 10 als abgeschlossen markiert, Modul 11 als aktiv
-> - Settings-Keys um fehlende Modul-11-Keys ergänzt: `backup_directory`, `last_backup_at`
-> - Klarstellung: `app_settings` Tabelle bleibt Key-Value-basiert, kein neues Schema nötig für Modul 11
-> - Hinweis: API-Keys und OAuth-Tokens werden NICHT in `app_settings` gespeichert, sondern im OS-Keychain (Tauri `keyring` Crate). Settings-UI liest/schreibt über dedizierte Tauri-Commands.
+> - Modul 11 als abgeschlossen markiert, Modul 12 als aktiv
+> - Neue Tabelle `sync_jobs` für Plattform-API-Call-Protokollierung (Modul 12)
+> - `listings` um Sync-Felder erweitert: `external_id`, `sync_status`, `sync_error_message`, `last_synced_at`, `platform_metadata`
+> - `orders` um Sync-Felder erweitert: `external_synced` (Boolean, ob über Sync importiert)
+> - Neue Settings-Keys für Platform Sync (OAuth-Credentials im Keychain, Shop-IDs, Profile-IDs, Sync-Intervall)
+> - Klarstellung: OAuth-Access-Tokens und Refresh-Tokens werden NICHT in `app_settings` gespeichert, sondern im OS-Keychain
 
 Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Schema. Alle Tabellen werden in Modul 01 (Foundation) angelegt, auch wenn sie erst in späteren Modulen befüllt werden. Das sichert korrekte FK-Beziehungen von Anfang an.
 
@@ -29,15 +31,16 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 | `products`            | Modul 02     | Produktkatalog                                   |
 | `expenses`            | Modul 04     | Geschäftsausgaben                                |
 | `file_links`          | Modul 03     | Datei-zu-Entität-Verknüpfungen                   |
-| `listings`            | Modul 05     | Plattform-Listings                               |
+| `listings`            | Modul 05     | Plattform-Listings (erweitert in Modul 12)       |
 | `ai_jobs`             | Modul 06     | KI-Aufruf-Protokollierung                        |
 | `templates`           | Modul 07     | Textvorlagen-Bibliothek                          |
-| `orders`              | Modul 08     | Kundenaufträge                                   |
+| `orders`              | Modul 08     | Kundenaufträge (erweitert in Modul 12)           |
 | `bank_transactions`   | Modul 08     | Importierte Banktransaktionen (N26)              |
 | `import_batches`      | Modul 08     | Audit-Trail für CSV-Imports                      |
 | `bank_payout_orders`  | Modul 08     | Junction für Sammelauszahlungen (n:m)            |
 | `tasks`               | Modul 09     | Aufgaben                                         |
 | `kpi_records`         | Modul 10     | KPI-Snapshots                                    |
+| `sync_jobs`           | Modul 12     | Plattform-Sync-Protokollierung                   |
 | `app_settings`        | Modul 01     | Key-Value-Einstellungen                          |
 
 ---
@@ -133,30 +136,70 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 
 ---
 
-## listings (Modul 05)
+## listings (Modul 05, erweitert in Modul 12)
 
-| Feld                 | Typ                     | Pflicht | Beschreibung                          |
-| -------------------- | ----------------------- | ------- | ------------------------------------- |
-| id                   | TEXT (UUID)             | Ja      | Primärschlüssel                      |
-| product_id           | TEXT (FK → products.id) | Ja      | Referenz auf Produkt                  |
-| platform             | TEXT                    | Ja      | etsy, ebay, kleinanzeigen             |
-| title                | TEXT                    | Ja      | Listing-Titel                         |
-| short_description    | TEXT                    | Nein    | Kurzbeschreibung                      |
-| long_description     | TEXT                    | Nein    | Ausführliche Beschreibung             |
-| bullet_points        | TEXT (JSON)             | Nein    | Array von Aufzählungspunkten          |
-| tags                 | TEXT (JSON)             | Ja      | Array von Tags                        |
-| price                | REAL                    | Ja      | Listenpreis in EUR                    |
-| variants             | TEXT (JSON)             | Nein    | Array [{name, price}]                 |
-| shipping_info        | TEXT                    | Nein    | Versandinfo Freitext                  |
-| processing_time_days | INTEGER                 | Nein    | Bearbeitungszeit                      |
-| status               | TEXT                    | Ja      | draft, online, paused, archived       |
-| language             | TEXT                    | Ja      | de, en                                |
-| seo_notes            | TEXT                    | Nein    | SEO-Hinweise                          |
-| created_at           | TEXT (ISO)              | Ja      |                                       |
-| updated_at           | TEXT (ISO)              | Ja      |                                       |
-| deleted_at           | TEXT (ISO)              | Nein    | Soft-Delete                           |
+| Feld                 | Typ                     | Pflicht | Beschreibung                                          |
+| -------------------- | ----------------------- | ------- | ----------------------------------------------------- |
+| id                   | TEXT (UUID)             | Ja      | Primärschlüssel                                      |
+| product_id           | TEXT (FK → products.id) | Ja      | Referenz auf Produkt                                  |
+| platform             | TEXT                    | Ja      | etsy, ebay, kleinanzeigen                             |
+| title                | TEXT                    | Ja      | Listing-Titel                                         |
+| short_description    | TEXT                    | Nein    | Kurzbeschreibung                                      |
+| long_description     | TEXT                    | Nein    | Ausführliche Beschreibung                             |
+| bullet_points        | TEXT (JSON)             | Nein    | Array von Aufzählungspunkten                          |
+| tags                 | TEXT (JSON)             | Ja      | Array von Tags                                        |
+| price                | REAL                    | Ja      | Listenpreis in EUR                                    |
+| variants             | TEXT (JSON)             | Nein    | Array [{name, price}]                                 |
+| shipping_info        | TEXT                    | Nein    | Versandinfo Freitext                                  |
+| processing_time_days | INTEGER                 | Nein    | Bearbeitungszeit                                      |
+| status               | TEXT                    | Ja      | draft, online, paused, archived                       |
+| language             | TEXT                    | Ja      | de, en                                                |
+| seo_notes            | TEXT                    | Nein    | SEO-Hinweise                                          |
+| external_id          | TEXT                    | Nein    | **Neu Modul 12**: ID auf der Plattform (Etsy listing_id, eBay offer_id) |
+| sync_status          | TEXT                    | Nein    | **Neu Modul 12**: not_synced, synced, pending, error, conflict |
+| sync_error_message   | TEXT                    | Nein    | **Neu Modul 12**: Letzte Fehlermeldung bei sync_status=error |
+| last_synced_at       | TEXT (ISO)              | Nein    | **Neu Modul 12**: Zeitpunkt des letzten erfolgreichen Sync |
+| platform_metadata    | TEXT (JSON)             | Nein    | **Neu Modul 12**: Plattform-spezifische Daten (siehe unten) |
+| created_at           | TEXT (ISO)              | Ja      |                                                       |
+| updated_at           | TEXT (ISO)              | Ja      |                                                       |
+| deleted_at           | TEXT (ISO)              | Nein    | Soft-Delete                                           |
 
-**Indizes**: `platform`, `status`, `product_id`
+**Indizes**: `platform`, `status`, `product_id`, `external_id`, `sync_status`
+
+**platform_metadata Struktur (JSON):**
+
+Etsy:
+```json
+{
+  "etsy_listing_id": 1234567890,
+  "etsy_shop_id": 12345678,
+  "etsy_state": "active",
+  "etsy_taxonomy_id": 123,
+  "etsy_shipping_profile_id": 456,
+  "etsy_return_policy_id": 789,
+  "etsy_readiness_state_id": 101112,
+  "etsy_image_ids": [111, 222, 333],
+  "etsy_who_made": "i_did",
+  "etsy_when_made": "2020_2026",
+  "etsy_is_supply": false
+}
+```
+
+eBay:
+```json
+{
+  "ebay_sku": "PG-001",
+  "ebay_offer_id": "1234567890",
+  "ebay_listing_id": "v1|1234567890|0",
+  "ebay_inventory_item_group_key": null,
+  "ebay_marketplace_id": "EBAY_DE",
+  "ebay_category_id": "12345",
+  "ebay_fulfillment_policy_id": "abc",
+  "ebay_payment_policy_id": "def",
+  "ebay_return_policy_id": "ghi",
+  "ebay_item_aspects": { "Marke": ["PolyGrid Studio"], "Material": ["PLA"] }
+}
+```
 
 ---
 
@@ -179,8 +222,6 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 | created_at     | TEXT (ISO)  | Ja      |                                                       |
 
 **Indizes**: `created_at`, `agent`, `status`
-
-**Hinweis**: `agent`-Enum erweitert in Modul 07 um `template_assistant`, in Modul 09 um `task_extractor`.
 
 ---
 
@@ -205,7 +246,7 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 
 ---
 
-## orders (Modul 08, erweitert)
+## orders (Modul 08, erweitert in Modul 12)
 
 | Feld                  | Typ                                  | Pflicht | Beschreibung                                                                |
 | --------------------- | ------------------------------------ | ------- | --------------------------------------------------------------------------- |
@@ -232,11 +273,12 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 | notes                 | TEXT                                 | Nein    | Freitext                                                                    |
 | tax_locked            | BOOLEAN                              | Ja      | Default false. True nach EÜR-Export                                         |
 | bank_match_id         | TEXT (FK → bank_transactions.id)     | Nein    | Verknüpfung zur Banktransaktion (1:1)                                       |
+| external_synced       | BOOLEAN                              | Nein    | **Neu Modul 12**: true wenn via Platform Sync importiert (nicht manuell)    |
 | created_at            | TEXT (ISO)                           | Ja      |                                                                             |
 | updated_at            | TEXT (ISO)                           | Ja      |                                                                             |
 | deleted_at            | TEXT (ISO)                           | Nein    | Soft-Delete (nur bei tax_locked = false erlaubt)                            |
 
-**Indizes**: `status`, `platform`, `order_date`, `payment_received_date`, `receipt_number` (unique), `tax_locked`
+**Indizes**: `status`, `platform`, `order_date`, `payment_received_date`, `receipt_number` (unique), `tax_locked`, `external_order_id`
 
 ---
 
@@ -351,6 +393,34 @@ Junction-Tabelle für Sammelauszahlungen. Eine Banktransaktion (Plattform-Auszah
 
 ---
 
+## sync_jobs (Modul 12)
+
+Protokolliert jeden einzelnen API-Call an Etsy oder eBay. Dient als Audit-Trail und Debugging-Hilfe.
+
+| Feld              | Typ                      | Pflicht | Beschreibung                                                |
+| ----------------- | ------------------------ | ------- | ----------------------------------------------------------- |
+| id                | TEXT (UUID)              | Ja      | Primärschlüssel                                            |
+| platform          | TEXT                     | Ja      | etsy, ebay                                                  |
+| operation         | TEXT                     | Ja      | push_listing, update_listing, pause_listing, delete_listing, pull_orders, upload_image, refresh_token |
+| listing_id        | TEXT (FK → listings.id)  | Nein    | Referenz auf lokales Listing (NULL bei Order-Pull)          |
+| order_id          | TEXT (FK → orders.id)    | Nein    | Referenz auf lokalen Auftrag (nur bei Order-Operationen)    |
+| direction         | TEXT                     | Ja      | push, pull                                                  |
+| status            | TEXT                     | Ja      | pending, in_progress, success, error, rate_limited          |
+| request_payload   | TEXT (JSON)              | Nein    | Was wurde an die API gesendet (gekürzt, max 10 KB)          |
+| response_payload  | TEXT (JSON)              | Nein    | Was wurde von der API zurückgegeben (gekürzt, max 10 KB)    |
+| error_message     | TEXT                     | Nein    | Fehlermeldung wenn status=error                             |
+| http_status_code  | INTEGER                  | Nein    | HTTP-Statuscode der API-Antwort                             |
+| retry_count       | INTEGER                  | Ja      | Default: 0. Zählt Wiederholungsversuche                     |
+| started_at        | TEXT (ISO)               | Ja      | Startzeitpunkt des API-Calls                                |
+| completed_at      | TEXT (ISO)               | Nein    | Abschlusszeitpunkt (NULL wenn noch laufend)                 |
+| created_at        | TEXT (ISO)               | Ja      |                                                             |
+
+**Indizes**: `platform`, `operation`, `status`, `listing_id`, `started_at`, `(platform, started_at)`
+
+**Hinweis**: `request_payload` und `response_payload` werden auf max 10 KB gekürzt, um die Datenbankgröße im Rahmen zu halten. Bei Bilduploads wird nur der Dateiname gespeichert, nicht der Binärinhalt.
+
+---
+
 ## app_settings (Modul 01)
 
 | Feld       | Typ         | Pflicht | Beschreibung                       |
@@ -435,6 +505,37 @@ Diese Keys werden über verschiedene Module hinweg verwendet. Die vollständige 
 - `last_backup_at`: String ISO (Default: `""`, wird nach jedem Backup aktualisiert)
 - `archive_retention_days`: Number (Default: 30)
 
+**Platform Sync (Modul 12):**
+
+- `etsy_shop_id`: String (Default: `""`, wird nach erstem OAuth-Flow befüllt)
+- `etsy_default_shipping_profile_id`: String (Default: `""`)
+- `etsy_default_return_policy_id`: String (Default: `""`)
+- `etsy_default_taxonomy_id`: Number (Default: `null`, Kategorie für 3D-Druck-Produkte)
+- `etsy_who_made`: `"i_did"` | `"someone_else"` | `"collective"` (Default: `"i_did"`)
+- `etsy_when_made`: String (Default: `"2020_2026"`)
+- `ebay_marketplace_id`: String (Default: `"EBAY_DE"`)
+- `ebay_inventory_location_key`: String (Default: `""`)
+- `ebay_default_fulfillment_policy_id`: String (Default: `""`)
+- `ebay_default_payment_policy_id`: String (Default: `""`)
+- `ebay_default_return_policy_id`: String (Default: `""`)
+- `ebay_default_category_id`: String (Default: `""`)
+- `sync_interval_minutes`: Number (Default: 30)
+- `sync_auto_enabled`: Boolean (Default: false, MVP nur manuell)
+- `sync_pull_orders_enabled`: Boolean (Default: false, MVP nur manuell)
+
+**OAuth-Tokens und API-Credentials (Modul 12, im OS-Keychain):**
+
+Die folgenden Werte werden NICHT in `app_settings` gespeichert, sondern ausschließlich im OS-Keychain via Tauri `keyring` Crate:
+
+- `polygrid_etsy_api_key` (Etsy App API Keystring)
+- `polygrid_etsy_shared_secret` (Etsy Shared Secret)
+- `polygrid_etsy_access_token` (OAuth 2.0 Access Token, Gültigkeit: 1 Stunde)
+- `polygrid_etsy_refresh_token` (OAuth 2.0 Refresh Token, Gültigkeit: 90 Tage)
+- `polygrid_ebay_client_id` (eBay App ID / Client ID)
+- `polygrid_ebay_client_secret` (eBay Cert ID / Client Secret)
+- `polygrid_ebay_access_token` (OAuth 2.0 User Access Token, Gültigkeit: 2 Stunden)
+- `polygrid_ebay_refresh_token` (OAuth 2.0 Refresh Token, Gültigkeit: 18 Monate)
+
 ---
 
 ## FK-Beziehungen (Übersicht)
@@ -449,6 +550,9 @@ orders   ←── tasks.order_id (optional)
          ←── bank_payout_orders.order_id (n:m via junction)
 
 listings ←── tasks.listing_id (optional)
+         ←── sync_jobs.listing_id (optional)
+
+orders   ←── sync_jobs.order_id (optional)
 
 tasks    ←── tasks.parent_task_id (optional, self-referencing für Recurring-Verlauf)
 
