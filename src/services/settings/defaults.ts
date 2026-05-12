@@ -94,6 +94,7 @@ export const DEFAULTS = {
   etsy_who_made: 'i_did',
   etsy_when_made: '2020_2026',
   ebay_marketplace_id: 'EBAY_DE',
+  ebay_ru_name: '',
   ebay_inventory_location_key: '',
   ebay_default_fulfillment_policy_id: '',
   ebay_default_payment_policy_id: '',

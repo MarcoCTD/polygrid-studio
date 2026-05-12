@@ -7,9 +7,13 @@ import type {
 } from '../providers/types';
 import { platformProviderRegistry, type PlatformProviderRegistry } from '../providers/registry';
 import { etsyProvider } from '../providers/etsy';
+import { ebayProvider } from '../providers/ebay';
 
 if (!platformProviderRegistry.hasProvider('etsy')) {
   platformProviderRegistry.registerProvider(etsyProvider);
+}
+if (!platformProviderRegistry.hasProvider('ebay')) {
+  platformProviderRegistry.registerProvider(ebayProvider);
 }
 
 export class SyncService {

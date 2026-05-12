@@ -176,7 +176,7 @@ export async function loadEtsyShopInfo(accessToken: string, apiKey: string): Pro
 export async function startEtsyOAuthFlow(): Promise<OAuthResult> {
   const apiKey = await getEtsyApiKey();
 
-  const { port } = await invoke<OAuthServerInfo>('start_oauth_server');
+  const { port } = await invoke<OAuthServerInfo>('start_oauth_server', { port: null });
   const redirectUri = `http://localhost:${port}/callback`;
   const state = crypto.randomUUID();
   const codeVerifier = randomString();

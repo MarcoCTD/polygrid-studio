@@ -7,9 +7,14 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Mutex;
 use tauri::{Emitter, Window};
+use tauri_plugin_oauth::OauthConfig;
 
 static OAUTH_PORT: Mutex<Option<u16>> = Mutex::new(None);
 const ETSY_API_BASE_URL: &str = "https://api.etsy.com/v3";
+const EBAY_API_BASE_URL: &str = "https://api.ebay.com";
+const EBAY_TOKEN_URL: &str = "https://api.ebay.com/identity/v1/oauth2/token";
+const EBAY_TRADING_API_URL: &str = "https://api.ebay.com/ws/api.dll";
+const EBAY_TRADING_COMPATIBILITY_LEVEL: &str = "967";
 const ALLOWED_IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "webp"];
 
 #[derive(Debug, Serialize)]
@@ -33,7 +38,10 @@ pub enum EtsyBody {
 }
 
 #[tauri::command]
-pub async fn start_oauth_server(window: Window) -> Result<OAuthServerInfo, String> {
+pub async fn start_oauth_server(
+    window: Window,
+    port: Option<u16>,
+) -> Result<OAuthServerInfo, String> {
     let mut current_port = OAUTH_PORT
         .lock()
         .map_err(|err| format!("OAuth-Server-State konnte nicht gesperrt werden: {err}"))?;
@@ -42,9 +50,19 @@ pub async fn start_oauth_server(window: Window) -> Result<OAuthServerInfo, Strin
         return Ok(OAuthServerInfo { port });
     }
 
-    let port = tauri_plugin_oauth::start(move |url| {
+    let handler = move |url| {
         let _ = window.emit("platform-sync://oauth-url", url);
-    })
+    };
+    let port = match port {
+        Some(port) => tauri_plugin_oauth::start_with_config(
+            OauthConfig {
+                ports: Some(vec![port]),
+                response: None,
+            },
+            handler,
+        ),
+        None => tauri_plugin_oauth::start(handler),
+    }
     .map_err(|err| format!("OAuth-Server konnte nicht gestartet werden: {err}"))?;
 
     *current_port = Some(port);
@@ -172,6 +190,126 @@ pub async fn etsy_upload_listing_image(
     etsy_response(response).await
 }
 
+#[tauri::command]
+pub async fn ebay_api_request(
+    method: String,
+    path: String,
+    access_token: String,
+    body: Option<EtsyBody>,
+    query: Option<HashMap<String, serde_json::Value>>,
+    content_type: Option<String>,
+) -> Result<EtsyApiResponse, String> {
+    let client = Client::new();
+    let url = ebay_url(&path)?;
+    let method = reqwest::Method::from_bytes(method.to_uppercase().as_bytes())
+        .map_err(|err| format!("HTTP-Methode ist ungültig: {err}"))?;
+    let mut request = client
+        .request(method, url)
+        .bearer_auth(access_token)
+        .header("accept", "application/json");
+
+    if let Some(query) = query {
+        let params = query_to_pairs(query);
+        if !params.is_empty() {
+            request = request.query(&params);
+        }
+    }
+
+    match (content_type.as_deref(), body) {
+        (Some("application/x-www-form-urlencoded"), Some(EtsyBody::Text(value))) => {
+            request = request
+                .header("content-type", "application/x-www-form-urlencoded")
+                .body(value);
+        }
+        (Some("application/x-www-form-urlencoded"), Some(EtsyBody::Json(value))) => {
+            let form = json_to_form_pairs(value)?;
+            request = request.form(&form);
+        }
+        (_, Some(EtsyBody::Json(value))) => {
+            request = request
+                .header("content-type", "application/json")
+                .json(&value);
+        }
+        (_, Some(EtsyBody::Text(value))) => {
+            request = request
+                .header("content-type", "application/json")
+                .body(value);
+        }
+        (_, None) => {}
+    }
+
+    let response = request
+        .send()
+        .await
+        .map_err(|err| format!("eBay-Anfrage fehlgeschlagen: {err}"))?;
+    platform_response("eBay", response).await
+}
+
+#[tauri::command]
+pub async fn ebay_token_request(
+    client_id: String,
+    client_secret: String,
+    body: String,
+) -> Result<EtsyApiResponse, String> {
+    let response = Client::new()
+        .post(EBAY_TOKEN_URL)
+        .basic_auth(client_id, Some(client_secret))
+        .header("content-type", "application/x-www-form-urlencoded")
+        .header("accept", "application/json")
+        .body(body)
+        .send()
+        .await
+        .map_err(|err| format!("eBay Token-Anfrage fehlgeschlagen: {err}"))?;
+
+    platform_response("eBay Token", response).await
+}
+
+#[tauri::command]
+pub async fn ebay_upload_site_hosted_picture(
+    path: String,
+    client_id: String,
+    client_secret: String,
+    xml: String,
+) -> Result<EtsyApiResponse, String> {
+    let path = validate_image_path(path)?;
+    let bytes =
+        fs::read(&path).map_err(|err| format!("Bild konnte nicht gelesen werden: {err}"))?;
+    let filename = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("listing-image")
+        .to_string();
+    let mime = mime_for_path(&path)?;
+    let image = multipart::Part::bytes(bytes)
+        .file_name(filename)
+        .mime_str(mime)
+        .map_err(|err| format!("Bild-MIME-Typ konnte nicht gesetzt werden: {err}"))?;
+    let xml_part = multipart::Part::text(xml)
+        .mime_str("text/xml")
+        .map_err(|err| format!("XML-MIME-Typ konnte nicht gesetzt werden: {err}"))?;
+    let form = multipart::Form::new()
+        .part("XML Payload", xml_part)
+        .part("file", image);
+
+    let response = Client::new()
+        .post(EBAY_TRADING_API_URL)
+        .header("X-EBAY-API-CALL-NAME", "UploadSiteHostedPictures")
+        .header("X-EBAY-API-SITEID", "77")
+        .header(
+            "X-EBAY-API-COMPATIBILITY-LEVEL",
+            EBAY_TRADING_COMPATIBILITY_LEVEL,
+        )
+        .header("X-EBAY-API-DEV-NAME", &client_id)
+        .header("X-EBAY-API-APP-NAME", &client_id)
+        .header("X-EBAY-API-CERT-NAME", &client_secret)
+        .multipart(form)
+        .send()
+        .await
+        .map_err(|err| format!("eBay Bild-Upload fehlgeschlagen: {err}"))?;
+
+    platform_response("eBay Trading API", response).await
+}
+
 pub fn validate_image_path(path: String) -> Result<PathBuf, String> {
     let path = PathBuf::from(path);
     if !path.exists() {
@@ -234,6 +372,18 @@ fn etsy_url(path: &str) -> Result<String, String> {
     Ok(format!("{ETSY_API_BASE_URL}{normalized}"))
 }
 
+fn ebay_url(path: &str) -> Result<String, String> {
+    if path.starts_with("http://") || path.starts_with("https://") {
+        return Err("eBay-Pfad darf keine vollständige URL sein.".to_string());
+    }
+    let normalized = if path.starts_with('/') {
+        path.to_string()
+    } else {
+        format!("/{path}")
+    };
+    Ok(format!("{EBAY_API_BASE_URL}{normalized}"))
+}
+
 fn query_to_pairs(query: HashMap<String, serde_json::Value>) -> Vec<(String, String)> {
     query
         .into_iter()
@@ -265,6 +415,13 @@ fn json_scalar_to_string(value: serde_json::Value) -> Option<String> {
 }
 
 async fn etsy_response(response: reqwest::Response) -> Result<EtsyApiResponse, String> {
+    platform_response("Etsy", response).await
+}
+
+async fn platform_response(
+    platform_name: &str,
+    response: reqwest::Response,
+) -> Result<EtsyApiResponse, String> {
     let status = response.status();
     let headers = response
         .headers()
@@ -282,7 +439,7 @@ async fn etsy_response(response: reqwest::Response) -> Result<EtsyApiResponse, S
         .map_err(|err| format!("Etsy-Antwort konnte nicht gelesen werden: {err}"))?;
 
     if !status.is_success() {
-        return Err(format!("Etsy API-Fehler ({status}): {body}"));
+        return Err(format!("{platform_name} API-Fehler ({status}): {body}"));
     }
 
     Ok(EtsyApiResponse {
