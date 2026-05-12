@@ -1,5 +1,6 @@
 export * from './providers/types';
 export * from './providers/registry';
+export * from './providers/etsy';
 export * from './db/sync-jobs-schema';
 export * from './db/sync-jobs-queries';
 export * from './services/sync-jobs-service';

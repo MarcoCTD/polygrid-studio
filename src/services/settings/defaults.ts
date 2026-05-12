@@ -87,6 +87,7 @@ export const DEFAULTS = {
   last_backup_at: '',
 
   etsy_shop_id: '',
+  etsy_shop_name: '',
   etsy_default_shipping_profile_id: '',
   etsy_default_return_policy_id: '',
   etsy_default_taxonomy_id: null,

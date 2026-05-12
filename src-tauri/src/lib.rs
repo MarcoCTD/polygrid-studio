@@ -33,6 +33,8 @@ pub fn run() {
             platform_sync::commands::stop_oauth_server,
             platform_sync::commands::read_file_binary,
             platform_sync::commands::open_external_url,
+            platform_sync::commands::etsy_api_request,
+            platform_sync::commands::etsy_upload_listing_image,
             filesystem::commands::list_directory,
             filesystem::commands::get_file_info,
             filesystem::commands::create_directory,

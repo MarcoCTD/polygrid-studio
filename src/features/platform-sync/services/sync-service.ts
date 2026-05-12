@@ -6,6 +6,11 @@ import type {
   ListingWithProduct,
 } from '../providers/types';
 import { platformProviderRegistry, type PlatformProviderRegistry } from '../providers/registry';
+import { etsyProvider } from '../providers/etsy';
+
+if (!platformProviderRegistry.hasProvider('etsy')) {
+  platformProviderRegistry.registerProvider(etsyProvider);
+}
 
 export class SyncService {
   constructor(private readonly registry: PlatformProviderRegistry = platformProviderRegistry) {}
