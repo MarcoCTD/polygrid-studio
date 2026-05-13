@@ -18,6 +18,7 @@ import type { ListingListItem } from '../listingsService';
 import { resolveImageSrc } from '../utils/resolveImagePath';
 import { ListingStatusBadge } from './ListingStatusBadge';
 import { PlatformStatusBadges } from './PlatformStatusBadges';
+import { SyncStatusBadge } from '@/features/platform-sync';
 
 const ROW_HEIGHT = 56;
 const TITLE_COL_MIN_WIDTH = 240;
@@ -165,6 +166,11 @@ export function ListingsTable({
             />
           ),
           enableSorting: false,
+        }),
+        columnHelper.accessor('sync_status', {
+          header: 'Sync',
+          size: 145,
+          cell: (info) => <SyncStatusBadge status={info.getValue()} />,
         }),
         columnHelper.accessor('inventory_mode', {
           header: 'Inventory',

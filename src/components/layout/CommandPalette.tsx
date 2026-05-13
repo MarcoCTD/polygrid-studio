@@ -20,6 +20,8 @@ import {
   Monitor,
   Palette,
   PanelLeftClose,
+  RefreshCw,
+  Download,
 } from 'lucide-react';
 
 const CATEGORY_LABELS: Record<CommandType['category'], string> = {
@@ -116,6 +118,20 @@ export function CommandPalette() {
         category: 'navigation',
         shortcut: '⌘9',
         action: () => void router.navigate({ to: '/analytics' }),
+      },
+      {
+        id: 'nav-sync',
+        label: 'Zu Sync',
+        icon: RefreshCw,
+        category: 'navigation',
+        action: () => void router.navigate({ to: '/sync' }),
+      },
+      {
+        id: 'sync-pull-orders',
+        label: 'Bestellungen importieren',
+        icon: Download,
+        category: 'action',
+        action: () => void router.navigate({ to: '/sync' }),
       },
       {
         id: 'nav-ai',

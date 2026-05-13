@@ -14,6 +14,7 @@ import { AnalyticsPage } from '@/features/analytics';
 import { FinancePage } from '@/features/finance';
 import { AIAssistantPage } from '@/features/ai-assistant';
 import { SettingsPage } from '@/features/settings';
+import { SyncPage } from '@/features/platform-sync';
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -87,6 +88,12 @@ const analyticsRoute = createRoute({
   component: AnalyticsPage,
 });
 
+const syncRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/sync',
+  component: SyncPage,
+});
+
 const financeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/finance',
@@ -126,6 +133,7 @@ export const routeTree = rootRoute.addChildren([
   filesRoute,
   tasksRoute,
   analyticsRoute,
+  syncRoute,
   financeRoute,
   aiRoute,
   settingsRoute,

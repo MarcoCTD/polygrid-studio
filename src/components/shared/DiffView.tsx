@@ -25,6 +25,10 @@ interface DiffViewProps {
   onReject: () => void;
   isOpen: boolean;
   onClose: () => void;
+  currentLabel?: string;
+  suggestedLabel?: string;
+  acceptLabel?: string;
+  rejectLabel?: string;
 }
 
 function cloneFields(fields: AIDiffField[]): AIDiffField[] {
@@ -169,6 +173,10 @@ export function DiffView({
   onReject,
   isOpen,
   onClose,
+  currentLabel = 'Aktuell',
+  suggestedLabel = 'Vorschlag',
+  acceptLabel = 'Annehmen',
+  rejectLabel = 'Ablehnen',
 }: DiffViewProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editableFields, setEditableFields] = useState<AIDiffField[]>(() => cloneFields(fields));
@@ -224,8 +232,8 @@ export function DiffView({
             <div className="overflow-hidden rounded-lg border border-border">
               <div className="grid grid-cols-[1fr_1.3fr_1.3fr] bg-bg-secondary text-xs font-semibold uppercase tracking-wide text-text-secondary">
                 <div className="border-r border-border px-3 py-2">Feldname</div>
-                <div className="border-r border-border px-3 py-2">Aktuell</div>
-                <div className="px-3 py-2">Vorschlag</div>
+                <div className="border-r border-border px-3 py-2">{currentLabel}</div>
+                <div className="px-3 py-2">{suggestedLabel}</div>
               </div>
               {editableFields.map((field) => (
                 <div
@@ -264,14 +272,14 @@ export function DiffView({
 
         <DialogFooter className="items-center justify-between sm:justify-between">
           <Button variant="outline" onClick={handleReject}>
-            Ablehnen
+            {rejectLabel}
           </Button>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setIsEditing((current) => !current)}>
               {isEditing ? 'Übernehmen' : 'Bearbeiten'}
             </Button>
             <Button onClick={handleAccept} disabled={!hasFields}>
-              Annehmen
+              {acceptLabel}
             </Button>
           </div>
         </DialogFooter>

@@ -32,10 +32,12 @@ interface UIState {
   sidebarCollapsed: boolean;
   openOrdersCount: number;
   overdueTasksCount: number;
+  syncErrorCount: number;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebar: () => void;
   setOpenOrdersCount: (count: number) => void;
   setOverdueTasksCount: (count: number) => void;
+  setSyncErrorCount: (count: number) => void;
   ordersViewMode: 'table' | 'kanban';
   setOrdersViewMode: (mode: 'table' | 'kanban') => void;
 
@@ -79,10 +81,12 @@ export const useUIStore = create<UIState>((set) => ({
   sidebarCollapsed: false,
   openOrdersCount: 0,
   overdueTasksCount: 0,
+  syncErrorCount: 0,
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   setOpenOrdersCount: (count) => set({ openOrdersCount: count }),
   setOverdueTasksCount: (count) => set({ overdueTasksCount: count }),
+  setSyncErrorCount: (count) => set({ syncErrorCount: count }),
   ordersViewMode: 'table',
   setOrdersViewMode: (mode) => set({ ordersViewMode: mode }),
 

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUIStore } from '@/stores';
 import { cn } from '@/lib/utils';
+import { SyncDiffDialog, SyncStatusBadge } from '@/features/platform-sync';
 import {
   calculateCompleteness,
   getListing,
@@ -55,6 +56,7 @@ export function ListingEditorPage() {
   const [notFound, setNotFound] = useState(false);
   const [formReady, setFormReady] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
+  const [isSyncDiffOpen, setIsSyncDiffOpen] = useState(false);
 
   const form = useForm<MasterListingFormValues>({
     resolver: zodResolver(masterListingFormSchema),
@@ -206,9 +208,20 @@ export function ListingEditorPage() {
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex shrink-0 items-center justify-between border-b border-border-subtle px-6 py-3 dark:border-transparent">
         <div>
-          <h1 className="text-lg font-semibold text-text-primary">{listing.master_title}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-lg font-semibold text-text-primary">{listing.master_title}</h1>
+            <SyncStatusBadge status={listing.sync_status} />
+          </div>
           <p className="text-sm text-text-secondary">{listing.product_name ?? 'Produkt'}</p>
         </div>
+        {(listing.platform === 'etsy' || listing.platform === 'ebay') && (
+          <Button
+            disabled={listing.status === 'draft'}
+            onClick={() => setIsSyncDiffOpen(true)}
+          >
+            Push to {PLATFORM_TAB_LABELS[listing.platform]}
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="master" className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -261,6 +274,18 @@ export function ListingEditorPage() {
         onBack={goBack}
         onSave={() => void handleSave()}
       />
+      {(listing.platform === 'etsy' || listing.platform === 'ebay') && (
+        <SyncDiffDialog
+          listing={{
+            id: listing.id,
+            master_title: listing.master_title,
+            syncPlatform: listing.platform,
+          }}
+          open={isSyncDiffOpen}
+          onOpenChange={setIsSyncDiffOpen}
+          onSynced={() => void loadListing()}
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { useRouter, useMatches } from '@tanstack/react-router';
 import { useUIStore } from '@/stores';
 import { cn } from '@/lib/utils';
+import { getSyncErrorCount } from '@/features/platform-sync';
 import {
   LayoutDashboard,
   Package,
@@ -14,6 +16,7 @@ import {
   Wallet,
   Sparkles,
   Settings,
+  RefreshCw,
   PanelLeftClose,
   PanelLeftOpen,
   type LucideIcon,
@@ -37,6 +40,7 @@ const mainNavItems: NavItem[] = [
   { label: 'Dateien', icon: FolderOpen, route: '/files' },
   { label: 'Aufgaben', icon: CheckSquare, route: '/tasks' },
   { label: 'Analysen', icon: BarChart3, route: '/analytics' },
+  { label: 'Sync', icon: RefreshCw, route: '/sync' },
   { label: 'Finanzen', icon: Wallet, route: '/finance' },
 ];
 
@@ -117,18 +121,39 @@ export function Sidebar() {
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const openOrdersCount = useUIStore((s) => s.openOrdersCount);
   const overdueTasksCount = useUIStore((s) => s.overdueTasksCount);
+  const syncErrorCount = useUIStore((s) => s.syncErrorCount);
+  const setSyncErrorCount = useUIStore((s) => s.setSyncErrorCount);
   const matches = useMatches();
   const currentPath = router.state.location.pathname;
   const currentRoutePath = matches[matches.length - 1]?.fullPath ?? '/';
   const isNavItemActive = (route: string) => {
     if (route === '/') return currentRoutePath === '/';
     if (route === '/settings') return currentPath.startsWith('/settings');
+    if (route === '/sync') return currentPath.startsWith('/sync');
     return currentPath === route;
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    getSyncErrorCount()
+      .then((count) => {
+        if (!cancelled) setSyncErrorCount(count);
+      })
+      .catch(() => {
+        if (!cancelled) setSyncErrorCount(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [setSyncErrorCount]);
+
   const navItems = mainNavItems.map((item) => {
     if (item.route === '/orders') return { ...item, badge: openOrdersCount };
     if (item.route === '/tasks') {
       return { ...item, badge: overdueTasksCount, badgeTone: 'danger' as const };
+    }
+    if (item.route === '/sync') {
+      return { ...item, badge: syncErrorCount, badgeTone: 'danger' as const };
     }
     return item;
   });

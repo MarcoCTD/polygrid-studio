@@ -1,6 +1,7 @@
 import type { FileLink } from '@/features/files/types';
 import type { Product } from '@/features/products/schema';
 import type { Listing, ListingPlatformMetadata } from '@/features/listings/schemas';
+import type { AIDiffField } from '@/features/ai-assistant/types';
 
 export type Platform = 'etsy' | 'ebay';
 export type SyncDirection = 'push' | 'pull';
@@ -59,6 +60,38 @@ export interface PullOrdersResult {
   skipped: number;
   errors: Array<{ externalId: string; error: string }>;
   syncJobId: string;
+}
+
+export interface BatchSyncResult {
+  total: number;
+  succeeded: number;
+  failed: number;
+  cancelled: boolean;
+  results: SyncResult[];
+}
+
+export interface SyncDiff {
+  listingId: string;
+  platform: Platform;
+  local: RemoteListingData;
+  remote: RemoteListingData | null;
+  fields: AIDiffField[];
+  hasRemote: boolean;
+}
+
+export interface SyncStatusInfo {
+  listingId: string;
+  platform: Platform;
+  status: Listing['sync_status'];
+  lastSyncedAt: string | null;
+  errorMessage: string | null;
+}
+
+export interface SyncLogFilters {
+  platform?: Platform;
+  status?: SyncJobStatus;
+  listingId?: string;
+  limit?: number;
 }
 
 export interface PlatformProfiles {
