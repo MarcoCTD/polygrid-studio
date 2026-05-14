@@ -17,6 +17,7 @@ import {
   Package,
   Palette,
   Plus,
+  RefreshCw,
   Settings,
   Shield,
   Sparkles,
@@ -42,9 +43,10 @@ import { ACCENT_PRESETS, type AccentPresetKey } from '@/utils/colors';
 import { AiSettingsTab } from './components/AiSettingsTab';
 import { BrandSettingsTab } from './components/BrandSettingsTab';
 import { DataSecuritySettingsTab } from './components/DataSecuritySettingsTab';
+import { PlatformSyncSettingsTab } from './components/PlatformSyncSettingsTab';
 import { useAutoSave } from './hooks/useAutoSave';
 
-type SettingsTab = 'general' | 'materials' | 'ai' | 'brand' | 'data';
+type SettingsTab = 'general' | 'materials' | 'platforms' | 'ai' | 'brand' | 'data';
 type Language = 'de' | 'en';
 type DateFormat = 'DD.MM.YYYY' | 'YYYY-MM-DD';
 
@@ -103,6 +105,7 @@ interface TabConfig {
 const TABS: TabConfig[] = [
   { id: 'general', label: 'Allgemein', icon: Settings },
   { id: 'materials', label: 'Material & Plattformen', icon: Package },
+  { id: 'platforms', label: 'Plattformen', icon: RefreshCw },
   { id: 'ai', label: 'KI-Konfiguration', icon: Sparkles },
   { id: 'brand', label: 'Markenstil', icon: Palette },
   { id: 'data', label: 'Daten & Sicherheit', icon: Shield },
@@ -1247,6 +1250,7 @@ export function SettingsPage() {
         <div className="max-w-[800px]">
           {activeTab === 'general' && renderGeneralTab()}
           {activeTab === 'materials' && renderMaterialsTab()}
+          {activeTab === 'platforms' && <PlatformSyncSettingsTab />}
           {activeTab === 'ai' && <AiSettingsTab />}
           {activeTab === 'brand' && <BrandSettingsTab />}
           {activeTab === 'data' && <DataSecuritySettingsTab />}

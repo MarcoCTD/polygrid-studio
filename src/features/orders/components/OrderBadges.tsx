@@ -1,5 +1,6 @@
 import {
   BadgeEuro,
+  CloudDownload,
   CircleDollarSign,
   Landmark,
   Lock,
@@ -101,6 +102,18 @@ export function OrderPlatformIcon({ platform }: { platform: OrderPlatform }) {
 export function TaxLockedIcon({ locked }: { locked: boolean }) {
   if (!locked) return <span className="text-muted-foreground">-</span>;
   return <Lock className="size-4 text-amber-600" aria-label="Steuerlich gesperrt" />;
+}
+
+export function ExternalSyncedBadge() {
+  return (
+    <Badge
+      variant="outline"
+      className="inline-flex items-center gap-1 whitespace-nowrap border-sky-300 bg-sky-100 text-sky-700"
+    >
+      <CloudDownload className="size-3.5" />
+      Extern importiert
+    </Badge>
+  );
 }
 
 export function ShippingStatusIcon({ shipped }: { shipped: boolean }) {

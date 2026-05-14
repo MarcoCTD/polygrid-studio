@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import {
   createColumnHelper,
@@ -23,12 +23,14 @@ const columnHelper = createColumnHelper<SyncListingItem>();
 
 interface SyncOverviewProps {
   onShowDiff: (listing: SyncListingItem) => void;
+  onShowConflict: (listing: SyncListingItem) => void;
   onOpenBatchPush: () => void;
   onOpenOrderPull: (platform?: Platform) => void;
 }
 
 export function SyncOverview({
   onShowDiff,
+  onShowConflict,
   onOpenBatchPush,
   onOpenOrderPull,
 }: SyncOverviewProps) {
@@ -40,9 +42,7 @@ export function SyncOverview({
     error,
     loadListings,
     setFilter,
-    pushListing,
   } = useSyncStore();
-  const [pushingId, setPushingId] = useState<string | null>(null);
 
   useEffect(() => {
     void loadListings();
@@ -96,7 +96,6 @@ export function SyncOverview({
           header: 'Aktionen',
           cell: ({ row }) => {
             const listing = row.original;
-            const isPushing = pushingId === listing.id;
             return (
               <div className="flex justify-end gap-1">
                 <Button
@@ -123,18 +122,13 @@ export function SyncOverview({
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  title="Push"
-                  disabled={isPushing || listing.status === 'draft'}
-                  onClick={async () => {
-                    setPushingId(listing.id);
-                    try {
-                      const result = await pushListing(listing.id);
-                      if (result.success) toast.success('Listing synchronisiert');
-                      else toast.error(result.error ?? 'Push fehlgeschlagen');
-                    } finally {
-                      setPushingId(null);
-                    }
-                  }}
+                  title="Push vorbereiten"
+                  disabled={listing.status === 'draft'}
+                  onClick={() =>
+                    listing.sync_status === 'conflict'
+                      ? onShowConflict(listing)
+                      : onShowDiff(listing)
+                  }
                 >
                   <Send size={14} />
                 </Button>
@@ -143,7 +137,7 @@ export function SyncOverview({
           },
         }),
       ] as ColumnDef<SyncListingItem, unknown>[],
-    [navigate, onShowDiff, pushListing, pushingId],
+    [navigate, onShowConflict, onShowDiff],
   );
 
   // TanStack Table follows the documented local-instance pattern.

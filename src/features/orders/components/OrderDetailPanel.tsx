@@ -40,6 +40,7 @@ import {
 import {
   OrderPlatformIcon,
   OrderStatusBadge,
+  ExternalSyncedBadge,
   PaymentStatusBadge,
   TaxLockedIcon,
 } from './OrderBadges';
@@ -268,6 +269,7 @@ export function OrderDetailPanel({ order, onClose, onChanged }: OrderDetailPanel
               <OrderStatusBadge status={currentOrder.status} />
               <PaymentStatusBadge status={currentOrder.payment_status} />
               <OrderPlatformIcon platform={currentOrder.platform} />
+              {currentOrder.external_synced ? <ExternalSyncedBadge /> : null}
               <TaxLockedIcon locked={currentOrder.tax_locked} />
             </div>
           </div>

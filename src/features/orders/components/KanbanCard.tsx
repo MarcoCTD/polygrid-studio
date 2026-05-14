@@ -4,7 +4,7 @@ import { Lock } from 'lucide-react';
 import { formatEUR, formatRelativeDate } from '@/features/products/utils';
 import { cn } from '@/lib/utils';
 import type { OrderListItem } from '../types';
-import { OrderPlatformIcon } from './OrderBadges';
+import { ExternalSyncedBadge, OrderPlatformIcon } from './OrderBadges';
 
 interface KanbanCardProps {
   order: OrderListItem;
@@ -56,6 +56,12 @@ export function KanbanCard({ order, onOpen }: KanbanCardProps) {
           {formatEUR(order.sale_price)}
         </span>
       </div>
+
+      {order.external_synced ? (
+        <div className="mt-2">
+          <ExternalSyncedBadge />
+        </div>
+      ) : null}
 
       <div className="mt-3 flex items-center justify-between gap-2 text-xs text-text-tertiary">
         <span className="truncate">{order.customer_name || 'Kein Kundenname'}</span>

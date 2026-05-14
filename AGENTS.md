@@ -147,6 +147,22 @@ Endpunkt jeder Sub-Session: `npm run tauri dev` läuft fehlerfrei + Git Commit.
 
 ---
 
+## Modul 12 — Platform Sync Constraints
+
+- Sync-Status liegt kanonisch auf `listings.sync_status`; nicht `listing_platform_overrides` als zweite Status-Ebene einführen.
+- Etsy/eBay API-Calls laufen wegen CORS über Rust/Tauri-Commands in `src-tauri/src/platform_sync/commands.rs`, nicht über Browser-`fetch`.
+- Platform-Credentials und OAuth-Tokens bleiben ausschließlich im OS-Keychain-Service `polygrid-studio`.
+- Keychain-Keys: `polygrid_etsy_api_key`, `polygrid_etsy_shared_secret`, `polygrid_etsy_access_token`, `polygrid_etsy_refresh_token`, `polygrid_etsy_token_expires_at`, `polygrid_ebay_client_id`, `polygrid_ebay_client_secret`, `polygrid_ebay_access_token`, `polygrid_ebay_refresh_token`, `polygrid_ebay_token_expires_at`.
+- Bestehende Commands `keychain_set`, `keychain_get`, `keychain_delete` direkt verwenden; keine Alias-Commands für Platform Sync anlegen.
+- eBay OAuth nutzt festen lokalen Port `58432`; die eBay RuName Accept-URL muss `http://localhost:58432/callback` sein. Kein Fallback-Port im MVP.
+- Für eBay Diff/Remote-Fetch `platform_metadata.ebay.sku` als Identifier nutzen. `external_id` ist die veröffentlichte eBay `listingId`.
+- Für Etsy ist `external_id` die Etsy `listing_id`.
+- Vor jedem Einzel-Push muss der Diff-Dialog gezeigt werden. Batch-Push ist die Ausnahme: ein Bestätigungsdialog mit Anzahl, dann sequenzieller Push mit Ergebnis-Zusammenfassung.
+- `sync_jobs.status` verwendet die Werte `pending`, `running`, `success`, `error`, `retrying`.
+- Sync-Settings liegen in `app_settings`: `etsy_*`, `ebay_*`, `sync_interval_minutes`, `sync_auto_enabled`, `sync_pull_orders_enabled`. Defaults in `src/services/settings/defaults.ts` pflegen.
+
+---
+
 ## Bei Unklarheiten
 
 Wenn eine Anforderung unklar ist oder zwei Spec-Dokumente sich widersprechen: Stoppen und fragen, nicht raten. Das modulspezifische Spec-Dokument hat Vorrang gegenüber diesem Dokument für den Modul-Scope. Dieses Dokument gilt für alles Übergreifende.
