@@ -5,6 +5,7 @@ import { useUIStore } from '@/stores';
 import { initDatabase } from '@/services/database';
 import { processDueRecurringExpenses } from '@/features/expenses/services';
 import { useAutoSnapshot } from '@/features/analytics/hooks';
+import { useOrdersBadge } from '@/features/orders/hooks';
 import { useTaskBadge } from '@/features/tasks/hooks';
 import { router } from '@/router';
 import { Toaster } from '@/components/ui/sonner';
@@ -48,6 +49,7 @@ function App() {
   const setDbReady = useUIStore((s) => s.setDbReady);
   const setDbError = useUIStore((s) => s.setDbError);
   useTaskBadge(dbReady);
+  useOrdersBadge(dbReady);
   useAutoSnapshot(dbReady);
 
   useEffect(() => {
