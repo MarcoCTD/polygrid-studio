@@ -1,2 +1,2 @@
 pub mod commands;
-mod paths;
+pub(crate) mod paths;

@@ -6,7 +6,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::{AppHandle, Manager};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -39,14 +38,6 @@ pub struct FileOperationLog {
     pub is_undoable: bool,
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BackupInfo {
-    pub filename: String,
-    pub size_bytes: u64,
-    pub created_at: String,
-}
-
 const STANDARD_DIRECTORIES: &[&str] = &[
     "01_Finanzen",
     "01_Finanzen/Belege_2026",
@@ -60,128 +51,6 @@ const STANDARD_DIRECTORIES: &[&str] = &[
     "08_Content",
     "09_Archiv",
 ];
-
-const MAX_BACKUPS_DEFAULT: usize = 30;
-
-fn app_data_dir(app: &AppHandle) -> Result<PathBuf, FsError> {
-    app.path()
-        .app_data_dir()
-        .map_err(|err| FsError::Io(err.to_string()))
-}
-
-fn backup_dir(app: &AppHandle) -> Result<PathBuf, FsError> {
-    Ok(app_data_dir(app)?.join("backups"))
-}
-
-fn backup_timestamp() -> Result<u64, FsError> {
-    Ok(SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|err| FsError::Io(err.to_string()))?
-        .as_secs())
-}
-
-fn backup_info_from_path(path: PathBuf) -> Result<BackupInfo, FsError> {
-    let metadata = fs::metadata(&path)?;
-    let filename = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .ok_or(FsError::NotFound)?
-        .to_string();
-    let created_at = metadata
-        .modified()
-        .ok()
-        .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
-        .map(|duration| duration.as_secs().to_string())
-        .unwrap_or_else(|| "0".to_string());
-
-    Ok(BackupInfo {
-        filename,
-        size_bytes: metadata.len(),
-        created_at,
-    })
-}
-
-fn sorted_backups(dir: &Path) -> Result<Vec<BackupInfo>, FsError> {
-    if !dir.exists() {
-        return Ok(Vec::new());
-    }
-
-    let mut backups = Vec::new();
-    for entry in fs::read_dir(dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        if path.is_file()
-            && path
-                .file_name()
-                .and_then(|name| name.to_str())
-                .is_some_and(|name| name.starts_with("polygrid_backup_") && name.ends_with(".db"))
-        {
-            backups.push(backup_info_from_path(path)?);
-        }
-    }
-    backups.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-    Ok(backups)
-}
-
-fn prune_old_backups(dir: &Path) -> Result<(), FsError> {
-    let backups = sorted_backups(dir)?;
-    for backup in backups.into_iter().skip(MAX_BACKUPS_DEFAULT) {
-        let path = dir.join(backup.filename);
-        if path.exists() {
-            fs::remove_file(path)?;
-        }
-    }
-    Ok(())
-}
-
-#[tauri::command]
-pub fn create_backup(app: AppHandle) -> Result<String, FsError> {
-    let data_dir = app_data_dir(&app)?;
-    let database_path = data_dir.join("polygrid.db");
-    if !database_path.exists() {
-        return Err(FsError::NotFound);
-    }
-
-    let dir = backup_dir(&app)?;
-    fs::create_dir_all(&dir)?;
-
-    let timestamp = backup_timestamp()?;
-    let backup_path = dir.join(format!("polygrid_backup_{timestamp}.db"));
-    fs::copy(database_path, &backup_path)?;
-    prune_old_backups(&dir)?;
-
-    Ok(backup_path.to_string_lossy().to_string())
-}
-
-#[tauri::command]
-pub fn list_backups(app: AppHandle) -> Result<Vec<BackupInfo>, FsError> {
-    let dir = backup_dir(&app)?;
-    sorted_backups(&dir).map(|backups| backups.into_iter().take(10).collect())
-}
-
-#[tauri::command]
-pub fn delete_backup(app: AppHandle, filename: String) -> Result<(), FsError> {
-    let requested_path = PathBuf::from(&filename);
-    let safe_filename = requested_path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .filter(|name| *name == filename)
-        .map(str::to_string)
-        .ok_or(FsError::PathOutsideBase)?;
-    let path = backup_dir(&app)?.join(&safe_filename);
-    if !path.exists() {
-        return Err(FsError::NotFound);
-    }
-    fs::remove_file(path)?;
-    Ok(())
-}
-
-#[tauri::command]
-pub fn get_backup_directory(app: AppHandle) -> Result<String, FsError> {
-    let dir = backup_dir(&app)?;
-    fs::create_dir_all(&dir)?;
-    Ok(dir.to_string_lossy().to_string())
-}
 
 #[tauri::command]
 pub fn list_directory(path: String, base_path: Option<String>) -> Result<Vec<FileEntry>, FsError> {

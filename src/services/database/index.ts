@@ -6,13 +6,54 @@
  * Queries laufen direkt ueber die Tauri SQL Plugin API.
  */
 import Database from '@tauri-apps/plugin-sql';
+import { invoke } from '@tauri-apps/api/core';
 import { DEFAULTS } from '@/services/settings/defaults';
-import { MIGRATIONS } from './migrations';
+import { MIGRATIONS, type Migration } from './migrations';
 
 const DB_PATH = 'sqlite:polygrid.db';
 const STATEMENT_BREAKPOINT = '--> statement-breakpoint';
 
 let dbInstance: Database | null = null;
+
+function migrationBackupErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
+async function createPreMigrationBackup(pendingMigrations: Migration[]): Promise<void> {
+  const timestamp = new Date().toISOString();
+  const migrationTags = pendingMigrations.map((migration) => migration.tag).join(', ');
+
+  try {
+    const path = await invoke<string>('create_pre_migration_backup', { timestamp });
+    console.info('[Database] Pre-migration backup created', {
+      path,
+      timestamp,
+      pendingMigrations: migrationTags,
+    });
+  } catch (error) {
+    const message = migrationBackupErrorMessage(error);
+    console.error('[Database] Pre-migration backup failed', {
+      timestamp,
+      pendingMigrations: migrationTags,
+      error,
+    });
+    throw new Error(
+      `Pre-Migration-Backup fehlgeschlagen. Die ausstehenden Migrationen wurden nicht ausgeführt. Ursache: ${message}`,
+    );
+  }
+}
 
 /**
  * Gibt die aktive DB-Instanz zurueck.
@@ -52,13 +93,14 @@ export async function initDatabase(): Promise<void> {
   // Bereits angewendete Migrations ermitteln
   const applied = await db.select<{ tag: string }[]>('SELECT tag FROM _migrations ORDER BY tag');
   const appliedTags = new Set(applied.map((row) => row.tag));
+  const pendingMigrations = MIGRATIONS.filter((migration) => !appliedTags.has(migration.tag));
+
+  if (pendingMigrations.length > 0) {
+    await createPreMigrationBackup(pendingMigrations);
+  }
 
   // Ausstehende Migrations sequenziell ausfuehren
-  for (const migration of MIGRATIONS) {
-    if (appliedTags.has(migration.tag)) {
-      continue;
-    }
-
+  for (const migration of pendingMigrations) {
     // SQL am Breakpoint-Marker aufteilen und einzeln ausfuehren
     const statements = migration.sql
       .split(STATEMENT_BREAKPOINT)

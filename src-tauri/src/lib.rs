@@ -1,4 +1,5 @@
 mod ai;
+mod backup;
 mod filesystem;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -33,10 +34,11 @@ pub fn run() {
             filesystem::commands::open_in_explorer,
             filesystem::commands::check_path_exists,
             filesystem::commands::ensure_onedrive_structure,
-            filesystem::commands::create_backup,
-            filesystem::commands::list_backups,
-            filesystem::commands::delete_backup,
-            filesystem::commands::get_backup_directory,
+            backup::create_backup,
+            backup::list_backups,
+            backup::delete_backup,
+            backup::get_backup_directory,
+            backup::create_pre_migration_backup,
             filesystem::commands::rename_file,
             filesystem::commands::move_file,
             filesystem::commands::copy_file,
