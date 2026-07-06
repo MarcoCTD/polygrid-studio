@@ -99,3 +99,25 @@ test('Settings: Tax-Lock-Toggles im Daten-Tab werden persistiert', async ({ page
   await page.reload();
   await expect(page.getByRole('switch').first()).toHaveAttribute('aria-checked', 'true');
 });
+
+test('Settings: alle fünf Tabs öffnen ohne Fehler', async ({ page }) => {
+  const crashes: string[] = [];
+  page.on('pageerror', (err) => crashes.push(err.message));
+
+  await page.goto('/settings/general');
+  await expect(page.getByText('Grundeinstellungen')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Material & Plattformen' }).click();
+  await expect(page.getByText('Drucker-Setup')).toBeVisible();
+
+  await page.getByRole('button', { name: 'KI-Konfiguration' }).click();
+  await expect(page.getByText('KI-Provider')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Markenstil' }).click();
+  await expect(page.getByText('Schreibstil')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Daten & Sicherheit' }).click();
+  await expect(page.getByText('Finanzen & Steuer')).toBeVisible();
+
+  expect(crashes).toEqual([]);
+});
