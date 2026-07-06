@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -335,12 +335,14 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
     }
   }, [open, form1, form2, form3]);
 
-  const allData = useMemo(() => {
-    const d1 = form1.getValues();
-    const d2 = form2.getValues();
-    const d3 = form3.getValues();
-    return { ...d1, ...d2, ...d3 };
-  }, [form1, form2, form3]);
+  // Bewusst KEIN useMemo: Die Form-Instanzen sind referenzstabil, ein Memo
+  // wuerde daher nie neu berechnet und immer die leeren Defaults liefern.
+  // getValues() bei jedem Render liefert den aktuellen Stand aller Steps.
+  const allData: Step1Data & Step2Data & Step3Data = {
+    ...form1.getValues(),
+    ...form2.getValues(),
+    ...form3.getValues(),
+  };
 
   // Check if any data has been entered (for cancel confirmation)
   const hasData = () => {
@@ -448,9 +450,9 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
     }
   };
 
-  // Step 4: Summary with margin
-  const marginResult = useMemo(() => {
-    if (!settings) return null;
+  // Step 4: Summary with margin (nur dort gebraucht, Berechnung ist billig)
+  const marginResult = (() => {
+    if (!settings || step !== 3) return null;
     const data = allData;
     // Build a mock product for margin calculation
     const mockProduct = {
@@ -489,7 +491,7 @@ export function NewProductDialog({ open, onOpenChange, onCreated }: NewProductDi
       deleted_at: null,
     };
     return calculateMargin(mockProduct, settings, null);
-  }, [allData, colorVariants, settings]);
+  })();
 
   const materialOptions = settings?.materialOptions ?? ['PLA', 'PETG', 'TPU', 'ABS', 'Resin'];
   const shippingClassOptions = settings?.shippingClassOptions ?? ['Brief', 'Warensendung', 'Paket'];
