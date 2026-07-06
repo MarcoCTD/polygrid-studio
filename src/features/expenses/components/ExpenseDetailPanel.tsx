@@ -364,7 +364,9 @@ function OverviewTab({ form }: { form: UseFormReturn<ExpenseUpdateWithId> }) {
   } = form;
 
   const category = watch('category') ?? 'sonstiges';
-  const subcategories = EXPENSE_SUBCATEGORIES[category];
+  // Fallback fuer unbekannte Kategorie-Werte aus der DB (z.B. Altdaten/Import):
+  // ohne Guard wuerde ein einziger invalider Datensatz die ganze App crashen.
+  const subcategories = EXPENSE_SUBCATEGORIES[category] ?? EXPENSE_SUBCATEGORIES.sonstiges;
   const paymentMethod = watch('payment_method');
   const subcategory = watch('subcategory');
   const productId = watch('product_id');
