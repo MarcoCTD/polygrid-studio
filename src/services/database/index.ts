@@ -14,6 +14,7 @@ const DB_PATH = 'sqlite:polygrid.db';
 const STATEMENT_BREAKPOINT = '--> statement-breakpoint';
 
 let dbInstance: Database | null = null;
+let initPromise: Promise<void> | null = null;
 
 function migrationBackupErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -75,8 +76,21 @@ export function getDatabase(): Database {
  * 5. Default-Settings einfuegen falls leer
  *
  * Wirft bei Fehler – die App darf NICHT mit einer fehlerhaften DB starten.
+ *
+ * Idempotent: Parallele Aufrufe (z.B. durch React StrictMode im Dev-Modus)
+ * teilen sich denselben Init-Lauf, damit Migrationen nie doppelt laufen.
  */
-export async function initDatabase(): Promise<void> {
+export function initDatabase(): Promise<void> {
+  if (!initPromise) {
+    initPromise = doInitDatabase().catch((error: unknown) => {
+      initPromise = null;
+      throw error;
+    });
+  }
+  return initPromise;
+}
+
+async function doInitDatabase(): Promise<void> {
   const db = await Database.load(DB_PATH);
 
   // PRAGMA foreign_keys muss bei jeder Verbindung gesetzt werden
