@@ -42,7 +42,12 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const config = STATUS_CONFIG[status];
+  // Fallback fuer unbekannte Status-Werte aus der DB (Altdaten/Import):
+  // ohne Guard wuerde ein einziger invalider Datensatz die Produktliste crashen.
+  const config = STATUS_CONFIG[status] ?? {
+    label: status,
+    className: 'bg-[var(--bg-hover)] text-text-secondary',
+  };
   return (
     <span
       className={cn(

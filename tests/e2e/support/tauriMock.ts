@@ -39,12 +39,20 @@ function toSqlValue(value: unknown): SqlValue {
   return JSON.stringify(value);
 }
 
-function toBindParams(values: unknown[]): Record<string, SqlValue> {
-  const params: Record<string, SqlValue> = {};
-  values.forEach((value, index) => {
-    params[`$${index + 1}`] = toSqlValue(value);
-  });
-  return params;
+/**
+ * Die App nutzt gemischt `$1`-Parameter und `?`-Parameter (wie sqlx).
+ * sql.js braucht dafuer unterschiedliche Bind-Formen: benanntes Objekt
+ * fuer `$N`, positionsbasiertes Array fuer `?`.
+ */
+function toBindParams(query: string, values: unknown[]): Record<string, SqlValue> | SqlValue[] {
+  if (/\$\d+/.test(query)) {
+    const params: Record<string, SqlValue> = {};
+    values.forEach((value, index) => {
+      params[`$${index + 1}`] = toSqlValue(value);
+    });
+    return params;
+  }
+  return values.map(toSqlValue);
 }
 
 export class TauriMock {
@@ -76,7 +84,7 @@ export class TauriMock {
         const query = args.query as string;
         const values = (args.values as unknown[]) ?? [];
         if (values.length > 0) {
-          this.db.run(query, toBindParams(values));
+          this.db.run(query, toBindParams(query, values));
         } else {
           this.db.run(query);
         }
@@ -91,7 +99,7 @@ export class TauriMock {
         const stmt = this.db.prepare(query);
         try {
           if (values.length > 0) {
-            stmt.bind(toBindParams(values));
+            stmt.bind(toBindParams(query, values));
           }
           const rows: Record<string, unknown>[] = [];
           while (stmt.step()) {
@@ -193,7 +201,7 @@ export class TauriMock {
   select(query: string, values: unknown[] = []): Record<string, unknown>[] {
     const stmt = this.db.prepare(query);
     try {
-      if (values.length > 0) stmt.bind(toBindParams(values));
+      if (values.length > 0) stmt.bind(toBindParams(query, values));
       const rows: Record<string, unknown>[] = [];
       while (stmt.step()) rows.push(stmt.getAsObject());
       return rows;
@@ -204,7 +212,7 @@ export class TauriMock {
 
   execute(query: string, values: unknown[] = []): void {
     if (values.length > 0) {
-      this.db.run(query, toBindParams(values));
+      this.db.run(query, toBindParams(query, values));
     } else {
       this.db.run(query);
     }

@@ -40,7 +40,9 @@ export function NewListingModal({
   initialProductId = null,
 }: NewListingModalProps) {
   const [products, setProducts] = useState<ProductWithoutListingOption[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState('');
+  // null = nichts gewaehlt. Ein leerer String wuerde von Base UI als
+  // gewaehlter Wert interpretiert und der Platzhalter nie angezeigt.
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [language, setLanguage] = useState<'de' | 'en'>('de');
   const [inventoryMode, setInventoryMode] = useState<InventoryMode>('made_to_order');
   const [platforms, setPlatforms] = useState<Platform[]>([...PLATFORMS]);
@@ -65,7 +67,7 @@ export function NewListingModal({
           setSelectedProductId(
             initialProductId && items.some((item) => item.id === initialProductId)
               ? initialProductId
-              : (items[0]?.id ?? ''),
+              : (items[0]?.id ?? null),
           );
           setLanguage('de');
           setInventoryMode('made_to_order');
@@ -143,7 +145,9 @@ export function NewListingModal({
               <SelectTrigger className="w-full">
                 <SelectValue
                   placeholder={isLoading ? 'Produkte werden geladen...' : 'Produkt wählen'}
-                />
+                >
+                  {selectedProduct?.name}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {products.map((product) => (
