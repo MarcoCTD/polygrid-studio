@@ -43,6 +43,7 @@ import { cn } from '@/lib/utils';
 import { getDatabase } from '@/services/database';
 import { DEFAULTS, getSettingWithDefault } from '@/services/settings';
 import { useAutoSave } from '../hooks/useAutoSave';
+import { NumberField } from './NumberField';
 
 type CloudProvider = 'claude' | 'openai' | 'gemini';
 type ProviderStatusState = 'idle' | 'loading' | 'success' | 'error';
@@ -884,24 +885,21 @@ export function AiSettingsTab() {
 
       <Section title="KI-Einstellungen">
         <FieldRow label="Monatliches Kostenlimit">
-          <div className="relative max-w-48">
-            <Input
-              type="number"
-              min={0}
-              step={0.5}
-              value={settings.monthlyLimit}
-              className="pr-12"
-              onChange={(event) =>
-                updateSetting('monthlyLimit', Number(event.target.value), 'ai_cost_limit_monthly', [
-                  'ai_monthly_limit_eur',
-                ])
-              }
-              onBlur={() => void refreshBudget()}
-            />
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary">
-              EUR
-            </span>
-          </div>
+          <NumberField
+            value={settings.monthlyLimit}
+            min={0}
+            step={0.5}
+            unit="EUR"
+            aria-label="Monatliches Kostenlimit"
+            className="max-w-48"
+            inputClassName="pr-12"
+            onValueChange={(value) =>
+              updateSetting('monthlyLimit', value, 'ai_cost_limit_monthly', [
+                'ai_monthly_limit_eur',
+              ])
+            }
+            onCommit={() => void refreshBudget()}
+          />
         </FieldRow>
         <FieldRow label="KI-Logging">
           <SwitchControl

@@ -42,6 +42,7 @@ import { ACCENT_PRESETS, type AccentPresetKey } from '@/utils/colors';
 import { AiSettingsTab } from './components/AiSettingsTab';
 import { BrandSettingsTab } from './components/BrandSettingsTab';
 import { DataSecuritySettingsTab } from './components/DataSecuritySettingsTab';
+import { NumberField } from './components/NumberField';
 import { useAutoSave } from './hooks/useAutoSave';
 
 type SettingsTab = 'general' | 'materials' | 'ai' | 'brand' | 'data';
@@ -773,26 +774,21 @@ export function SettingsPage() {
           </FieldRow>
 
           <FieldRow label="Schwache-Marge-Schwellwert">
-            <div className="relative max-w-40">
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                value={settings.marginWarningThreshold}
-                className="pr-8"
-                onChange={(event) =>
-                  updateSetting(
-                    'marginWarningThreshold',
-                    Number(event.target.value),
-                    'margin_warning_threshold',
-                    ['dashboard_low_margin_threshold'],
-                  )
-                }
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary">
-                %
-              </span>
-            </div>
+            <NumberField
+              value={settings.marginWarningThreshold}
+              min={0}
+              max={100}
+              step={1}
+              unit="%"
+              aria-label="Schwache-Marge-Schwellwert"
+              className="max-w-40"
+              inputClassName="pr-8"
+              onValueChange={(value) =>
+                updateSetting('marginWarningThreshold', value, 'margin_warning_threshold', [
+                  'dashboard_low_margin_threshold',
+                ])
+              }
+            />
           </FieldRow>
         </SettingsSection>
       </div>
@@ -835,28 +831,17 @@ export function SettingsPage() {
                         />
                       </td>
                       <td className="px-3 py-2">
-                        <div className="relative">
-                          <Input
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            value={material.pricePerKg}
-                            disabled={!isEditing}
-                            className="pr-12"
-                            onChange={(event) =>
-                              updateMaterial(material.id, {
-                                pricePerKg: Number(event.target.value),
-                              })
-                            }
-                            onBlur={() => commitMaterials(materialsSettings.materials)}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter') commitCurrentMaterials();
-                            }}
-                          />
-                          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-secondary">
-                            EUR
-                          </span>
-                        </div>
+                        <NumberField
+                          value={material.pricePerKg}
+                          min={0}
+                          step={0.01}
+                          unit="EUR"
+                          disabled={!isEditing}
+                          aria-label={`Preis pro kg ${material.name}`.trim()}
+                          inputClassName="pr-12"
+                          onValueChange={(pricePerKg) => updateMaterial(material.id, { pricePerKg })}
+                          onCommit={() => commitMaterials(materialsSettings.materials)}
+                        />
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex justify-end gap-1">
@@ -902,45 +887,34 @@ export function SettingsPage() {
 
         <SettingsSection title="Drucker-Setup">
           <FieldRow label="Druckerleistung">
-            <div className="relative max-w-48">
-              <Input
-                type="number"
-                min={0}
-                value={materialsSettings.printerPowerWatts}
-                className="pr-14"
-                onChange={(event) =>
-                  updateMaterialsSetting(
-                    'printerPowerWatts',
-                    Number(event.target.value),
-                    'printer_power_watts',
-                  )
-                }
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary">
-                Watt
-              </span>
-            </div>
+            <NumberField
+              value={materialsSettings.printerPowerWatts}
+              min={0}
+              max={5000}
+              step={10}
+              unit="Watt"
+              aria-label="Druckerleistung"
+              className="max-w-48"
+              inputClassName="pr-14"
+              onValueChange={(value) =>
+                updateMaterialsSetting('printerPowerWatts', value, 'printer_power_watts')
+              }
+            />
           </FieldRow>
           <FieldRow label="Strompreis">
-            <div className="relative max-w-52">
-              <Input
-                type="number"
-                min={0}
-                step={0.01}
-                value={materialsSettings.electricityPricePerKwh}
-                className="pr-20"
-                onChange={(event) =>
-                  updateMaterialsSetting(
-                    'electricityPricePerKwh',
-                    Number(event.target.value),
-                    'electricity_price_per_kwh',
-                  )
-                }
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary">
-                EUR/kWh
-              </span>
-            </div>
+            <NumberField
+              value={materialsSettings.electricityPricePerKwh}
+              min={0}
+              max={5}
+              step={0.01}
+              unit="EUR/kWh"
+              aria-label="Strompreis"
+              className="max-w-52"
+              inputClassName="pr-20"
+              onValueChange={(value) =>
+                updateMaterialsSetting('electricityPricePerKwh', value, 'electricity_price_per_kwh')
+              }
+            />
           </FieldRow>
           <FieldRow label="Versand-Default">
             <SwitchControl
@@ -969,43 +943,28 @@ export function SettingsPage() {
                 <div className="space-y-3">
                   <Label className="space-y-1">
                     <span className="text-xs text-text-secondary">Gebühr</span>
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        min={0}
-                        step={0.1}
-                        value={materialsSettings.platformFees[platform].percentFee}
-                        className="pr-8"
-                        onChange={(event) =>
-                          updatePlatformFee(platform, {
-                            percentFee: Number(event.target.value),
-                          })
-                        }
-                      />
-                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary">
-                        %
-                      </span>
-                    </div>
+                    <NumberField
+                      value={materialsSettings.platformFees[platform].percentFee}
+                      min={0}
+                      max={100}
+                      step={0.1}
+                      unit="%"
+                      aria-label={`${PLATFORM_LABELS[platform]} Gebühr`}
+                      inputClassName="pr-8"
+                      onValueChange={(percentFee) => updatePlatformFee(platform, { percentFee })}
+                    />
                   </Label>
                   <Label className="space-y-1">
                     <span className="text-xs text-text-secondary">Fixbetrag</span>
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={materialsSettings.platformFees[platform].fixedFee}
-                        className="pr-12"
-                        onChange={(event) =>
-                          updatePlatformFee(platform, {
-                            fixedFee: Number(event.target.value),
-                          })
-                        }
-                      />
-                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary">
-                        EUR
-                      </span>
-                    </div>
+                    <NumberField
+                      value={materialsSettings.platformFees[platform].fixedFee}
+                      min={0}
+                      step={0.01}
+                      unit="EUR"
+                      aria-label={`${PLATFORM_LABELS[platform]} Fixbetrag`}
+                      inputClassName="pr-12"
+                      onValueChange={(fixedFee) => updatePlatformFee(platform, { fixedFee })}
+                    />
                   </Label>
                 </div>
               </div>
@@ -1045,28 +1004,17 @@ export function SettingsPage() {
                         />
                       </td>
                       <td className="px-3 py-2">
-                        <div className="relative">
-                          <Input
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            value={shippingClass.price}
-                            disabled={!isEditing}
-                            className="pr-12"
-                            onChange={(event) =>
-                              updateShippingClass(shippingClass.id, {
-                                price: Number(event.target.value),
-                              })
-                            }
-                            onBlur={() => commitShippingClasses(materialsSettings.shippingClasses)}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter') commitCurrentShippingClasses();
-                            }}
-                          />
-                          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-secondary">
-                            EUR
-                          </span>
-                        </div>
+                        <NumberField
+                          value={shippingClass.price}
+                          min={0}
+                          step={0.01}
+                          unit="EUR"
+                          disabled={!isEditing}
+                          aria-label={`Preis ${shippingClass.name}`.trim()}
+                          inputClassName="pr-12"
+                          onValueChange={(price) => updateShippingClass(shippingClass.id, { price })}
+                          onCommit={() => commitShippingClasses(materialsSettings.shippingClasses)}
+                        />
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex justify-end gap-1">
