@@ -553,6 +553,7 @@ export function DataSecuritySettingsTab() {
         <FieldRow label="Backup-Intervall">
           <Select
             value={String(settings.backupIntervalHours)}
+            items={{ '6': '6h', '12': '12h', '24': '24h', '48': '48h', '168': '7 Tage' }}
             onValueChange={(value) =>
               update('backupIntervalHours', Number(value), 'backup_interval_hours')
             }
@@ -694,6 +695,7 @@ export function DataSecuritySettingsTab() {
         <FieldRow label="Bank-CSV-Format">
           <Select
             value={settings.bankCsvFormat}
+            items={{ n26: 'N26', custom: 'Custom' }}
             onValueChange={(value) =>
               update('bankCsvFormat', value as 'n26' | 'custom', 'bank_csv_format', [
                 'bank_csv_format_default',

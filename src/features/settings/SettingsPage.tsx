@@ -638,6 +638,7 @@ export function SettingsPage() {
           <FieldRow label="Sprache" hint="Ändert die App-Sprache (Neustart erforderlich)">
             <Select
               value={settings.language}
+              items={{ de: 'Deutsch', en: 'English' }}
               onValueChange={(value) => updateSetting('language', value as Language, 'language')}
             >
               <SelectTrigger className="w-full">
@@ -653,6 +654,7 @@ export function SettingsPage() {
           <FieldRow label="Datumsformat">
             <Select
               value={settings.dateFormat}
+              items={{ 'DD.MM.YYYY': 'TT.MM.JJJJ', 'YYYY-MM-DD': 'JJJJ-MM-TT' }}
               onValueChange={(value) =>
                 updateSetting('dateFormat', value as DateFormat, 'date_format')
               }

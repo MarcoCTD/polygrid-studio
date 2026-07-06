@@ -960,6 +960,13 @@ export function AiSettingsTab() {
         <div className="grid gap-2 sm:grid-cols-3">
           <Select
             value={providerFilter}
+            items={{
+              all: 'Alle Provider',
+              claude: 'Claude',
+              openai: 'OpenAI',
+              gemini: 'Gemini',
+              ollama: 'Ollama',
+            }}
             onValueChange={(value) => setProviderFilter(value as ProviderFilter)}
           >
             <SelectTrigger className="w-full">
@@ -975,6 +982,7 @@ export function AiSettingsTab() {
           </Select>
           <Select
             value={agentFilter}
+            items={{ all: 'Alle Agents' }}
             onValueChange={(value) => setAgentFilter(value as AgentFilter)}
           >
             <SelectTrigger className="w-full">
@@ -993,6 +1001,7 @@ export function AiSettingsTab() {
           </Select>
           <Select
             value={statusFilter}
+            items={{ all: 'Alle Status', success: 'Erfolg', error: 'Fehler' }}
             onValueChange={(value) => setStatusFilter(value as StatusFilter)}
           >
             <SelectTrigger className="w-full">

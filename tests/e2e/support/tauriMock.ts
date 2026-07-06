@@ -250,10 +250,15 @@ export async function installTauriMock(page: Page): Promise<TauriMock> {
  * `tauri` gibt Zugriff auf DB/Keychain/Invoke-Log fuer Assertions.
  */
 export const test = base.extend<{ tauri: TauriMock }>({
-  tauri: async ({ page }, use) => {
-    const mock = await installTauriMock(page);
-    await use(mock);
-  },
+  tauri: [
+    async ({ page }, use) => {
+      const mock = await installTauriMock(page);
+      await use(mock);
+    },
+    // auto: Mock wird fuer JEDEN Test installiert, auch wenn die Fixture
+    // nicht explizit destrukturiert wird.
+    { auto: true },
+  ],
 });
 
 export { expect } from '@playwright/test';

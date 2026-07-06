@@ -13,6 +13,18 @@ interface PendingSave {
   successMessage: string;
 }
 
+async function performSave(key: string, next: PendingSave, notify: boolean): Promise<void> {
+  try {
+    await saveSetting(key, next.value);
+    await Promise.all(next.aliases.map((alias) => saveSetting(alias, next.value)));
+    if (notify) toast.success(next.successMessage);
+  } catch (error) {
+    toast.error(
+      error instanceof Error ? error.message : 'Einstellung konnte nicht gespeichert werden',
+    );
+  }
+}
+
 export function useAutoSave(delayMs = 500) {
   const timers = useRef<Map<string, number>>(new Map());
   const pending = useRef<Map<string, PendingSave>>(new Map());
@@ -23,6 +35,13 @@ export function useAutoSave(delayMs = 500) {
         window.clearTimeout(timer);
       }
       timers.current.clear();
+
+      // Ausstehende Saves beim Unmount NICHT verwerfen, sondern sofort
+      // ausfuehren – sonst gehen Aenderungen verloren, wenn der Nutzer
+      // innerhalb des Debounce-Fensters die Seite wechselt.
+      for (const [key, next] of pending.current.entries()) {
+        void performSave(key, next, false);
+      }
       pending.current.clear();
     },
     [],
@@ -45,18 +64,7 @@ export function useAutoSave(delayMs = 500) {
       if (!next) return;
       pending.current.delete(key);
       timers.current.delete(key);
-
-      void (async () => {
-        try {
-          await saveSetting(key, next.value);
-          await Promise.all(next.aliases.map((alias) => saveSetting(alias, next.value)));
-          toast.success(next.successMessage);
-        } catch (error) {
-          toast.error(
-            error instanceof Error ? error.message : 'Einstellung konnte nicht gespeichert werden',
-          );
-        }
-      })();
+      void performSave(key, next, true);
     }, delayMs);
 
     timers.current.set(key, timer);
