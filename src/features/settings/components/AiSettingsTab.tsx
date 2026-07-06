@@ -40,8 +40,16 @@ import {
 import { useAIStore } from '@/features/ai-assistant/stores/aiStore';
 import type { AIProviderName } from '@/features/ai-assistant/types';
 import { cn } from '@/lib/utils';
+import {
+  CLAUDE_MODELS,
+  GEMINI_MODELS,
+  OLLAMA_MODEL_SUGGESTIONS,
+  OPENAI_MODELS,
+  modelSelectItems,
+  resolvePreferredModel,
+} from '@/services/ai';
 import { getDatabase } from '@/services/database';
-import { DEFAULTS, getSettingWithDefault } from '@/services/settings';
+import { DEFAULTS, getSettingWithDefault, saveSetting } from '@/services/settings';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { NumberField } from './NumberField';
 
@@ -113,15 +121,26 @@ const PROVIDERS: Array<{ value: AIProviderName; label: string }> = [
   { value: 'ollama', label: 'Ollama' },
 ];
 
-const CLAUDE_MODELS = ['claude-sonnet-4-20250514', 'claude-opus-4-20250514'];
-const OPENAI_MODELS = ['gpt-4o', 'gpt-4o-mini'];
-const GEMINI_MODELS = [
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash — empfohlen' },
-  { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite — schnell & günstig' },
-  { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro — leistungsstark' },
-];
-const OLLAMA_MODEL_SUGGESTIONS = ['llama3', 'mistral', 'phi3'];
 const PAGE_SIZE = 25;
+
+/**
+ * Migriert ein gespeichertes Modell-Setting beim Lesen: Abgeschaltete
+ * Modelle werden auf den Nachfolger umgeschrieben und direkt persistiert,
+ * damit spaetere KI-Aufrufe nicht mit 404 scheitern.
+ */
+function migrateStoredModel(
+  provider: 'claude' | 'openai' | 'gemini',
+  settingKey: string,
+  storedModel: string,
+): string {
+  const resolved = resolvePreferredModel(provider, storedModel);
+  if (resolved !== storedModel) {
+    void saveSetting(settingKey, resolved).catch(() => {
+      // Migration wird beim naechsten Laden erneut versucht
+    });
+  }
+  return resolved;
+}
 
 const DEFAULT_AI_SETTINGS: AISettingsState = {
   preferredProvider: DEFAULTS.ai_preferred_provider,
@@ -372,9 +391,9 @@ export function AiSettingsTab() {
         if (cancelled) return;
         setSettings({
           preferredProvider,
-          claudeModel,
-          openaiModel,
-          geminiModel,
+          claudeModel: migrateStoredModel('claude', 'ai_preferred_model_claude', claudeModel),
+          openaiModel: migrateStoredModel('openai', 'ai_preferred_model_openai', openaiModel),
+          geminiModel: migrateStoredModel('gemini', 'ai_preferred_model_gemini', geminiModel),
           ollamaModel:
             ollamaModel === DEFAULTS.ai_preferred_model_ollama &&
             legacyOllamaModel !== DEFAULTS.ai_ollama_model
@@ -704,6 +723,7 @@ export function AiSettingsTab() {
                 <FieldRow label="Bevorzugtes Modell">
                   <Select
                     value={settings.claudeModel}
+                    items={modelSelectItems(CLAUDE_MODELS, settings.claudeModel)}
                     onValueChange={(value) => {
                       if (value) updateSetting('claudeModel', value, 'ai_preferred_model_claude');
                     }}
@@ -712,11 +732,13 @@ export function AiSettingsTab() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {CLAUDE_MODELS.map((model) => (
-                        <SelectItem key={model} value={model}>
-                          {model}
-                        </SelectItem>
-                      ))}
+                      {Object.entries(modelSelectItems(CLAUDE_MODELS, settings.claudeModel)).map(
+                        ([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ),
+                      )}
                     </SelectContent>
                   </Select>
                 </FieldRow>
@@ -729,6 +751,7 @@ export function AiSettingsTab() {
                 <FieldRow label="Bevorzugtes Modell">
                   <Select
                     value={settings.openaiModel}
+                    items={modelSelectItems(OPENAI_MODELS, settings.openaiModel)}
                     onValueChange={(value) => {
                       if (value) updateSetting('openaiModel', value, 'ai_preferred_model_openai');
                     }}
@@ -737,11 +760,13 @@ export function AiSettingsTab() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {OPENAI_MODELS.map((model) => (
-                        <SelectItem key={model} value={model}>
-                          {model}
-                        </SelectItem>
-                      ))}
+                      {Object.entries(modelSelectItems(OPENAI_MODELS, settings.openaiModel)).map(
+                        ([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ),
+                      )}
                     </SelectContent>
                   </Select>
                 </FieldRow>
@@ -754,6 +779,7 @@ export function AiSettingsTab() {
                 <FieldRow label="Bevorzugtes Modell">
                   <Select
                     value={settings.geminiModel}
+                    items={modelSelectItems(GEMINI_MODELS, settings.geminiModel)}
                     onValueChange={(value) => {
                       if (value) updateSetting('geminiModel', value, 'ai_preferred_model_gemini');
                     }}
@@ -762,11 +788,13 @@ export function AiSettingsTab() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {GEMINI_MODELS.map((model) => (
-                        <SelectItem key={model.value} value={model.value}>
-                          {model.label}
-                        </SelectItem>
-                      ))}
+                      {Object.entries(modelSelectItems(GEMINI_MODELS, settings.geminiModel)).map(
+                        ([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ),
+                      )}
                     </SelectContent>
                   </Select>
                 </FieldRow>

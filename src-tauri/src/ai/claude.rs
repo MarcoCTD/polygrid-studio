@@ -7,7 +7,21 @@ use serde_json::json;
 use super::provider::{AIRequest, AIResponse};
 
 const CLAUDE_ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
-const CLAUDE_DEFAULT_MODEL: &str = "claude-sonnet-4-20250514";
+const CLAUDE_DEFAULT_MODEL: &str = "claude-sonnet-5";
+
+/// Migriert abgeschaltete Claude-Modelle auf ihren Nachfolger,
+/// damit Requests nicht mit 404 scheitern.
+fn resolve_claude_model(model: String) -> String {
+    match model.as_str() {
+        "claude-sonnet-4-20250514"
+        | "claude-3-7-sonnet-20250219"
+        | "claude-3-5-sonnet-20241022"
+        | "claude-3-5-sonnet-20240620" => "claude-sonnet-5".to_string(),
+        "claude-opus-4-20250514" | "claude-3-opus-20240229" => "claude-opus-4-8".to_string(),
+        "claude-3-5-haiku-20241022" | "claude-3-haiku-20240307" => "claude-haiku-4-5".to_string(),
+        _ => model,
+    }
+}
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 
 #[derive(Debug, Deserialize)]
@@ -43,10 +57,12 @@ pub async fn claude_generate(api_key: &str, request: &AIRequest) -> Result<AIRes
         return Err("Claude API-Key fehlt.".to_string());
     }
 
-    let model = request
-        .model
-        .clone()
-        .unwrap_or_else(|| CLAUDE_DEFAULT_MODEL.to_string());
+    let model = resolve_claude_model(
+        request
+            .model
+            .clone()
+            .unwrap_or_else(|| CLAUDE_DEFAULT_MODEL.to_string()),
+    );
     let mut system_prompt = request.system_prompt.clone();
     if request.json_mode {
         system_prompt.push_str("\nRespond only with valid JSON, no markdown, no preamble.");

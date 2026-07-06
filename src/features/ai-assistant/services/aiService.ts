@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { resolvePreferredModel } from '@/services/ai';
 import { DEFAULTS, getSettingWithDefault } from '@/services/settings';
 import type { AIOptions, AIProviderName, AIResponse } from '../types';
 
@@ -32,10 +33,18 @@ async function preferredModel(
   provider: AIProviderName,
   explicitModel?: string,
 ): Promise<string | null> {
-  if (explicitModel) return explicitModel;
-  if (provider === 'claude') return getSettingWithDefault('ai_preferred_model_claude');
-  if (provider === 'openai') return getSettingWithDefault('ai_preferred_model_openai');
-  if (provider === 'gemini') return getSettingWithDefault('ai_preferred_model_gemini');
+  // Abgeschaltete Modelle werden beim Lesen auf den Nachfolger migriert,
+  // damit Requests nicht mit 404 scheitern.
+  if (explicitModel) return resolvePreferredModel(provider, explicitModel);
+  if (provider === 'claude') {
+    return resolvePreferredModel('claude', await getSettingWithDefault('ai_preferred_model_claude'));
+  }
+  if (provider === 'openai') {
+    return resolvePreferredModel('openai', await getSettingWithDefault('ai_preferred_model_openai'));
+  }
+  if (provider === 'gemini') {
+    return resolvePreferredModel('gemini', await getSettingWithDefault('ai_preferred_model_gemini'));
+  }
   if (provider === 'ollama') {
     return getSettingWithDefault('ai_preferred_model_ollama', DEFAULTS.ai_preferred_model_ollama);
   }

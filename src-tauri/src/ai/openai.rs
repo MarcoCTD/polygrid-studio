@@ -7,7 +7,7 @@ use serde_json::json;
 use super::provider::{AIRequest, AIResponse};
 
 const OPENAI_ENDPOINT: &str = "https://api.openai.com/v1/chat/completions";
-const OPENAI_DEFAULT_MODEL: &str = "gpt-4o";
+const OPENAI_DEFAULT_MODEL: &str = "gpt-5.4";
 
 #[derive(Debug, Deserialize)]
 struct OpenAIResponse {
