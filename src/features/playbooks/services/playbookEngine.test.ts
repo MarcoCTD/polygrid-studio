@@ -925,6 +925,52 @@ describe('Edge-Cases: Trigger, Reihenfolge & Idempotenz', () => {
   });
 });
 
+describe('Regression: Playbook-Entitäten fließen in bestehende Auswertungen ein', () => {
+  it('Playbook-Ausgabe zählt in der Monatssumme, Playbook-Aufgabe erscheint in Liste und Badge-Query', async () => {
+    const { getMonthlySum } = await import('@/features/expenses/services');
+    const { getTaskListItems, getOverdueCount } = await import('@/features/tasks/services');
+
+    const orderId = seedOrder({ shipping_cost: 4.5 });
+    await createPlaybook({
+      name: 'Auswertungen',
+      trigger_status: 'shipped',
+      platform_filter: null,
+      actions: [
+        {
+          type: 'create_expense',
+          amount_gross: null,
+          amount_source: 'shipping_cost',
+          category: 'versand',
+          subcategory: null,
+          vendor: 'DHL',
+          purpose_template: '',
+        },
+        {
+          type: 'create_task',
+          title_template: 'Nachfassen',
+          priority: 'medium',
+          due_offset_days: 0,
+          link_order: true,
+        },
+      ],
+    });
+
+    await runPlaybooksForStatusChange(orderId, 'shipped');
+
+    // Ausgabe (Datum = Ausführungstag) zählt in der Monatssumme des laufenden Monats
+    const today = new Date();
+    const sum = await getMonthlySum(today.getFullYear(), today.getMonth() + 1);
+    expect(sum).toBeCloseTo(4.5);
+
+    // Aufgabe erscheint in der normalen Aufgabenliste
+    const tasks = await getTaskListItems();
+    expect(tasks.map((task) => task.title)).toContain('Nachfassen');
+
+    // Badge-Query (überfällige Aufgaben) läuft ohne Fehler; heute fällig = nicht überfällig
+    expect(await getOverdueCount()).toBe(0);
+  });
+});
+
 describe('Edge-Cases: Log & Vorschläge nach Löschungen', () => {
   it('Playbook-Soft-Delete: Log zeigt alte Runs weiterhin mit Namen, ohne Crash', async () => {
     const orderId = seedOrder();
