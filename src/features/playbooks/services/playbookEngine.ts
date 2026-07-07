@@ -102,7 +102,12 @@ export function renderPlaybookTemplate(
   return { text, unresolved: Array.from(unresolved) };
 }
 
-/** Lädt den Auftrag und baut die Variablen-Werte gemäß Registry auf. */
+/**
+ * Lädt den Auftrag und baut die Variablen-Werte gemäß Registry auf.
+ * Soft-gelöschte Aufträge liefern null (kein Playbook-Lauf); der Produkt-Join
+ * bleibt bewusst ohne deleted_at-Filter, damit {{produktname}} auch bei
+ * inzwischen gelöschtem Produkt weiter auflösbar ist (wie getOrderById).
+ */
 async function loadOrderContext(orderId: string): Promise<OrderContext | null> {
   const rows = await getDatabase().select<Row[]>(
     `SELECT o.id, o.receipt_number, o.external_order_id, o.customer_name,
@@ -110,7 +115,7 @@ async function loadOrderContext(orderId: string): Promise<OrderContext | null> {
             o.platform_fee, p.name AS product_name
      FROM orders o
      LEFT JOIN products p ON p.id = o.product_id
-     WHERE o.id = $1
+     WHERE o.id = $1 AND o.deleted_at IS NULL
      LIMIT 1`,
     [orderId],
   );

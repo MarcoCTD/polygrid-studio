@@ -580,6 +580,23 @@ describe('Dry-Run', () => {
 // Adversariale Edge-Cases (Verifikations-Session Juli 2026)
 // ============================================================
 
+describe('Edge-Cases: Auftragsdaten', () => {
+  it('soft-gelöschter Auftrag: Engine feuert nicht', async () => {
+    const orderId = seedOrder({ deleted_at: new Date().toISOString() });
+    await createPlaybook({
+      name: 'Gelöschter Auftrag',
+      trigger_status: 'paid',
+      platform_filter: null,
+      actions: [SIMPLE_TASK_ACTION as never],
+    });
+
+    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    expect(summaries).toHaveLength(0);
+    expect(select('SELECT id FROM tasks')).toHaveLength(0);
+    expect(select('SELECT id FROM playbook_runs')).toHaveLength(0);
+  });
+});
+
 describe('Edge-Cases: Trigger, Reihenfolge & Idempotenz', () => {
   it('zwei Playbooks auf demselben Trigger feuern beide, deterministisch in Anlage-Reihenfolge', async () => {
     const orderId = seedOrder();
