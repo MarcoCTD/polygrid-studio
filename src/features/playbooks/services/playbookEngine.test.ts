@@ -75,8 +75,14 @@ vi.mock('@/services/database', () => ({
 const { runPlaybooksForStatusChange, runPlaybookDryRun, renderPlaybookTemplate } = await import(
   './playbookEngine'
 );
-const { createPlaybook, getRecentRuns } = await import('./playbookService');
-const { updateOrder } = await import('@/features/orders/services/ordersService');
+const {
+  createPlaybook,
+  updatePlaybook,
+  softDeletePlaybook,
+  getRecentRuns,
+  getOpenTemplateSuggestions,
+} = await import('./playbookService');
+const { updateOrder, softDeleteOrder } = await import('@/features/orders/services/ordersService');
 
 let SQL: SqlJsStatic;
 let rawDb: SqlJsDatabase;
@@ -581,6 +587,181 @@ describe('Dry-Run', () => {
 // ============================================================
 
 describe('Edge-Cases: Auftragsdaten', () => {
+  it('Auftrag ohne Produkt: {{produktname}} bleibt Platzhalter, Aufgabe verknüpft, Ausgabe ohne product_id', async () => {
+    const orderId = seedOrder({ product_id: null, shipping_cost: 5 });
+    await createPlaybook({
+      name: 'Ohne Produkt',
+      trigger_status: 'paid',
+      platform_filter: null,
+      actions: [
+        {
+          type: 'create_task',
+          title_template: '{{produktname}} drucken',
+          priority: 'medium',
+          due_offset_days: null,
+          link_order: true,
+        },
+        {
+          type: 'create_expense',
+          amount_gross: null,
+          amount_source: 'shipping_cost',
+          category: 'versand',
+          subcategory: null,
+          vendor: 'DHL',
+          purpose_template: 'Versand {{produktname}}',
+        },
+      ],
+    });
+
+    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    expect(summaries).toHaveLength(1);
+    // Beide Aktionen laufen durch; {{produktname}} wird als nicht auflösbar gemeldet
+    expect(summaries[0].results[0].status).toBe('success');
+    expect(summaries[0].results[0].message).toContain('{{produktname}}');
+    expect(summaries[0].results[1].status).toBe('success');
+
+    const tasks = select('SELECT title, order_id FROM tasks');
+    expect(tasks[0].title).toBe('{{produktname}} drucken');
+    expect(tasks[0].order_id).toBe(orderId);
+
+    const expenses = select('SELECT product_id, order_id FROM expenses');
+    expect(expenses[0].product_id).toBeNull();
+    expect(expenses[0].order_id).toBe(orderId);
+  });
+
+  it('Auftrag ohne Kundenname und ohne externe Bestellnummer: kein "null" im Titel, Belegnummer als Fallback', async () => {
+    const orderId = seedOrder({ customer_name: null, external_order_id: null });
+    const receipt = String(
+      select('SELECT receipt_number FROM orders WHERE id = $1', [orderId])[0].receipt_number,
+    );
+    await createPlaybook({
+      name: 'Fallbacks',
+      trigger_status: 'paid',
+      platform_filter: null,
+      actions: [
+        {
+          type: 'create_task',
+          title_template: 'Bestellung {{bestellnummer}} für {{kundenname}}',
+          priority: 'medium',
+          due_offset_days: null,
+          link_order: true,
+        },
+      ],
+    });
+
+    await runPlaybooksForStatusChange(orderId, 'paid');
+    const title = String(select('SELECT title FROM tasks')[0].title);
+    // {{bestellnummer}} fällt auf die Belegnummer zurück
+    expect(title).toContain(`Bestellung ${receipt}`);
+    // {{kundenname}} bleibt Platzhalter – niemals "null" oder Leerstring im Satz
+    expect(title).toContain('{{kundenname}}');
+    expect(title).not.toContain('null');
+  });
+
+  it('soft-gelöschtes Produkt am Auftrag: {{produktname}} wird weiter aufgelöst, Ausgabe übernimmt product_id', async () => {
+    const productId = seedProduct('Alte Vase');
+    execute('UPDATE products SET deleted_at = $1 WHERE id = $2', [
+      new Date().toISOString(),
+      productId,
+    ]);
+    const orderId = seedOrder({ product_id: productId, shipping_cost: 3 });
+    await createPlaybook({
+      name: 'Gelöschtes Produkt',
+      trigger_status: 'paid',
+      platform_filter: null,
+      actions: [
+        {
+          type: 'create_task',
+          title_template: '{{produktname}} drucken',
+          priority: 'medium',
+          due_offset_days: null,
+          link_order: true,
+        },
+        {
+          type: 'create_expense',
+          amount_gross: null,
+          amount_source: 'shipping_cost',
+          category: 'versand',
+          subcategory: null,
+          vendor: 'DHL',
+          purpose_template: '',
+        },
+      ],
+    });
+
+    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    expect(summaries[0].status).toBe('success');
+    expect(select('SELECT title FROM tasks')[0].title).toBe('Alte Vase drucken');
+    expect(select('SELECT product_id FROM expenses')[0].product_id).toBe(productId);
+  });
+
+  it('SQL-Injection-artige Kundennamen landen literal im Titel, Tabellen bleiben intakt', async () => {
+    const hostileName = `Robert'); DROP TABLE tasks;-- "und" 'Anführungszeichen'`;
+    const orderId = seedOrder({ customer_name: hostileName });
+    await createPlaybook({
+      name: 'Injection',
+      trigger_status: 'paid',
+      platform_filter: null,
+      actions: [
+        {
+          type: 'create_task',
+          title_template: 'Für {{kundenname}}',
+          priority: 'medium',
+          due_offset_days: null,
+          link_order: true,
+        },
+      ],
+    });
+
+    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    expect(summaries[0].status).toBe('success');
+    expect(select('SELECT title FROM tasks')[0].title).toBe(`Für ${hostileName}`);
+    // results-JSON im Run ist trotz Anführungszeichen valide
+    const run = select('SELECT results FROM playbook_runs')[0];
+    expect(() => JSON.parse(String(run.results))).not.toThrow();
+  });
+
+  it('Umlaute in Werten und deutsche EUR-Formatierung in der Vorschau', async () => {
+    const productId = seedProduct('Größenverstellbarer Blumenständer');
+    const orderId = seedOrder({
+      product_id: productId,
+      customer_name: 'Jörg Müßig',
+      shipping_cost: 1234.5,
+    });
+    await createPlaybook({
+      name: 'Umlaute',
+      trigger_status: 'shipped',
+      platform_filter: null,
+      actions: [
+        {
+          type: 'create_task',
+          title_template: '{{produktname}} für {{kundenname}}',
+          priority: 'medium',
+          due_offset_days: null,
+          link_order: true,
+        },
+        {
+          type: 'create_expense',
+          amount_gross: null,
+          amount_source: 'shipping_cost',
+          category: 'versand',
+          subcategory: null,
+          vendor: 'DHL',
+          purpose_template: 'Versand für {{kundenname}}',
+        },
+      ],
+    });
+
+    const summaries = await runPlaybooksForStatusChange(orderId, 'shipped');
+    expect(summaries[0].status).toBe('success');
+    expect(select('SELECT title FROM tasks')[0].title).toBe(
+      'Größenverstellbarer Blumenständer für Jörg Müßig',
+    );
+    expect(select('SELECT purpose FROM expenses')[0].purpose).toBe('Versand für Jörg Müßig');
+    // de-DE: Tausenderpunkt + Dezimalkomma
+    expect(summaries[0].results[1].preview).toContain('1.234,50');
+  });
+
   it('soft-gelöschter Auftrag: Engine feuert nicht', async () => {
     const orderId = seedOrder({ deleted_at: new Date().toISOString() });
     await createPlaybook({
@@ -694,5 +875,121 @@ describe('Edge-Cases: Trigger, Reihenfolge & Idempotenz', () => {
     expect(summaries[0].results[0].status).toBe('skipped');
     expect(summaries[0].results[0].message).toContain('0 €');
     expect(select('SELECT id FROM expenses')).toHaveLength(0);
+  });
+
+  it('bearbeitetes Playbook bleibt für denselben Auftrag+Status idempotent', async () => {
+    const orderId = seedOrder();
+    const playbook = await createPlaybook({
+      name: 'Vor Bearbeitung',
+      trigger_status: 'paid',
+      platform_filter: null,
+      actions: [SIMPLE_TASK_ACTION as never],
+    });
+
+    expect(await runPlaybooksForStatusChange(orderId, 'paid')).toHaveLength(1);
+
+    await updatePlaybook(playbook.id, {
+      name: 'Nach Bearbeitung',
+      actions: [{ ...SIMPLE_TASK_ACTION, title_template: 'Neuer Titel' } as never],
+    });
+
+    // Gleicher Auftrag, gleicher Status: kein zweiter Run trotz Bearbeitung
+    expect(await runPlaybooksForStatusChange(orderId, 'paid')).toHaveLength(0);
+    expect(select('SELECT id FROM tasks')).toHaveLength(1);
+
+    // Anderer Trigger-Status nach Bearbeitung: neuer Lauf ist erlaubt
+    await updatePlaybook(playbook.id, { trigger_status: 'shipped' });
+    expect(await runPlaybooksForStatusChange(orderId, 'shipped')).toHaveLength(1);
+    expect(select('SELECT id FROM tasks')).toHaveLength(2);
+  });
+
+  it('Status-Sprung (inquiry direkt auf completed) feuert nur Playbooks des Zielstatus', async () => {
+    const orderId = seedOrder({ status: 'inquiry' });
+    for (const status of ['paid', 'shipped', 'completed']) {
+      seedPlaybookRow({
+        name: `Playbook ${status}`,
+        trigger_status: status,
+        actions: [{ ...SIMPLE_TASK_ACTION, title_template: `Aufgabe ${status}` }],
+        created_at: '2026-07-01T10:00:00.000Z',
+      });
+    }
+
+    await updateOrder(orderId, { status: 'completed' });
+
+    const tasks = select('SELECT title FROM tasks');
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].title).toBe('Aufgabe completed');
+    const runs = select('SELECT trigger_status FROM playbook_runs');
+    expect(runs).toHaveLength(1);
+    expect(runs[0].trigger_status).toBe('completed');
+  });
+});
+
+describe('Edge-Cases: Log & Vorschläge nach Löschungen', () => {
+  it('Playbook-Soft-Delete: Log zeigt alte Runs weiterhin mit Namen, ohne Crash', async () => {
+    const orderId = seedOrder();
+    const playbook = await createPlaybook({
+      name: 'Bald gelöscht',
+      trigger_status: 'paid',
+      platform_filter: null,
+      actions: [SIMPLE_TASK_ACTION as never],
+    });
+    await runPlaybooksForStatusChange(orderId, 'paid');
+    await softDeletePlaybook(playbook.id);
+
+    const runs = await getRecentRuns();
+    expect(runs).toHaveLength(1);
+    expect(runs[0].playbook_name).toBe('Bald gelöscht');
+    expect(runs[0].status).toBe('success');
+  });
+
+  it('Auftrag-Soft-Delete mit offenen Vorschlägen: Vorschläge bleiben ohne Crash abrufbar', async () => {
+    const templateId = seedTemplate('Versandinfo');
+    const orderId = seedOrder();
+    await createPlaybook({
+      name: 'Vorschlag',
+      trigger_status: 'paid',
+      platform_filter: null,
+      actions: [{ type: 'suggest_template', template_id: templateId }],
+    });
+    await runPlaybooksForStatusChange(orderId, 'paid');
+    await softDeleteOrder(orderId);
+
+    const suggestions = await getOpenTemplateSuggestions(orderId);
+    expect(suggestions).toHaveLength(1);
+    expect(suggestions[0].template_id).toBe(templateId);
+  });
+});
+
+describe('Edge-Cases: Variablen-Syntax', () => {
+  it('kaputte Syntax crasht nicht und bleibt unverändert', () => {
+    const values = { produktname: 'Vase' };
+
+    // Leere Klammern
+    expect(renderPlaybookTemplate('Vor {{}} nach', values).text).toBe('Vor {{}} nach');
+    // Unvollständig geöffnet
+    expect(renderPlaybookTemplate('{{produktname, {{', values).text).toBe('{{produktname, {{');
+    // Verschachtelt: bleibt Rohtext, kein Crash
+    const nested = renderPlaybookTemplate('{{a{{produktname}}b}}', values);
+    expect(nested.text).toContain('{{');
+  });
+
+  it('{{ produktname }} mit Leerzeichen wird aufgelöst', () => {
+    const { text, unresolved } = renderPlaybookTemplate('{{ produktname }}!', {
+      produktname: 'Vase',
+    });
+    expect(text).toBe('Vase!');
+    expect(unresolved).toEqual([]);
+  });
+
+  it('gleiche Variable mehrfach im Text wird überall ersetzt', () => {
+    const { text } = renderPlaybookTemplate('{{n}}, nochmal {{n}} und {{ n }}', { n: 'X' });
+    expect(text).toBe('X, nochmal X und X');
+  });
+
+  it('Variable mit leerem Wert bleibt Platzhalter (kein Leerstring mitten im Satz)', () => {
+    const { text, unresolved } = renderPlaybookTemplate('Für {{kundenname}}', { kundenname: '' });
+    expect(text).toBe('Für {{kundenname}}');
+    expect(unresolved).toEqual(['kundenname']);
   });
 });
