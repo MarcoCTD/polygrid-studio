@@ -166,6 +166,38 @@ function seedTemplate(name: string): string {
   return id;
 }
 
+/** Seedet ein Playbook direkt in die DB (mit steuerbarem created_at für Reihenfolge-Tests). */
+function seedPlaybookRow(options: {
+  name: string;
+  trigger_status: string;
+  actions: Record<string, unknown>[];
+  created_at: string;
+  enabled?: boolean;
+}): string {
+  const id = crypto.randomUUID();
+  execute(
+    `INSERT INTO playbooks (id, name, enabled, trigger_status, platform_filter, actions, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, NULL, $5, $6, $6)`,
+    [
+      id,
+      options.name,
+      options.enabled === false ? 0 : 1,
+      options.trigger_status,
+      JSON.stringify(options.actions),
+      options.created_at,
+    ],
+  );
+  return id;
+}
+
+const SIMPLE_TASK_ACTION = {
+  type: 'create_task',
+  title_template: 'Aufgabe',
+  priority: 'medium',
+  due_offset_days: null,
+  link_order: true,
+};
+
 function localISODate(offsetDays = 0): string {
   const date = new Date();
   date.setDate(date.getDate() + offsetDays);
@@ -541,5 +573,58 @@ describe('Dry-Run', () => {
     expect(real).toHaveLength(1);
     expect(select('SELECT id FROM tasks')).toHaveLength(1);
     expect(select('SELECT id FROM expenses')).toHaveLength(1);
+  });
+});
+
+// ============================================================
+// Adversariale Edge-Cases (Verifikations-Session Juli 2026)
+// ============================================================
+
+describe('Edge-Cases: Trigger, Reihenfolge & Idempotenz', () => {
+  it('zwei Playbooks auf demselben Trigger feuern beide, deterministisch in Anlage-Reihenfolge', async () => {
+    const orderId = seedOrder();
+    // Bewusst in umgekehrter Reihenfolge einfügen: created_at entscheidet, nicht die Insert-Reihenfolge
+    seedPlaybookRow({
+      name: 'Zweites (jünger)',
+      trigger_status: 'paid',
+      actions: [{ ...SIMPLE_TASK_ACTION, title_template: 'B' }],
+      created_at: '2026-07-02T10:00:00.000Z',
+    });
+    seedPlaybookRow({
+      name: 'Erstes (älter)',
+      trigger_status: 'paid',
+      actions: [{ ...SIMPLE_TASK_ACTION, title_template: 'A' }],
+      created_at: '2026-07-01T10:00:00.000Z',
+    });
+
+    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    expect(summaries.map((summary) => summary.playbook_name)).toEqual([
+      'Erstes (älter)',
+      'Zweites (jünger)',
+    ]);
+    expect(select('SELECT id FROM tasks')).toHaveLength(2);
+  });
+
+  it('ein Fehler im ersten Playbook blockiert das zweite nicht', async () => {
+    const orderId = seedOrder();
+    seedPlaybookRow({
+      name: 'Kaputt zuerst',
+      trigger_status: 'paid',
+      actions: [{ type: 'suggest_template', template_id: crypto.randomUUID() }],
+      created_at: '2026-07-01T10:00:00.000Z',
+    });
+    seedPlaybookRow({
+      name: 'Läuft danach',
+      trigger_status: 'paid',
+      actions: [SIMPLE_TASK_ACTION],
+      created_at: '2026-07-02T10:00:00.000Z',
+    });
+
+    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    expect(summaries.map((summary) => [summary.playbook_name, summary.status])).toEqual([
+      ['Kaputt zuerst', 'error'],
+      ['Läuft danach', 'success'],
+    ]);
+    expect(select('SELECT id FROM tasks')).toHaveLength(1);
   });
 });

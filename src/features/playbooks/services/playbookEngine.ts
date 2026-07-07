@@ -411,7 +411,8 @@ export async function runPlaybooksForStatusChange(
   try {
     const rows = await getDatabase().select<Row[]>(
       `SELECT * FROM playbooks
-       WHERE deleted_at IS NULL AND enabled = 1 AND trigger_status = $1`,
+       WHERE deleted_at IS NULL AND enabled = 1 AND trigger_status = $1
+       ORDER BY created_at ASC, id ASC`,
       [newStatus],
     );
     if (rows.length === 0) return [];
