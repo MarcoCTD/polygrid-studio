@@ -147,11 +147,12 @@ export async function extractTasks(text: string): Promise<TaskSuggestion[]> {
   }
 
   try {
+    // Tauri 2 erwartet invoke-Argumente in camelCase, sonst "invalid args".
     const response = await invoke<RawAIResponse>('ai_generate_structured', {
       provider,
-      system_prompt: systemPrompt,
-      user_prompt: userPrompt,
-      max_tokens: 1200,
+      systemPrompt,
+      userPrompt,
+      maxTokens: 1200,
       temperature: 0.1,
       model: null,
     });

@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { normalizeGeminiModel } from '@/services/ai';
 import { DEFAULTS, getSettingWithDefault } from '@/services/settings';
 import type { AIOptions, AIProviderName, AIResponse } from '../types';
 
@@ -32,10 +33,15 @@ async function preferredModel(
   provider: AIProviderName,
   explicitModel?: string,
 ): Promise<string | null> {
+  if (provider === 'gemini') {
+    // Migration alter gespeicherter Modellnamen, bevor der Request rausgeht.
+    return normalizeGeminiModel(
+      explicitModel ?? (await getSettingWithDefault('ai_preferred_model_gemini')),
+    );
+  }
   if (explicitModel) return explicitModel;
   if (provider === 'claude') return getSettingWithDefault('ai_preferred_model_claude');
   if (provider === 'openai') return getSettingWithDefault('ai_preferred_model_openai');
-  if (provider === 'gemini') return getSettingWithDefault('ai_preferred_model_gemini');
   if (provider === 'ollama') {
     return getSettingWithDefault('ai_preferred_model_ollama', DEFAULTS.ai_preferred_model_ollama);
   }
@@ -48,11 +54,12 @@ async function commandArgs(
   userPrompt: string,
   options?: AIOptions,
 ): Promise<Record<string, unknown>> {
+  // Tauri 2 erwartet invoke-Argumente in camelCase, sonst "invalid args".
   return {
     provider,
-    system_prompt: systemPrompt,
-    user_prompt: userPrompt,
-    max_tokens: options?.maxTokens ?? null,
+    systemPrompt,
+    userPrompt,
+    maxTokens: options?.maxTokens ?? null,
     temperature: options?.temperature ?? null,
     model: await preferredModel(provider, options?.model),
   };
@@ -62,20 +69,26 @@ function normalizeAIError(provider: string, error: unknown): Error {
   const rawMessage = error instanceof Error ? error.message : String(error);
   const message = rawMessage.toLowerCase();
 
+  // Die Original-Fehlermeldung des Providers (Statuscode + message aus dem
+  // Response-Body) muss bis in die UI durchgereicht werden, damit Fehler
+  // diagnostizierbar bleiben. Die Kurzform dient nur als Einordnung davor.
+  const withDetail = (summary: string): Error =>
+    new Error(rawMessage ? `${summary} – ${rawMessage}` : summary);
+
   if (message.includes('timeout') || message.includes('zeit')) {
-    return new Error('KI-Vorschlag konnte nicht generiert werden: Timeout');
+    return withDetail('KI-Vorschlag konnte nicht generiert werden: Timeout');
   }
   if (message.includes('401') || message.includes('403') || message.includes('unauthorized')) {
-    return new Error('KI-Verbindung fehlgeschlagen: API-Key ungültig');
+    return withDetail('KI-Verbindung fehlgeschlagen: API-Key ungültig');
   }
   if (message.includes('429') || message.includes('rate limit')) {
-    return new Error('KI-Verbindung fehlgeschlagen: Rate Limit erreicht, bitte warten');
+    return withDetail('KI-Verbindung fehlgeschlagen: Rate Limit erreicht, bitte warten');
   }
   if (message.includes('500') || message.includes('503') || message.includes('unavailable')) {
-    return new Error('KI-Verbindung fehlgeschlagen: Provider nicht erreichbar');
+    return withDetail('KI-Verbindung fehlgeschlagen: Provider nicht erreichbar');
   }
   if (provider === 'ollama') {
-    return new Error('Ollama ist nicht erreichbar. Ist Ollama installiert und gestartet?');
+    return withDetail('Ollama ist nicht erreichbar. Ist Ollama installiert und gestartet?');
   }
   if (
     message.includes('network') ||
@@ -83,7 +96,7 @@ function normalizeAIError(provider: string, error: unknown): Error {
     message.includes('internet') ||
     message.includes('connection')
   ) {
-    return new Error('KI-Verbindung fehlgeschlagen: Keine Internetverbindung');
+    return withDetail('KI-Verbindung fehlgeschlagen: Keine Internetverbindung');
   }
 
   return new Error(rawMessage || 'KI-Verbindung fehlgeschlagen');
@@ -191,7 +204,7 @@ export async function aiEstimateCost(
   return invokeWithTimeout<number>('ai_estimate_cost', {
     provider,
     model,
-    tokens_input: tokensInput,
-    tokens_output: tokensOutput,
+    tokensInput,
+    tokensOutput,
   });
 }
