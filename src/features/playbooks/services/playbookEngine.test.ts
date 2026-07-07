@@ -595,6 +595,31 @@ describe('Edge-Cases: Auftragsdaten', () => {
     expect(select('SELECT id FROM tasks')).toHaveLength(0);
     expect(select('SELECT id FROM playbook_runs')).toHaveLength(0);
   });
+
+  it('überlanger Titel nach Variablenersetzung wird auf 200 Zeichen gekürzt statt zu scheitern', async () => {
+    const longName = 'K'.repeat(120);
+    const orderId = seedOrder({ customer_name: longName });
+    await createPlaybook({
+      name: 'Langer Titel',
+      trigger_status: 'paid',
+      platform_filter: null,
+      actions: [
+        {
+          type: 'create_task',
+          title_template: `${'T'.repeat(150)} {{kundenname}}`,
+          priority: 'medium',
+          due_offset_days: null,
+          link_order: true,
+        },
+      ],
+    });
+
+    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    expect(summaries[0].status).toBe('success');
+    const title = String(select('SELECT title FROM tasks')[0].title);
+    expect(title.length).toBe(200);
+    expect(title.endsWith('…')).toBe(true);
+  });
 });
 
 describe('Edge-Cases: Trigger, Reihenfolge & Idempotenz', () => {

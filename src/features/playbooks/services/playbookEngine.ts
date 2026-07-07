@@ -164,12 +164,22 @@ function unresolvedNote(unresolved: string[]): string | null {
     : null;
 }
 
+/** Das Task-Schema erlaubt max. 200 Zeichen – nach Variablenersetzung kürzen statt fehlschlagen. */
+const MAX_TASK_TITLE_LENGTH = 200;
+
 async function executeCreateTask(
   action: CreateTaskAction,
   order: OrderContext,
   dryRun: boolean,
 ): Promise<ActionResult> {
-  const { text: title, unresolved } = renderPlaybookTemplate(action.title_template, order.variables);
+  const { text: rendered, unresolved } = renderPlaybookTemplate(
+    action.title_template,
+    order.variables,
+  );
+  const title =
+    rendered.length > MAX_TASK_TITLE_LENGTH
+      ? `${rendered.slice(0, MAX_TASK_TITLE_LENGTH - 1)}…`
+      : rendered;
   const dueDate = action.due_offset_days === null ? null : addDays(todayISODate(), action.due_offset_days);
   const note = unresolvedNote(unresolved);
   const preview = `Aufgabe „${title}“ (Priorität ${action.priority}, ${
