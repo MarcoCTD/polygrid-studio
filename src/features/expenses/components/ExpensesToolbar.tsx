@@ -20,6 +20,7 @@ export interface ExpensesFilterState {
   search: string;
   categories: ExpenseCategory[];
   taxRelevant: 'all' | 'yes' | 'no';
+  receipt: 'all' | 'missing' | 'attached';
   period: ExpensePeriod;
   customFrom: string;
   customTo: string;
@@ -30,6 +31,12 @@ const TAX_RELEVANT_LABELS: Record<ExpensesFilterState['taxRelevant'], string> = 
   all: 'Alle',
   yes: 'Ja',
   no: 'Nein',
+};
+
+const RECEIPT_LABELS: Record<ExpensesFilterState['receipt'], string> = {
+  all: 'Alle',
+  missing: 'Beleg fehlt',
+  attached: 'Beleg vorhanden',
 };
 
 const PERIOD_LABELS: Record<ExpensePeriod, string> = {
@@ -81,6 +88,7 @@ export function ExpensesToolbar({
   const activeFilterCount =
     filters.categories.length +
     (filters.taxRelevant !== 'all' ? 1 : 0) +
+    (filters.receipt !== 'all' ? 1 : 0) +
     (filters.period !== 'current_month' ? 1 : 0) +
     (filters.includeDeleted ? 1 : 0) +
     (filters.search.trim() ? 1 : 0);
@@ -150,6 +158,29 @@ export function ExpensesToolbar({
                     <SelectItem value="all">Alle</SelectItem>
                     <SelectItem value="yes">Ja</SelectItem>
                     <SelectItem value="no">Nein</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Separator />
+
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-text-secondary">Beleg</p>
+                <Select
+                  value={filters.receipt}
+                  onValueChange={(value) => {
+                    if (value) {
+                      patchFilters({ receipt: value as ExpensesFilterState['receipt'] });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue>{RECEIPT_LABELS[filters.receipt]}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle</SelectItem>
+                    <SelectItem value="missing">Beleg fehlt</SelectItem>
+                    <SelectItem value="attached">Beleg vorhanden</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -283,6 +314,14 @@ function buildBadges(
       key: 'taxRelevant',
       label: `Steuerrelevant: ${filters.taxRelevant === 'yes' ? 'Ja' : 'Nein'}`,
       onRemove: () => patchFilters({ taxRelevant: 'all' }),
+    });
+  }
+
+  if (filters.receipt !== 'all') {
+    badges.push({
+      key: 'receipt',
+      label: RECEIPT_LABELS[filters.receipt],
+      onRemove: () => patchFilters({ receipt: 'all' }),
     });
   }
 

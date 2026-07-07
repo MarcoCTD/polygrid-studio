@@ -88,6 +88,7 @@ export const expenseFilterSchema = z.object({
   date_to: isoDateString.optional(),
   category: z.array(expenseCategoryEnum).optional(),
   tax_relevant: z.boolean().optional(),
+  receipt_attached: z.boolean().optional(),
   product_id: optionalUuid,
   has_product: z.boolean().optional(),
   search: z.string().trim().optional(),

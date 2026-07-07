@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearch } from '@tanstack/react-router';
 import type { RowSelectionState } from '@tanstack/react-table';
 import { Download, Info, Plus, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12,6 +13,7 @@ import { ExpensesTable } from './components/ExpensesTable';
 import { ExpensesToolbar, type ExpensesFilterState } from './components/ExpensesToolbar';
 import { QuickExpenseForm } from './components/QuickExpenseForm';
 import { getCategoryBreakdown, getExpenses, getMonthlySum, getPreviousMonthSum } from './services';
+import type { ExpensesSearch } from './searchParams';
 import type { Expense, ExpenseFilter } from './schemas';
 import {
   buildExpenseCsvFilename,
@@ -25,6 +27,7 @@ const INITIAL_FILTERS: ExpensesFilterState = {
   search: '',
   categories: [],
   taxRelevant: 'all',
+  receipt: 'all',
   period: 'current_month',
   customFrom: '',
   customTo: '',
@@ -32,12 +35,18 @@ const INITIAL_FILTERS: ExpensesFilterState = {
 };
 
 export function ExpensesPage() {
+  const search = useSearch({ strict: false }) as ExpensesSearch;
   const { registerCommands, unregisterCommands, openDetailPanel } = useUIStore();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null | 'new'>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [filters, setFilters] = useState<ExpensesFilterState>(INITIAL_FILTERS);
+  // Filter aus der URL übernehmen (z.B. Smart Action "Beleg fehlt")
+  const [filters, setFilters] = useState<ExpensesFilterState>(() => ({
+    ...INITIAL_FILTERS,
+    ...(search.receipt === 'missing' ? { receipt: 'missing' as const, taxRelevant: 'yes' as const } : {}),
+    ...(search.period ? { period: search.period } : {}),
+  }));
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [selectedMonth, setSelectedMonth] = useState(monthInputValue(new Date()));
   const [monthlySum, setMonthlySum] = useState(0);
@@ -56,6 +65,7 @@ export function ExpensesPage() {
       category: filters.categories.length > 0 ? filters.categories : undefined,
       tax_relevant:
         filters.taxRelevant === 'all' ? undefined : filters.taxRelevant === 'yes' ? true : false,
+      receipt_attached: filters.receipt === 'all' ? undefined : filters.receipt === 'attached',
       include_deleted: filters.includeDeleted,
       sort_by: 'date',
       sort_direction: 'desc',

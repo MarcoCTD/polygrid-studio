@@ -46,6 +46,8 @@ type LinkType = 'product' | 'order' | 'listing' | 'none';
 
 interface ListViewProps {
   refreshKey?: number;
+  /** Überfällig-Filter beim Öffnen vorsetzen (z.B. aus Search-Params) */
+  initialOverdueOnly?: boolean;
   onOpenTask: (task: TaskListItem) => void;
   onChanged?: () => void | Promise<void>;
 }
@@ -150,7 +152,12 @@ function toggleFilterValue<T extends string>(values: T[], value: T, checked: boo
   return values.filter((item) => item !== value);
 }
 
-export function ListView({ refreshKey = 0, onOpenTask, onChanged }: ListViewProps) {
+export function ListView({
+  refreshKey = 0,
+  initialOverdueOnly = false,
+  onOpenTask,
+  onChanged,
+}: ListViewProps) {
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([
@@ -160,7 +167,7 @@ export function ListView({ refreshKey = 0, onOpenTask, onChanged }: ListViewProp
   const [statusFilters, setStatusFilters] = useState<TaskStatus[]>([]);
   const [priorityFilters, setPriorityFilters] = useState<TaskPriority[]>([]);
   const [linkFilters, setLinkFilters] = useState<LinkType[]>([]);
-  const [overdueOnly, setOverdueOnly] = useState(false);
+  const [overdueOnly, setOverdueOnly] = useState(initialOverdueOnly);
   const [recurringOnly, setRecurringOnly] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const parentRef = useRef<HTMLDivElement>(null);

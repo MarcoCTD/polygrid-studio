@@ -36,6 +36,7 @@ import { ExpenseDetailPanel } from '@/features/expenses/components/ExpenseDetail
 import { NewListingModal } from '@/features/listings/components';
 import { NewOrderModal } from '@/features/orders/components';
 import { NewProductDialog } from '@/features/products/components/NewProductDialog';
+import { SmartActionsSection } from '@/features/smart-actions';
 import { DEFAULTS, getSettingWithDefault } from '@/services/settings';
 import { useUIStore } from '@/stores';
 
@@ -246,6 +247,8 @@ export function DashboardPage() {
         <h1 className="text-2xl font-semibold text-text-primary">Dashboard</h1>
         <p className="mt-1 text-sm text-text-secondary">Live-Überblick für den aktuellen Monat.</p>
       </header>
+
+      <SmartActionsSection />
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard

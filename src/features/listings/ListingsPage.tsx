@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { CopyPlus, FileText, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,11 @@ import {
   type ListingListItem,
 } from './listingsService';
 import { useListingsStore, type ListingsFilterState } from './listingsStore';
+import {
+  parseCompletenessList,
+  parseListingStatusList,
+  type ListingsSearch,
+} from './searchParams';
 
 function hasActiveFilters(filters: ListingsFilterState) {
   return (
@@ -33,6 +38,7 @@ function hasActiveFilters(filters: ListingsFilterState) {
 
 export function ListingsPage() {
   const navigate = useNavigate();
+  const search = useSearch({ strict: false }) as ListingsSearch;
   const { registerCommands, unregisterCommands } = useUIStore();
   const [isNewListingOpen, setIsNewListingOpen] = useState(false);
   const [isDuplicateListingOpen, setIsDuplicateListingOpen] = useState(false);
@@ -53,6 +59,18 @@ export function ListingsPage() {
   const selectedListings = listings.filter((listing) => selectedIds.has(listing.id));
   const showFirstEmptyState =
     !isLoading && listings.length === 0 && !hasActiveFilters(activeFilters) && !error;
+
+  // Filter aus der URL übernehmen (z.B. Smart Action "Vollständigkeit rot")
+  useEffect(() => {
+    const completeness = parseCompletenessList(search.completeness);
+    if (completeness.length > 0) {
+      setFilter('completeness', completeness);
+    }
+    const statuses = parseListingStatusList(search.status);
+    if (statuses.length > 0) {
+      setFilter('status', statuses);
+    }
+  }, [search.completeness, search.status, setFilter]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {

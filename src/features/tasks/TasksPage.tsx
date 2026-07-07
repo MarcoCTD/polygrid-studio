@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearch } from '@tanstack/react-router';
 import {
   CalendarDays,
   ChevronLeft,
@@ -12,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useUIStore } from '@/stores';
 import type { Task } from './schemas';
+import type { TasksSearch } from './searchParams';
 import { isTaskExtractorAvailable } from './services';
 import { useTaskBadge, useWeekNavigation } from './hooks';
 import {
@@ -25,11 +27,13 @@ import {
 type TaskViewMode = 'week' | 'list';
 
 export function TasksPage() {
+  const search = useSearch({ strict: false }) as TasksSearch;
   const openDetailPanel = useUIStore((state) => state.openDetailPanel);
   const closeDetailPanel = useUIStore((state) => state.closeDetailPanel);
   const registerCommands = useUIStore((state) => state.registerCommands);
   const unregisterCommands = useUIStore((state) => state.unregisterCommands);
-  const [viewMode, setViewMode] = useState<TaskViewMode>('week');
+  // Ansicht und Überfällig-Filter aus der URL übernehmen (Smart Actions)
+  const [viewMode, setViewMode] = useState<TaskViewMode>(search.view ?? 'week');
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [taskExtractorOpen, setTaskExtractorOpen] = useState(false);
   const [taskExtractorAvailable, setTaskExtractorAvailable] = useState(false);
@@ -211,7 +215,12 @@ export function TasksPage() {
             onChanged={refreshTasks}
           />
         ) : (
-          <ListView refreshKey={refreshKey} onOpenTask={openTask} onChanged={refreshTasks} />
+          <ListView
+            refreshKey={refreshKey}
+            initialOverdueOnly={search.overdue === true}
+            onOpenTask={openTask}
+            onChanged={refreshTasks}
+          />
         )}
       </main>
 

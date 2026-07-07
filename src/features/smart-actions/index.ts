@@ -1,4 +1,5 @@
 export * from './types';
+export * from './components';
 export { registerSmartActionRules, unregisterSmartActionRules } from './registry';
 export { SMART_ACTION_RULES } from './rules';
 export {

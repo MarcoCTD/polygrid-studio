@@ -307,6 +307,12 @@ export async function getExpenses(filters: ExpenseFilter = {}): Promise<Expense[
     paramIndex++;
   }
 
+  if (parsedFilters.receipt_attached !== undefined) {
+    conditions.push(`receipt_attached = $${paramIndex}`);
+    params.push(parsedFilters.receipt_attached ? 1 : 0);
+    paramIndex++;
+  }
+
   if (parsedFilters.product_id !== undefined) {
     if (parsedFilters.product_id === null) {
       conditions.push('product_id IS NULL');

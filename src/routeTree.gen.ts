@@ -1,6 +1,9 @@
 import { createRoute, redirect } from '@tanstack/react-router';
 import { rootRoute } from './routes/__root';
 import { validateOrdersSearch } from '@/features/orders/searchParams';
+import { validateExpensesSearch } from '@/features/expenses/searchParams';
+import { validateTasksSearch } from '@/features/tasks/searchParams';
+import { validateListingsSearch } from '@/features/listings/searchParams';
 import { DashboardPage } from '@/features/dashboard';
 import { ProductsPage } from '@/features/products';
 import { ProductEditPage } from '@/features/products/components/ProductEditPage';
@@ -46,6 +49,7 @@ const expensesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/expenses',
   component: ExpensesPage,
+  validateSearch: validateExpensesSearch,
 });
 
 const ordersRoute = createRoute({
@@ -59,6 +63,7 @@ const listingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/listings',
   component: ListingsPage,
+  validateSearch: validateListingsSearch,
 });
 
 const listingEditRoute = createRoute({
@@ -83,6 +88,7 @@ const tasksRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/tasks',
   component: TasksPage,
+  validateSearch: validateTasksSearch,
 });
 
 const analyticsRoute = createRoute({
