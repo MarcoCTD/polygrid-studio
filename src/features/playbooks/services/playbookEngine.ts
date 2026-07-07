@@ -228,10 +228,15 @@ async function executeCreateExpense(
     amount = order[action.amount_source];
     if (amount === null || amount <= 0) {
       // Leerer Quellwert ist laut Spec kein Fehler: Aktion wird übersprungen.
+      // 0 € zählt als leer (E13-06) – eine Null-Ausgabe wäre fachlich sinnlos.
+      const label = AMOUNT_SOURCE_LABELS[action.amount_source];
       return actionResultSchema.parse({
         action_type: 'create_expense',
         status: 'skipped',
-        message: `Übersprungen: ${AMOUNT_SOURCE_LABELS[action.amount_source]} sind am Auftrag nicht erfasst.`,
+        message:
+          amount === null
+            ? `Übersprungen: ${label} sind am Auftrag nicht erfasst.`
+            : `Übersprungen: ${label} betragen 0 € – es wird keine Ausgabe erstellt.`,
       });
     }
   }

@@ -669,4 +669,30 @@ describe('Edge-Cases: Trigger, Reihenfolge & Idempotenz', () => {
     ]);
     expect(select('SELECT id FROM tasks')).toHaveLength(1);
   });
+
+  it('shipping_cost 0 (nicht null) wird ohne 0-EUR-Ausgabe übersprungen', async () => {
+    const orderId = seedOrder({ shipping_cost: 0 });
+    await createPlaybook({
+      name: 'Null Euro',
+      trigger_status: 'shipped',
+      platform_filter: null,
+      actions: [
+        {
+          type: 'create_expense',
+          amount_gross: null,
+          amount_source: 'shipping_cost',
+          category: 'versand',
+          subcategory: null,
+          vendor: 'DHL',
+          purpose_template: '',
+        },
+      ],
+    });
+
+    const summaries = await runPlaybooksForStatusChange(orderId, 'shipped');
+    expect(summaries[0].status).toBe('partial');
+    expect(summaries[0].results[0].status).toBe('skipped');
+    expect(summaries[0].results[0].message).toContain('0 €');
+    expect(select('SELECT id FROM expenses')).toHaveLength(0);
+  });
 });
