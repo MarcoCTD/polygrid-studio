@@ -17,6 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { formatEUR } from '@/features/products/utils';
+import { TemplateSuggestionBanner } from '@/features/playbooks/components';
 import { ManualBankMatchDialog, StatusUpdateSuggestionDialog } from '@/features/finance/components';
 import type { ConfirmMatchResult } from '@/features/finance/services';
 import { cn } from '@/lib/utils';
@@ -293,6 +294,8 @@ export function OrderDetailPanel({ order, onClose, onChanged }: OrderDetailPanel
           </div>
         )}
       </header>
+
+      <TemplateSuggestionBanner order={currentOrder} />
 
       <Tabs defaultValue="overview" className="flex flex-1 flex-col overflow-hidden">
         <TabsList variant="line" className="w-full justify-start px-4 pt-3">

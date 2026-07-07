@@ -28,6 +28,11 @@ interface CopyDialogProps {
   onOpenChange: (open: boolean) => void;
   content: string;
   variables: TemplateVariable[];
+  /**
+   * Optionale Vorbefüllung (z.B. Auftragsvariablen aus einem Playbook-Vorschlag).
+   * Überschreibt die automatischen Prefills, aber keine bereits getippten Werte.
+   */
+  initialValues?: Record<string, string>;
 }
 
 interface ResolvedVariable {
@@ -142,7 +147,13 @@ function SearchPicker({
   );
 }
 
-export function CopyDialog({ open, onOpenChange, content, variables }: CopyDialogProps) {
+export function CopyDialog({
+  open,
+  onOpenChange,
+  content,
+  variables,
+  initialValues,
+}: CopyDialogProps) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [products, setProducts] = useState<ProductPickerRow[]>([]);
   const [orders, setOrders] = useState<OrderPickerRow[]>([]);
@@ -195,7 +206,7 @@ export function CopyDialog({ open, onOpenChange, content, variables }: CopyDialo
         setProducts(productRows);
         setOrders(orderRows);
         // Bereits eingetippte Werte nicht ueberschreiben
-        setValues((current) => ({ ...prefills, ...current }));
+        setValues((current) => ({ ...prefills, ...(initialValues ?? {}), ...current }));
       } catch (error) {
         if (!cancelled) {
           toast.error(
@@ -209,7 +220,7 @@ export function CopyDialog({ open, onOpenChange, content, variables }: CopyDialo
     return () => {
       cancelled = true;
     };
-  }, [open, content, variables]);
+  }, [open, content, variables, initialValues]);
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen) {

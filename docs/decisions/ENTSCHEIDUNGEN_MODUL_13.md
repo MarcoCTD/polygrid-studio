@@ -74,3 +74,15 @@ OrdersPage → ordersService zu vermeiden.
 Für das suggest_template-Banner wird der bestehende Kopieren-Dialog um eine optionale,
 rückwärtskompatible `initialValues`-Prop erweitert, statt einen zweiten Dialog zu bauen.
 Die Werte kommen aus derselben Registry-Auflösung wie in der Engine.
+
+## E13-12: Banner erscheint auch im bereits geöffneten Detail-Panel
+
+Die Spec verlangt das Banner „beim nächsten Öffnen" des Detail-Panels. Umgesetzt ist ein
+Superset: Der Banner lädt zusätzlich sofort nach, wenn sich Status/updated_at des Auftrags
+im geöffneten Panel ändern — wer den Status direkt im Panel setzt, sieht den Vorschlag
+ohne das Panel schließen zu müssen.
+
+## E13-13: Statusänderung erzeugt einen Run auch bei leerem Ergebnis nicht
+
+Passt kein aktives Playbook (falscher Status, Plattform-Filter, deaktiviert), wird KEIN
+Run protokolliert — das Log bildet nur tatsächliche Ausführungen ab, keine Prüfungen.
