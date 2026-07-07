@@ -55,12 +55,14 @@ class TestDatabase {
   }
 }
 
-const holder = vi.hoisted(() => ({ db: null as unknown as { select: <T>(q: string, v?: unknown[]) => Promise<T> } }));
+const holder = vi.hoisted(() => ({
+  db: null as unknown as { select: <T>(q: string, v?: unknown[]) => Promise<T> },
+}));
 
 vi.mock('@/services/database', () => ({
   getDatabase: () => holder.db,
   initDatabase: async () => undefined,
-  getSetting: async <T,>(key: string): Promise<T | null> => {
+  getSetting: async <T>(key: string): Promise<T | null> => {
     const rows = await holder.db.select<{ value: string }[]>(
       'SELECT value FROM app_settings WHERE key = $1',
       [key],
@@ -72,9 +74,8 @@ vi.mock('@/services/database', () => ({
 }));
 
 // Nach dem Mock importieren, damit alle Services die Test-DB nutzen.
-const { runPlaybooksForStatusChange, runPlaybookDryRun, renderPlaybookTemplate } = await import(
-  './playbookEngine'
-);
+const { runPlaybooksForStatusChange, runPlaybookDryRun, renderPlaybookTemplate } =
+  await import('./playbookEngine');
 const {
   createPlaybook,
   updatePlaybook,

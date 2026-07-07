@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  findStandardVariable,
-  orderVariableValue,
-  type OrderPickerRow,
-} from './variableRegistry';
+import { findStandardVariable, orderVariableValue, type OrderPickerRow } from './variableRegistry';
 
 function order(overrides: Partial<OrderPickerRow> = {}): OrderPickerRow {
   return {

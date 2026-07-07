@@ -12,10 +12,7 @@
 import { createExpense } from '@/features/expenses/services';
 import { EXPENSE_CATEGORY_LABELS } from '@/features/expenses/constants';
 import { createTask } from '@/features/tasks/services';
-import {
-  orderVariableValue,
-  type OrderPickerRow,
-} from '@/features/templates/variableRegistry';
+import { orderVariableValue, type OrderPickerRow } from '@/features/templates/variableRegistry';
 import { getDatabase } from '@/services/database';
 import { getSettingWithDefault } from '@/services/settings';
 import {
@@ -152,8 +149,12 @@ async function loadOrderContext(orderId: string): Promise<OrderContext | null> {
     id: row.id as string,
     platform: (row.platform as string) ?? '',
     product_id: (row.product_id as string | null) ?? null,
-    shipping_cost: row.shipping_cost === null || row.shipping_cost === undefined ? null : Number(row.shipping_cost),
-    platform_fee: row.platform_fee === null || row.platform_fee === undefined ? null : Number(row.platform_fee),
+    shipping_cost:
+      row.shipping_cost === null || row.shipping_cost === undefined
+        ? null
+        : Number(row.shipping_cost),
+    platform_fee:
+      row.platform_fee === null || row.platform_fee === undefined ? null : Number(row.platform_fee),
     variables,
   };
 }
@@ -180,7 +181,8 @@ async function executeCreateTask(
     rendered.length > MAX_TASK_TITLE_LENGTH
       ? `${rendered.slice(0, MAX_TASK_TITLE_LENGTH - 1)}…`
       : rendered;
-  const dueDate = action.due_offset_days === null ? null : addDays(todayISODate(), action.due_offset_days);
+  const dueDate =
+    action.due_offset_days === null ? null : addDays(todayISODate(), action.due_offset_days);
   const note = unresolvedNote(unresolved);
   const preview = `Aufgabe „${title}“ (Priorität ${action.priority}, ${
     dueDate ? `fällig ${dueDate}` : 'ohne Fälligkeit'
@@ -494,7 +496,13 @@ export async function runPlaybookDryRun(
       );
     }
 
-    const runId = await insertRun(playbook.id, order.id, playbook.trigger_status, 'dry_run', results);
+    const runId = await insertRun(
+      playbook.id,
+      order.id,
+      playbook.trigger_status,
+      'dry_run',
+      results,
+    );
 
     return {
       run_id: runId,
@@ -505,8 +513,6 @@ export async function runPlaybookDryRun(
       created_count: 0,
     };
   } catch (error) {
-    throw new Error(
-      `Dry-Run konnte nicht ausgeführt werden: ${errorMessage(error)}`,
-    );
+    throw new Error(`Dry-Run konnte nicht ausgeführt werden: ${errorMessage(error)}`);
   }
 }
