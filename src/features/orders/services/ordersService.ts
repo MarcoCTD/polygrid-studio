@@ -479,7 +479,7 @@ export async function getOrders(filters?: OrderFilters): Promise<OrderListItem[]
   }
 }
 
-export async function getOrderById(id: string): Promise<Order | null> {
+export async function getOrderById(id: string): Promise<OrderListItem | null> {
   try {
     const rows = await getDatabase().select<OrderRow[]>(
       `SELECT o.*, p.name AS product_name
@@ -489,7 +489,7 @@ export async function getOrderById(id: string): Promise<Order | null> {
        LIMIT 1`,
       [id],
     );
-    return rows[0] ? rowToOrder(rows[0]) : null;
+    return rows[0] ? rowToOrderListItem(rows[0]) : null;
   } catch (error) {
     throw new Error(
       `Auftrag konnte nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`,

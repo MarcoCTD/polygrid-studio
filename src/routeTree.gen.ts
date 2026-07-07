@@ -1,5 +1,6 @@
 import { createRoute, redirect } from '@tanstack/react-router';
 import { rootRoute } from './routes/__root';
+import { validateOrdersSearch } from '@/features/orders/searchParams';
 import { DashboardPage } from '@/features/dashboard';
 import { ProductsPage } from '@/features/products';
 import { ProductEditPage } from '@/features/products/components/ProductEditPage';
@@ -31,6 +32,8 @@ const productEditRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/products/$productId',
   component: ProductEditPage,
+  validateSearch: (search: Record<string, unknown>): { tab?: string } =>
+    typeof search.tab === 'string' ? { tab: search.tab } : {},
 });
 
 const productsTrashRoute = createRoute({
@@ -49,6 +52,7 @@ const ordersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/orders',
   component: OrdersPage,
+  validateSearch: validateOrdersSearch,
 });
 
 const listingsRoute = createRoute({

@@ -13,4 +13,5 @@ export { RecentProductsWidget } from './RecentProductsWidget';
 export { RevenueByPlatformChart } from './RevenueByPlatformChart';
 export { SnapshotRefreshButton } from './SnapshotRefreshButton';
 export { TimeRangeSelector } from './TimeRangeSelector';
+export { TopSellersWidget } from './TopSellersWidget';
 export { WidgetCard } from './WidgetCard';

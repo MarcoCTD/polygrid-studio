@@ -10,6 +10,7 @@ export const COLUMN_LABELS: Record<string, string> = {
   material_type: 'Material',
   target_price: 'Zielpreis',
   estimated_margin: 'Marge',
+  units_sold: 'Verkauft',
   platforms: 'Plattformen',
   updated_at: 'Letzte Änderung',
   collection: 'Kollektion',

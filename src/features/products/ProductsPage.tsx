@@ -6,7 +6,11 @@ import { listProducts } from './db';
 import { getProductSettings } from './settings';
 import { calculateMargin } from './margin';
 import type { ProductSettings } from './defaults';
-import { useProductsUIStore, DEFAULT_COLUMNS } from './productsUiStore';
+import { useProductsUIStore, DEFAULT_COLUMNS, mergeWithDefaultColumns } from './productsUiStore';
+import {
+  getSalesTotalsByProduct,
+  type SalesTotals,
+} from '@/features/orders/services/salesStatsService';
 import { useUIStore } from '@/stores/uiStore';
 import { getSetting, setSetting } from '@/services/database';
 import { ProductsToolbar } from './components/ProductsToolbar';
@@ -21,6 +25,7 @@ const COLUMN_CONFIG_KEY = 'products_column_config';
 export function ProductsPage() {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
+  const [salesTotals, setSalesTotals] = useState<Map<string, SalesTotals>>(new Map());
   const [settings, setSettings] = useState<ProductSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewProduct, setShowNewProduct] = useState(false);
@@ -34,13 +39,19 @@ export function ProductsPage() {
     getProductSettings().then(setSettings).catch(console.error);
   }, []);
 
+  // Verkaufszahlen: eine Aggregat-Query für alle Produkte (kein N+1)
+  useEffect(() => {
+    getSalesTotalsByProduct('all').then(setSalesTotals).catch(console.error);
+  }, []);
+
   // Load column config + saved filters from DB once
   useEffect(() => {
     async function loadPersistedState() {
       try {
         const colConfig = await getSetting<typeof DEFAULT_COLUMNS>(COLUMN_CONFIG_KEY);
         if (colConfig && Array.isArray(colConfig)) {
-          setColumnConfig(colConfig);
+          // Persistierte Konfigurationen um später ergänzte Spalten erweitern
+          setColumnConfig(mergeWithDefaultColumns(colConfig));
         }
       } catch {
         // Use defaults
@@ -112,15 +123,17 @@ export function ProductsPage() {
     filters.includeDeleted,
   ]);
 
-  // Enrich products with calculated margin
+  // Enrich products with calculated margin + units sold
   const enrichedProducts = useMemo(() => {
-    if (!settings) return products;
     return products.map((p) => {
-      if (p.estimated_margin !== null) return p;
-      const result = calculateMargin(p, settings, null);
-      return { ...p, estimated_margin: result.marginPercent };
+      const units_sold = salesTotals.get(p.id)?.units_sold ?? 0;
+      const estimated_margin =
+        p.estimated_margin !== null || !settings
+          ? p.estimated_margin
+          : calculateMargin(p, settings, null).marginPercent;
+      return { ...p, estimated_margin, units_sold };
     });
-  }, [products, settings]);
+  }, [products, settings, salesTotals]);
 
   // Extract unique categories for filter popover
   const categories = useMemo(() => {

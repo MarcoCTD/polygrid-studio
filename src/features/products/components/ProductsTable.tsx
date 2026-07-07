@@ -21,7 +21,10 @@ import { formatRelativeDate, formatEUR } from '../utils';
 import { useProductsUIStore, type ColumnConfig } from '../productsUiStore';
 import { LICENSE_RISK_LABELS } from '../labels';
 
-const columnHelper = createColumnHelper<Product>();
+/** Produktzeile inkl. Verkaufszahl aus dem salesStatsService (Modul 15). */
+export type ProductWithSales = Product & { units_sold?: number };
+
+const columnHelper = createColumnHelper<ProductWithSales>();
 
 const ROW_HEIGHT = 44;
 // Name column is flex — this is its minimum width used for the totalMinWidth calculation
@@ -43,7 +46,7 @@ function createAllColumns(
   selectAll: (ids: string[]) => void,
   clearSelection: () => void,
   allProductIds: string[],
-): Record<string, ColumnDef<Product, unknown>> {
+): Record<string, ColumnDef<ProductWithSales, unknown>> {
   const selectColumn = columnHelper.display({
     id: 'select',
     size: 40,
@@ -73,7 +76,7 @@ function createAllColumns(
       />
     ),
     enableSorting: false,
-  }) as ColumnDef<Product, unknown>;
+  }) as ColumnDef<ProductWithSales, unknown>;
 
   return {
     select: selectColumn,
@@ -81,7 +84,7 @@ function createAllColumns(
       header: 'Status',
       size: 100,
       cell: (info) => <StatusBadge status={info.getValue()} />,
-    }) as ColumnDef<Product, unknown>,
+    }) as ColumnDef<ProductWithSales, unknown>,
     // Name: flex column — no fixed size, grows to fill available space
     name: columnHelper.accessor('name', {
       header: 'Name',
@@ -97,35 +100,43 @@ function createAllColumns(
         </span>
       ),
       meta: { clickable: true },
-    }) as ColumnDef<Product, unknown>,
+    }) as ColumnDef<ProductWithSales, unknown>,
     category: columnHelper.accessor('category', {
       header: 'Kategorie',
       size: 120,
       cell: (info) => <span className="truncate">{info.getValue()}</span>,
-    }) as ColumnDef<Product, unknown>,
+    }) as ColumnDef<ProductWithSales, unknown>,
     material_type: columnHelper.accessor('material_type', {
       header: 'Material',
       size: 100,
       cell: (info) => info.getValue(),
-    }) as ColumnDef<Product, unknown>,
+    }) as ColumnDef<ProductWithSales, unknown>,
     target_price: columnHelper.accessor('target_price', {
       header: 'Zielpreis',
       size: 100,
       cell: (info) => <span className="tabular-nums">{formatEUR(info.getValue())}</span>,
       meta: { align: 'right' as const },
-    }) as ColumnDef<Product, unknown>,
+    }) as ColumnDef<ProductWithSales, unknown>,
     estimated_margin: columnHelper.accessor('estimated_margin', {
       header: 'Marge',
       size: 100,
       cell: (info) => <MarginCell marginPercent={info.getValue()} />,
       meta: { align: 'right' as const },
-    }) as ColumnDef<Product, unknown>,
+    }) as ColumnDef<ProductWithSales, unknown>,
+    units_sold: columnHelper.accessor((row) => row.units_sold ?? 0, {
+      id: 'units_sold',
+      header: 'Verkauft',
+      size: 90,
+      cell: (info) => <span className="tabular-nums">{info.getValue()}</span>,
+      sortingFn: 'basic',
+      meta: { align: 'right' as const },
+    }) as ColumnDef<ProductWithSales, unknown>,
     platforms: columnHelper.accessor('platforms', {
       header: 'Plattformen',
       size: 120,
       enableSorting: false,
       cell: (info) => <PlatformIcons platforms={info.getValue()} />,
-    }) as ColumnDef<Product, unknown>,
+    }) as ColumnDef<ProductWithSales, unknown>,
     updated_at: columnHelper.accessor('updated_at', {
       header: 'Letzte Änderung',
       size: 140,
@@ -137,12 +148,12 @@ function createAllColumns(
           {formatRelativeDate(info.getValue())}
         </span>
       ),
-    }) as ColumnDef<Product, unknown>,
+    }) as ColumnDef<ProductWithSales, unknown>,
     collection: columnHelper.accessor('collection', {
       header: 'Kollektion',
       size: 120,
       cell: (info) => <span className="truncate">{info.getValue() ?? '–'}</span>,
-    }) as ColumnDef<Product, unknown>,
+    }) as ColumnDef<ProductWithSales, unknown>,
     print_time_minutes: columnHelper.accessor('print_time_minutes', {
       header: 'Druckzeit',
       size: 100,
@@ -151,7 +162,7 @@ function createAllColumns(
         return v !== null ? `${v} min` : '–';
       },
       meta: { align: 'right' as const },
-    }) as ColumnDef<Product, unknown>,
+    }) as ColumnDef<ProductWithSales, unknown>,
     material_grams: columnHelper.accessor('material_grams', {
       header: 'Material (g)',
       size: 100,
@@ -160,7 +171,7 @@ function createAllColumns(
         return v !== null ? `${v} g` : '–';
       },
       meta: { align: 'right' as const },
-    }) as ColumnDef<Product, unknown>,
+    }) as ColumnDef<ProductWithSales, unknown>,
     license_risk: columnHelper.accessor('license_risk', {
       header: 'Lizenz-Risiko',
       size: 120,
@@ -168,7 +179,7 @@ function createAllColumns(
         const v = info.getValue();
         return v ? LICENSE_RISK_LABELS[v] : '–';
       },
-    }) as ColumnDef<Product, unknown>,
+    }) as ColumnDef<ProductWithSales, unknown>,
     created_at: columnHelper.accessor('created_at', {
       header: 'Erstellt am',
       size: 140,
@@ -177,7 +188,7 @@ function createAllColumns(
           {new Date(info.getValue()).toLocaleDateString('de-DE')}
         </span>
       ),
-    }) as ColumnDef<Product, unknown>,
+    }) as ColumnDef<ProductWithSales, unknown>,
   };
 }
 
@@ -186,9 +197,9 @@ function createAllColumns(
 // ============================================================
 
 function buildVisibleColumns(
-  allColumns: Record<string, ColumnDef<Product, unknown>>,
+  allColumns: Record<string, ColumnDef<ProductWithSales, unknown>>,
   config: ColumnConfig[],
-): ColumnDef<Product, unknown>[] {
+): ColumnDef<ProductWithSales, unknown>[] {
   return config
     .filter((c) => c.visible && allColumns[c.id])
     .sort((a, b) => a.order - b.order)
@@ -201,7 +212,7 @@ function buildVisibleColumns(
 // scroll kicks in before columns start compressing.
 // ============================================================
 
-function computeTotalMinWidth(columns: ColumnDef<Product, unknown>[]): number {
+function computeTotalMinWidth(columns: ColumnDef<ProductWithSales, unknown>[]): number {
   return columns.reduce((sum, col) => {
     const size = col.size;
     if (size === undefined) return sum + 100;
@@ -228,7 +239,7 @@ function colStyle(size: number | undefined): React.CSSProperties {
 // ============================================================
 
 interface ProductsTableProps {
-  products: Product[];
+  products: ProductWithSales[];
   isLoading: boolean;
 }
 

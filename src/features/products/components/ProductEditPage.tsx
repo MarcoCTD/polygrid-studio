@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from '@tanstack/react-router';
+import { useParams, useNavigate, useSearch } from '@tanstack/react-router';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,14 @@ import { OverviewTab } from './OverviewTab';
 import { MarginCalculator } from './MarginCalculator';
 import { PlaceholderTab } from './PlaceholderTab';
 import { ProductFilesTab } from './ProductFilesTab';
+import { SalesTab } from './SalesTab';
+
+const PRODUCT_TABS = ['overview', 'files', 'listings', 'sales', 'costs', 'ai'] as const;
+type ProductTab = (typeof PRODUCT_TABS)[number];
+
+function isProductTab(value: unknown): value is ProductTab {
+  return typeof value === 'string' && (PRODUCT_TABS as readonly string[]).includes(value);
+}
 
 function productToFormValues(product: Product): ProductUpdate {
   return {
@@ -47,6 +55,8 @@ function productToFormValues(product: Product): ProductUpdate {
 
 export function ProductEditPage() {
   const { productId } = useParams({ strict: false }) as { productId: string };
+  const search = useSearch({ strict: false }) as { tab?: string };
+  const initialTab: ProductTab = isProductTab(search.tab) ? search.tab : 'overview';
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -181,12 +191,13 @@ export function ProductEditPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="overview" className="flex flex-1 flex-col overflow-hidden">
+      <Tabs defaultValue={initialTab} className="flex flex-1 flex-col overflow-hidden">
         <div className="border-b border-border-subtle px-6 dark:border-transparent">
           <TabsList variant="line">
             <TabsTrigger value="overview">Übersicht</TabsTrigger>
             <TabsTrigger value="files">Dateien</TabsTrigger>
             <TabsTrigger value="listings">Listings</TabsTrigger>
+            <TabsTrigger value="sales">Verkäufe</TabsTrigger>
             <TabsTrigger value="costs">Kosten</TabsTrigger>
             <TabsTrigger value="ai">KI</TabsTrigger>
           </TabsList>
@@ -203,6 +214,10 @@ export function ProductEditPage() {
 
           <TabsContent value="listings">
             <ProductListingsTab product={product} />
+          </TabsContent>
+
+          <TabsContent value="sales">
+            <SalesTab product={product} />
           </TabsContent>
 
           <TabsContent value="costs">

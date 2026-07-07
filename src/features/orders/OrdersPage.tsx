@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from '@tanstack/react-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearch } from '@tanstack/react-router';
 import { KanbanSquare, Plus, Table2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,8 @@ import {
   OrdersToolbar,
   type OrdersFilterState,
 } from './components';
-import { getOpenOrdersCount, getOrders } from './services';
+import { getOpenOrdersCount, getOrderById, getOrders } from './services';
+import { parseOrderStatusList, type OrdersSearch } from './searchParams';
 import type { OrderFilters, OrderListItem, OrderStatus } from './types';
 
 const DEFAULT_STATUSES: OrderStatus[] = [
@@ -52,6 +53,7 @@ function filtersToService(filters: OrdersFilterState, viewMode: 'table' | 'kanba
 
 export function OrdersPage() {
   const router = useRouter();
+  const search = useSearch({ strict: false }) as OrdersSearch;
   const registerCommands = useUIStore((state) => state.registerCommands);
   const unregisterCommands = useUIStore((state) => state.unregisterCommands);
   const openDetailPanel = useUIStore((state) => state.openDetailPanel);
@@ -62,11 +64,15 @@ export function OrdersPage() {
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newOrderOpen, setNewOrderOpen] = useState(false);
-  const [filters, setFilters] = useState<OrdersFilterState>({
-    statuses: DEFAULT_STATUSES,
-    platforms: [],
-    month: '',
-    showDeleted: false,
+  // Statusfilter aus der URL übernehmen (z.B. Smart-Action-Navigation)
+  const [filters, setFilters] = useState<OrdersFilterState>(() => {
+    const statusesFromUrl = parseOrderStatusList(search.status);
+    return {
+      statuses: statusesFromUrl.length > 0 ? statusesFromUrl : DEFAULT_STATUSES,
+      platforms: [],
+      month: '',
+      showDeleted: false,
+    };
   });
 
   const serviceFilters = useMemo(
@@ -101,6 +107,40 @@ export function OrdersPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadOrders();
   }, [loadOrders]);
+
+  // Ansicht aus der URL übernehmen (?view=kanban)
+  useEffect(() => {
+    if (search.view && search.view !== ordersViewMode) {
+      setOrdersViewMode(search.view);
+    }
+    // Nur beim Mount bzw. URL-Wechsel anwenden, nicht bei manueller Umschaltung
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.view, setOrdersViewMode]);
+
+  // Auftrag aus der URL öffnen (?order=<id>), z.B. vom Verkäufe-Tab eines Produkts
+  const openedOrderIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!search.order || openedOrderIdRef.current === search.order) return;
+    openedOrderIdRef.current = search.order;
+
+    void (async () => {
+      try {
+        const order = await getOrderById(search.order ?? '');
+        if (!order) return;
+        openDetailPanel(
+          <OrderDetailPanel
+            order={order}
+            onClose={closeDetailPanel}
+            onChanged={() => void loadOrders()}
+          />,
+        );
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : 'Auftrag konnte nicht geöffnet werden',
+        );
+      }
+    })();
+  }, [closeDetailPanel, loadOrders, openDetailPanel, search.order]);
 
   useEffect(() => {
     const commands = createOrderCommands({

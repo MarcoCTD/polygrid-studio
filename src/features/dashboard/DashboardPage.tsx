@@ -10,7 +10,12 @@ import {
   PipelineWidget,
   QuickActions,
   RecentProductsWidget,
+  TopSellersWidget,
 } from '@/features/analytics/components';
+import {
+  getTopSellers,
+  type TopSellerEntry,
+} from '@/features/orders/services/salesStatsService';
 import {
   getDashboardKPIs,
   getIncompleteListings,
@@ -91,6 +96,7 @@ export function DashboardPage() {
   const [incompleteListings, setIncompleteListings] = useState<IncompleteListing[]>([]);
   const [pipelineGroups, setPipelineGroups] = useState<PipelineProductGroup[]>([]);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+  const [topSellers, setTopSellers] = useState<TopSellerEntry[]>([]);
   const [lowMarginThreshold, setLowMarginThreshold] = useState(30);
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [listingModalOpen, setListingModalOpen] = useState(false);
@@ -153,6 +159,14 @@ export function DashboardPage() {
     }
   }, []);
 
+  const loadTopSellers = useCallback(async () => {
+    try {
+      setTopSellers(await getTopSellers('last_90_days', 5));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Top-Seller-Widget konnte nicht laden');
+    }
+  }, []);
+
   const refreshDashboard = useCallback(() => {
     void loadKpis();
     void loadRecentProducts();
@@ -160,6 +174,7 @@ export function DashboardPage() {
     void loadIncompleteListings();
     void loadPipelineProducts();
     void loadRecentOrders();
+    void loadTopSellers();
   }, [
     loadIncompleteListings,
     loadKpis,
@@ -167,6 +182,7 @@ export function DashboardPage() {
     loadPipelineProducts,
     loadRecentOrders,
     loadRecentProducts,
+    loadTopSellers,
   ]);
 
   useEffect(() => {
@@ -198,6 +214,11 @@ export function DashboardPage() {
     const timeout = window.setTimeout(() => void loadRecentOrders(), 0);
     return () => window.clearTimeout(timeout);
   }, [loadRecentOrders]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => void loadTopSellers(), 0);
+    return () => window.clearTimeout(timeout);
+  }, [loadTopSellers]);
 
   function handleNewExpense() {
     openDetailPanel(
@@ -275,6 +296,7 @@ export function DashboardPage() {
         />
         <LowMarginWidget products={lowMarginProducts} threshold={lowMarginThreshold} />
         <IncompleteListingsWidget listings={incompleteListings} />
+        <TopSellersWidget topSellers={topSellers} />
         <PipelineWidget groups={pipelineGroups} />
         <OrderTimelineWidget orders={recentOrders} onCreateOrder={() => setOrderModalOpen(true)} />
       </section>

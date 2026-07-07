@@ -45,14 +45,28 @@ export const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: 'material_type', visible: true, order: 4 },
   { id: 'target_price', visible: true, order: 5 },
   { id: 'estimated_margin', visible: true, order: 6 },
-  { id: 'platforms', visible: true, order: 7 },
-  { id: 'updated_at', visible: true, order: 8 },
-  { id: 'collection', visible: false, order: 9 },
-  { id: 'print_time_minutes', visible: false, order: 10 },
-  { id: 'material_grams', visible: false, order: 11 },
-  { id: 'license_risk', visible: false, order: 12 },
-  { id: 'created_at', visible: false, order: 13 },
+  { id: 'units_sold', visible: true, order: 7 },
+  { id: 'platforms', visible: true, order: 8 },
+  { id: 'updated_at', visible: true, order: 9 },
+  { id: 'collection', visible: false, order: 10 },
+  { id: 'print_time_minutes', visible: false, order: 11 },
+  { id: 'material_grams', visible: false, order: 12 },
+  { id: 'license_risk', visible: false, order: 13 },
+  { id: 'created_at', visible: false, order: 14 },
 ];
+
+/**
+ * Ergänzt eine persistierte Spaltenkonfiguration um Spalten, die erst in
+ * späteren Modulen dazugekommen sind (z.B. "Verkauft" aus Modul 15).
+ */
+export function mergeWithDefaultColumns(persisted: ColumnConfig[]): ColumnConfig[] {
+  const knownIds = new Set(persisted.map((column) => column.id));
+  const maxOrder = persisted.reduce((max, column) => Math.max(max, column.order), -1);
+  const missing = DEFAULT_COLUMNS.filter((column) => !knownIds.has(column.id)).map(
+    (column, index) => ({ ...column, order: maxOrder + 1 + index }),
+  );
+  return missing.length > 0 ? [...persisted, ...missing] : persisted;
+}
 
 // ============================================================
 // Saved Filters
