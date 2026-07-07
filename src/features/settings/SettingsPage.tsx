@@ -22,6 +22,7 @@ import {
   Sparkles,
   Sun,
   Trash2,
+  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -39,12 +40,13 @@ import { cn } from '@/lib/utils';
 import { DEFAULTS, getSettingWithDefault } from '@/services/settings';
 import type { AccentColor, Theme } from '@/types';
 import { ACCENT_PRESETS, type AccentPresetKey } from '@/utils/colors';
+import { AutomationSettingsTab } from '@/features/playbooks/components';
 import { AiSettingsTab } from './components/AiSettingsTab';
 import { BrandSettingsTab } from './components/BrandSettingsTab';
 import { DataSecuritySettingsTab } from './components/DataSecuritySettingsTab';
 import { useAutoSave } from './hooks/useAutoSave';
 
-type SettingsTab = 'general' | 'materials' | 'ai' | 'brand' | 'data';
+type SettingsTab = 'general' | 'materials' | 'ai' | 'automation' | 'brand' | 'data';
 type Language = 'de' | 'en';
 type DateFormat = 'DD.MM.YYYY' | 'YYYY-MM-DD';
 
@@ -104,6 +106,7 @@ const TABS: TabConfig[] = [
   { id: 'general', label: 'Allgemein', icon: Settings },
   { id: 'materials', label: 'Material & Plattformen', icon: Package },
   { id: 'ai', label: 'KI-Konfiguration', icon: Sparkles },
+  { id: 'automation', label: 'Automatisierung', icon: Zap },
   { id: 'brand', label: 'Markenstil', icon: Palette },
   { id: 'data', label: 'Daten & Sicherheit', icon: Shield },
 ];
@@ -1250,6 +1253,7 @@ export function SettingsPage() {
           {activeTab === 'general' && renderGeneralTab()}
           {activeTab === 'materials' && renderMaterialsTab()}
           {activeTab === 'ai' && <AiSettingsTab />}
+          {activeTab === 'automation' && <AutomationSettingsTab />}
           {activeTab === 'brand' && <BrandSettingsTab />}
           {activeTab === 'data' && <DataSecuritySettingsTab />}
         </div>
