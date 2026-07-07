@@ -28,6 +28,7 @@ import type {
   RecentProduct,
 } from '@/features/analytics/types';
 import { ExpenseDetailPanel } from '@/features/expenses/components/ExpenseDetailPanel';
+import { KleinunternehmerGrenzeCard } from '@/features/finance/components/KleinunternehmerGrenzeCard';
 import { NewListingModal } from '@/features/listings/components';
 import { NewOrderModal } from '@/features/orders/components';
 import { NewProductDialog } from '@/features/products/components/NewProductDialog';
@@ -277,6 +278,7 @@ export function DashboardPage() {
         <IncompleteListingsWidget listings={incompleteListings} />
         <PipelineWidget groups={pipelineGroups} />
         <OrderTimelineWidget orders={recentOrders} onCreateOrder={() => setOrderModalOpen(true)} />
+        <KleinunternehmerGrenzeCard />
       </section>
 
       <NewProductDialog

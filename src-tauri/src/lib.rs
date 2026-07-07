@@ -43,7 +43,8 @@ pub fn run() {
             filesystem::commands::move_file,
             filesystem::commands::copy_file,
             filesystem::commands::delete_to_archive,
-            filesystem::commands::undo_last_operation
+            filesystem::commands::undo_last_operation,
+            filesystem::commands::write_export_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

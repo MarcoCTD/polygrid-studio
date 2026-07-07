@@ -158,6 +158,28 @@ pub fn ensure_onedrive_structure(base_path: String) -> Result<(), FsError> {
     Ok(())
 }
 
+/// Schreibt eine Exportdatei (z.B. EÜR-xlsx, Modul 14). Überschreiben ist
+/// gewollt (Export kann neu erzeugt werden). Mit `base_path` wird gegen den
+/// OneDrive-Basisordner validiert; `None` gilt für Ziele aus dem nativen
+/// Speichern-Dialog. Liefert den endgültigen absoluten Pfad zurück.
+#[tauri::command]
+pub fn write_export_file(
+    path: String,
+    base_path: Option<String>,
+    contents: Vec<u8>,
+) -> Result<String, FsError> {
+    let path = path_from_string(&path)?;
+    let parent = path.parent().ok_or(FsError::PathOutsideBase)?;
+    let canonical_parent = validate_existing_path(parent, base_path.as_deref())?;
+    let file_name = path.file_name().ok_or(FsError::Io(
+        "Dateiname konnte nicht gelesen werden.".to_string(),
+    ))?;
+    let target = canonical_parent.join(file_name);
+
+    fs::write(&target, &contents)?;
+    Ok(path_to_string(&target))
+}
+
 #[tauri::command]
 pub fn rename_file(
     base_path: String,
