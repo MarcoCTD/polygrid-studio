@@ -237,7 +237,11 @@ test('Playbook mit allen drei Aktionstypen anlegen, bearbeiten, deaktivieren, l�
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-checked', 'false');
   await expect
-    .poll(() => tauri.select("SELECT enabled FROM playbooks WHERE name = 'Komplett-Playbook v2'")[0]?.enabled)
+    .poll(
+      () =>
+        tauri.select("SELECT enabled FROM playbooks WHERE name = 'Komplett-Playbook v2'")[0]
+          ?.enabled,
+    )
     .toBe(0);
 
   // Löschen mit Bestätigung (Soft-Delete)
@@ -248,7 +252,9 @@ test('Playbook mit allen drei Aktionstypen anlegen, bearbeiten, deaktivieren, l�
     page.getByTestId('playbook-list-item').filter({ hasText: 'Komplett-Playbook v2' }),
   ).toHaveCount(0);
 
-  const deleted = tauri.select("SELECT deleted_at FROM playbooks WHERE name = 'Komplett-Playbook v2'");
+  const deleted = tauri.select(
+    "SELECT deleted_at FROM playbooks WHERE name = 'Komplett-Playbook v2'",
+  );
   expect(deleted).toHaveLength(1);
   expect(deleted[0].deleted_at).not.toBeNull();
 });
@@ -292,6 +298,19 @@ test('Kanban-Drag löst Playbook aus: verknüpfte Aufgabe mit Variablen und Fäl
   await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, {
     steps: 15,
   });
+  // Das Board kann während des Drags horizontal autoscrollen (dnd-kit),
+  // wodurch die Spalte unter dem Zeiger wegrutscht. Deshalb die Zielposition
+  // nachführen, bis das Board stillsteht und die Zielspalte als aktives
+  // Dropziel markiert ist (isOver-Highlight), erst dann loslassen.
+  await expect(async () => {
+    const before = await targetColumn.boundingBox();
+    if (!before) throw new Error('BoundingBox nicht verfügbar');
+    await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2, { steps: 5 });
+    await page.waitForTimeout(150);
+    const after = await targetColumn.boundingBox();
+    if (!after || Math.abs(after.x - before.x) > 1) throw new Error('Board scrollt noch');
+    await expect(targetColumn).toHaveClass(/border-pg-accent/, { timeout: 500 });
+  }).toPass({ timeout: 10_000 });
   await page.mouse.up();
 
   // Statusänderung persistiert
@@ -407,7 +426,9 @@ test('create_expense: amount_source liest Auftragswert; leerer Wert wird mit Hin
   await expect(log.getByText('Teilweise')).toBeVisible();
   await log.getByRole('row').filter({ hasText: withoutCost.receipt_number }).first().click();
   await expect(log.getByText('übersprungen').first()).toBeVisible();
-  await expect(log.getByText('Versandkosten sind am Auftrag nicht erfasst', { exact: false })).toBeVisible();
+  await expect(
+    log.getByText('Versandkosten sind am Auftrag nicht erfasst', { exact: false }),
+  ).toBeVisible();
 });
 
 // ------------------------------------------------------------
@@ -452,7 +473,9 @@ test('suggest_template: Banner im Detail-Panel, vorbefüllter Kopieren-Dialog, v
   await expect(copyDialog.locator('#copy-var-bestellnummer')).toHaveValue('ETSY-4711');
   await expect(copyDialog.locator('#copy-var-produktname')).toHaveValue('Vase Modern');
   await expect(
-    copyDialog.getByText('Hallo Clara Kundin, deine Bestellung ETSY-4711 (Vase Modern) ist unterwegs.'),
+    copyDialog.getByText(
+      'Hallo Clara Kundin, deine Bestellung ETSY-4711 (Vase Modern) ist unterwegs.',
+    ),
   ).toBeVisible();
   await copyDialog.getByRole('button', { name: 'Abbrechen' }).click();
 
