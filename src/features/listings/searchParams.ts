@@ -19,9 +19,7 @@ export function parseCompletenessList(value: string | undefined): CompletenessSt
   return value
     .split(',')
     .map((item) => item.trim())
-    .filter((item): item is CompletenessStatus =>
-      (COMPLETENESS_VALUES as string[]).includes(item),
-    );
+    .filter((item): item is CompletenessStatus => (COMPLETENESS_VALUES as string[]).includes(item));
 }
 
 export function parseListingStatusList(value: string | undefined): ListingStatus[] {
@@ -35,7 +33,10 @@ export function parseListingStatusList(value: string | undefined): ListingStatus
 export function validateListingsSearch(search: Record<string, unknown>): ListingsSearch {
   const result: ListingsSearch = {};
 
-  if (typeof search.completeness === 'string' && parseCompletenessList(search.completeness).length > 0) {
+  if (
+    typeof search.completeness === 'string' &&
+    parseCompletenessList(search.completeness).length > 0
+  ) {
     result.completeness = search.completeness;
   }
   if (typeof search.status === 'string' && parseListingStatusList(search.status).length > 0) {

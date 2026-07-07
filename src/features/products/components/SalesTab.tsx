@@ -177,9 +177,7 @@ export function SalesTab({ product }: SalesTabProps) {
                 <button
                   type="button"
                   className="flex w-full items-center justify-between gap-3 px-1 py-2 text-left text-sm transition-colors hover:bg-bg-hover"
-                  onClick={() =>
-                    void navigate({ to: '/orders', search: { order: order.id } })
-                  }
+                  onClick={() => void navigate({ to: '/orders', search: { order: order.id } })}
                   title="Auftrag öffnen"
                 >
                   <span className="font-medium tabular-nums text-pg-accent">

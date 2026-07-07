@@ -44,7 +44,9 @@ export function ExpensesPage() {
   // Filter aus der URL übernehmen (z.B. Smart Action "Beleg fehlt")
   const [filters, setFilters] = useState<ExpensesFilterState>(() => ({
     ...INITIAL_FILTERS,
-    ...(search.receipt === 'missing' ? { receipt: 'missing' as const, taxRelevant: 'yes' as const } : {}),
+    ...(search.receipt === 'missing'
+      ? { receipt: 'missing' as const, taxRelevant: 'yes' as const }
+      : {}),
     ...(search.period ? { period: search.period } : {}),
   }));
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});

@@ -12,10 +12,7 @@ import {
   RecentProductsWidget,
   TopSellersWidget,
 } from '@/features/analytics/components';
-import {
-  getTopSellers,
-  type TopSellerEntry,
-} from '@/features/orders/services/salesStatsService';
+import { getTopSellers, type TopSellerEntry } from '@/features/orders/services/salesStatsService';
 import {
   getDashboardKPIs,
   getIncompleteListings,

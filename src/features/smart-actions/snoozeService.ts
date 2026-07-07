@@ -46,7 +46,11 @@ export async function getSnoozes(): Promise<SnoozeMap> {
 }
 
 /** Snoozt eine Regel für SNOOZE_DAYS Tage und merkt sich den aktuellen Count. */
-export async function snoozeSmartAction(ruleId: string, count: number, now = new Date()): Promise<void> {
+export async function snoozeSmartAction(
+  ruleId: string,
+  count: number,
+  now = new Date(),
+): Promise<void> {
   try {
     const snoozes = await getSnoozes();
     const until = new Date(now);

@@ -1,6 +1,12 @@
 # Datenbank-Schema
 
-PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Mai 2026 | Version 1.4
+PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Juli 2026 | Version 1.5
+
+> **Änderungen in v1.5 gegenüber v1.4:**
+>
+> - Modul 15 (Verkaufszahlen und Smart Actions): keine neuen Tabellen, keine Migrationsänderungen
+> - Neuer Settings-Key `smart_action_snoozes` (Smart Actions, Modul 15)
+> - Verkaufszahlen werden live aus `orders` aggregiert (salesStatsService), kein persistiertes Schema
 
 > **Änderungen in v1.4 gegenüber v1.3:**
 >
@@ -426,6 +432,10 @@ Diese Keys werden über verschiedene Module hinweg verwendet. Die vollständige 
 
 - `dashboard_kpi_snapshot_auto`: Boolean (Default: true)
 - `dashboard_low_margin_threshold`: Number (Default: 30)
+
+**Smart Actions (Modul 15):**
+
+- `smart_action_snoozes`: JSON-Objekt `{ "<ruleId>": { "until": "<ISO>", "count": <Zahl> } }` (Default: `{}`). Verworfene Smart-Action-Karten mit Ablaufdatum (+7 Tage) und Count beim Verwerfen; Karte kehrt bei Ablauf oder gestiegenem Count zurück.
 
 **Sicherheit & Backup (Modul 11):**
 

@@ -18,11 +18,7 @@ import {
   type ListingListItem,
 } from './listingsService';
 import { useListingsStore, type ListingsFilterState } from './listingsStore';
-import {
-  parseCompletenessList,
-  parseListingStatusList,
-  type ListingsSearch,
-} from './searchParams';
+import { parseCompletenessList, parseListingStatusList, type ListingsSearch } from './searchParams';
 
 function hasActiveFilters(filters: ListingsFilterState) {
   return (
