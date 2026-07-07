@@ -1,6 +1,12 @@
 # Datenbank-Schema
 
-PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Mai 2026 | Version 1.4
+PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Juli 2026 | Version 1.5
+
+> **Änderungen in v1.5 gegenüber v1.4:**
+>
+> - Modul 13 (Playbooks): neue Tabellen `playbooks` und `playbook_runs` (Migration `0013_modul_13_playbooks`)
+> - Partieller Unique-Index `idx_playbook_runs_idempotency` erzwingt Idempotenz pro (Playbook, Auftrag, Trigger-Status); Dry-Runs sind ausgenommen
+> - Seed: zwei deaktivierte Beispiel-Playbooks werden mit der Migration angelegt
 
 > **Änderungen in v1.4 gegenüber v1.3:**
 >
@@ -38,6 +44,8 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 | `bank_payout_orders`  | Modul 08     | Junction für Sammelauszahlungen (n:m)            |
 | `tasks`               | Modul 09     | Aufgaben                                         |
 | `kpi_records`         | Modul 10     | KPI-Snapshots                                    |
+| `playbooks`           | Modul 13     | Regelbasierte Automatisierung (Trigger + Aktionen) |
+| `playbook_runs`       | Modul 13     | Ausführungs-Log der Playbooks                    |
 | `app_settings`        | Modul 01     | Key-Value-Einstellungen                          |
 
 ---
@@ -351,6 +359,38 @@ Junction-Tabelle für Sammelauszahlungen. Eine Banktransaktion (Plattform-Auszah
 
 ---
 
+## playbooks (Modul 13)
+
+| Feld            | Typ         | Pflicht | Beschreibung                                                                 |
+| --------------- | ----------- | ------- | ----------------------------------------------------------------------------- |
+| id              | TEXT (UUID) | Ja      | Primärschlüssel                                                              |
+| name            | TEXT        | Ja      | Anzeigename                                                                  |
+| enabled         | INTEGER     | Ja      | Boolean, Default: true (Seeds werden deaktiviert angelegt)                   |
+| trigger_status  | TEXT        | Ja      | Auftragsstatus, der auslöst (Enum aus Modul 08)                              |
+| platform_filter | TEXT (JSON) | Nein    | Array von Plattformen (`etsy`, `ebay`, `kleinanzeigen`, `direkt`); NULL = alle |
+| actions         | TEXT (JSON) | Ja      | Array von Aktionen (Zod discriminated union: `create_task`, `create_expense`, `suggest_template`); Reihenfolge = Ausführungsreihenfolge |
+| created_at      | TEXT (ISO)  | Ja      |                                                                              |
+| updated_at      | TEXT (ISO)  | Ja      |                                                                              |
+| deleted_at      | TEXT (ISO)  | Nein    | Soft-Delete                                                                  |
+
+**Indizes**: `idx_playbooks_trigger_status` auf `trigger_status`.
+
+## playbook_runs (Modul 13)
+
+| Feld           | Typ         | Pflicht | Beschreibung                                                        |
+| -------------- | ----------- | ------- | -------------------------------------------------------------------- |
+| id             | TEXT (UUID) | Ja      | Primärschlüssel                                                     |
+| playbook_id    | TEXT (FK)   | Ja      | → playbooks.id                                                       |
+| order_id       | TEXT (FK)   | Ja      | → orders.id (auslösender Auftrag)                                    |
+| trigger_status | TEXT        | Ja      | Status zum Zeitpunkt der Ausführung                                  |
+| status         | TEXT        | Ja      | `success`, `partial`, `error`, `dry_run`                             |
+| results        | TEXT (JSON) | Ja      | Pro Aktion: Typ, Status, erstellte Entity-ID, Hinweis/Fehlermeldung, Vorschau; `suggest_template`-Vorschläge inkl. `dismissed`-Flag leben hier (kein eigenes Schema) |
+| executed_at    | TEXT (ISO)  | Ja      |                                                                      |
+
+**Indizes**: `idx_playbook_runs_order_id`, `idx_playbook_runs_executed_at` sowie der partielle Unique-Index `idx_playbook_runs_idempotency` auf (`playbook_id`, `order_id`, `trigger_status`) `WHERE status != 'dry_run'` — erzwingt die Idempotenz auf DB-Ebene (Zurück- und Wiedervorschieben eines Auftrags feuert kein zweites Mal).
+
+**Kein Soft-Delete**: Runs sind ein Append-only-Log.
+
 ## app_settings (Modul 01)
 
 | Feld       | Typ         | Pflicht | Beschreibung                       |
@@ -447,6 +487,9 @@ products ←── expenses.product_id (optional)
 
 orders   ←── tasks.order_id (optional)
          ←── bank_payout_orders.order_id (n:m via junction)
+         ←── playbook_runs.order_id (pflicht)
+
+playbooks ←── playbook_runs.playbook_id (pflicht)
 
 listings ←── tasks.listing_id (optional)
 

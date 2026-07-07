@@ -1,4 +1,6 @@
 import { getDatabase } from '@/services/database';
+import { notifyPlaybookRunSummaries } from '@/features/playbooks/notifications';
+import { runPlaybooksForStatusChange } from '@/features/playbooks/services/playbookEngine';
 import { listProducts } from '@/features/products/db';
 import { getProductSettings } from '@/features/products/settings';
 import type { Product } from '@/features/products/schema';
@@ -71,6 +73,30 @@ function dateYear(isoDate: string): number {
 
 function statusSetsPaymentDate(status: OrderStatus | undefined): boolean {
   return status === 'paid' || status === 'completed';
+}
+
+/**
+ * Zentraler Playbook-Hook (Modul 13): einziger Aufrufpunkt der Engine.
+ * Läuft NACH dem Persistieren des Status. Fehler werden verschluckt,
+ * damit ein Playbook-Problem die Statusänderung niemals blockiert
+ * oder zurückrollt.
+ */
+async function triggerPlaybooksAfterStatusPersist(
+  orderId: string,
+  newStatus: OrderStatus,
+): Promise<void> {
+  try {
+    const summaries = await runPlaybooksForStatusChange(orderId, newStatus);
+    if (summaries.length > 0) {
+      notifyPlaybookRunSummaries(summaries);
+    }
+  } catch (error) {
+    console.error('[Orders] Playbook-Ausführung fehlgeschlagen (Status bleibt bestehen)', {
+      orderId,
+      newStatus,
+      error,
+    });
+  }
 }
 
 function rowToOrder(row: OrderRow): Order {
@@ -313,6 +339,8 @@ export async function createOrder(data: NewOrderInput): Promise<Order> {
         ],
       );
         await createOrderEvent(db, id, 'status_change', null, status, timestamp);
+        // Auch ein neu angelegter Auftrag "erreicht" seinen Anfangsstatus.
+        await triggerPlaybooksAfterStatusPersist(id, status);
         break;
       } catch (error) {
         if (input.receipt_number || !isUniqueConstraintError(error) || attempt === 2) {
@@ -381,6 +409,11 @@ export async function updateOrder(id: string, data: UpdateOrderInput): Promise<O
         event.to_value,
         timestamp,
       );
+    }
+
+    const statusChanged = events.some((event) => event.event_type === 'status_change');
+    if (statusChanged && normalizedData.status !== undefined) {
+      await triggerPlaybooksAfterStatusPersist(id, normalizedData.status);
     }
 
     const updated = await getOrderById(id);

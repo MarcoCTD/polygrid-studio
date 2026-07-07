@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   sqliteTable,
   text,
@@ -538,5 +539,53 @@ export const kpiRecords = sqliteTable(
   },
   (table) => [
     uniqueIndex('idx_kpi_records_period_unique').on(table.period_type, table.period_start),
+  ],
+);
+
+// ============================================================
+// 13. playbooks (Modul 13) – keine FKs
+// ============================================================
+export const playbooks = sqliteTable(
+  'playbooks',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+    trigger_status: text('trigger_status').notNull(),
+    platform_filter: text('platform_filter', { mode: 'json' }).$type<string[]>(),
+    actions: text('actions', { mode: 'json' }).$type<Record<string, unknown>[]>().notNull(),
+    created_at: text('created_at').notNull(),
+    updated_at: text('updated_at').notNull(),
+    deleted_at: text('deleted_at'),
+  },
+  (table) => [index('idx_playbooks_trigger_status').on(table.trigger_status)],
+);
+
+// ============================================================
+// 14. playbook_runs (Modul 13) – FKs zu playbooks und orders
+// ============================================================
+export const playbookRuns = sqliteTable(
+  'playbook_runs',
+  {
+    id: text('id').primaryKey(),
+    playbook_id: text('playbook_id')
+      .notNull()
+      .references(() => playbooks.id),
+    order_id: text('order_id')
+      .notNull()
+      .references(() => orders.id),
+    trigger_status: text('trigger_status').notNull(),
+    status: text('status').notNull(),
+    results: text('results', { mode: 'json' }).$type<Record<string, unknown>[]>().notNull(),
+    executed_at: text('executed_at').notNull(),
+  },
+  (table) => [
+    index('idx_playbook_runs_order_id').on(table.order_id),
+    index('idx_playbook_runs_executed_at').on(table.executed_at),
+    // Idempotenz: pro Playbook, Auftrag und Trigger-Status nur ein echter Run.
+    // Dry-Runs sind vom Unique-Index ausgenommen.
+    uniqueIndex('idx_playbook_runs_idempotency')
+      .on(table.playbook_id, table.order_id, table.trigger_status)
+      .where(sql`status != 'dry_run'`),
   ],
 );

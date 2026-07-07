@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -14,6 +14,12 @@ export default defineConfig(async () => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+
+  // Vitest: nur Unit-/Integrationstests in src/. Die Playwright-E2E-Tests
+  // unter tests/e2e laufen separat via `npx playwright test`.
+  test: {
+    include: ["src/**/*.test.{ts,tsx}"],
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
