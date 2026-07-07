@@ -3,10 +3,38 @@ import type { ZodSchema } from 'zod';
 import type { AIResponse } from '@/features/ai-assistant/types';
 
 export const GEMINI_MODELS = [
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite',
-  'gemini-1.5-pro',
+  'gemini-3.5-flash',
+  'gemini-3.1-pro-preview',
+  'gemini-3.1-flash-lite',
+  'gemini-2.5-flash',
 ] as const;
+
+/**
+ * Migriert veraltete gespeicherte Gemini-Modellnamen auf aktuell verfügbare
+ * Modelle, bevor sie in einen Request oder die UI gelangen. Gemini 1.5/2.0
+ * sind im Free Tier abgeschaltet (HTTP 429, limit: 0); "gemini-3.1-pro"
+ * existiert in der API nur als "gemini-3.1-pro-preview" (sonst HTTP 404).
+ * Muss mit normalize_model in src-tauri/src/ai/gemini.rs übereinstimmen.
+ */
+export function normalizeGeminiModel(model: string | null | undefined): string {
+  const trimmed = model?.trim() ?? '';
+  switch (trimmed) {
+    case '':
+    case 'gemini-2.0-flash':
+    case 'gemini-1.5-flash':
+    case 'gemini-flash-latest':
+      return GEMINI_MODELS[0];
+    case 'gemini-2.0-flash-lite':
+    case 'gemini-1.5-flash-8b':
+      return 'gemini-3.1-flash-lite';
+    case 'gemini-1.5-pro':
+    case 'gemini-pro':
+    case 'gemini-3.1-pro':
+      return 'gemini-3.1-pro-preview';
+    default:
+      return trimmed;
+  }
+}
 
 export interface AIOptions {
   maxTokens?: number;
@@ -74,13 +102,14 @@ export class GeminiProvider implements AIProvider {
   }
 
   async generateText(prompt: string, options?: AIOptions): Promise<AIResponse> {
+    // Tauri 2 erwartet invoke-Argumente in camelCase (siehe andere Commands).
     const response = await invoke<RustAIResponse>('ai_generate_text', {
       provider: this.name,
-      system_prompt: options?.systemPrompt ?? '',
-      user_prompt: prompt,
-      max_tokens: options?.maxTokens ?? null,
+      systemPrompt: options?.systemPrompt ?? '',
+      userPrompt: prompt,
+      maxTokens: options?.maxTokens ?? null,
       temperature: options?.temperature ?? null,
-      model: options?.model ?? GEMINI_MODELS[0],
+      model: normalizeGeminiModel(options?.model),
     });
     return toAIResponse(response);
   }
@@ -92,11 +121,11 @@ export class GeminiProvider implements AIProvider {
   ): Promise<T> {
     const response = await invoke<RustAIResponse>('ai_generate_structured', {
       provider: this.name,
-      system_prompt: options?.systemPrompt ?? '',
-      user_prompt: `${prompt}\n\nAntworte ausschließlich mit gültigem JSON.`,
-      max_tokens: options?.maxTokens ?? null,
+      systemPrompt: options?.systemPrompt ?? '',
+      userPrompt: `${prompt}\n\nAntworte ausschließlich mit gültigem JSON.`,
+      maxTokens: options?.maxTokens ?? null,
       temperature: options?.temperature ?? null,
-      model: options?.model ?? GEMINI_MODELS[0],
+      model: normalizeGeminiModel(options?.model),
     });
 
     return schema.parse(JSON.parse(cleanJson(response.text)));

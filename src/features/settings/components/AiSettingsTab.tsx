@@ -40,6 +40,7 @@ import {
 import { useAIStore } from '@/features/ai-assistant/stores/aiStore';
 import type { AIProviderName } from '@/features/ai-assistant/types';
 import { cn } from '@/lib/utils';
+import { normalizeGeminiModel } from '@/services/ai';
 import { getDatabase } from '@/services/database';
 import { DEFAULTS, getSettingWithDefault } from '@/services/settings';
 import { useAutoSave } from '../hooks/useAutoSave';
@@ -115,9 +116,10 @@ const PROVIDERS: Array<{ value: AIProviderName; label: string }> = [
 const CLAUDE_MODELS = ['claude-sonnet-4-20250514', 'claude-opus-4-20250514'];
 const OPENAI_MODELS = ['gpt-4o', 'gpt-4o-mini'];
 const GEMINI_MODELS = [
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash — empfohlen' },
-  { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite — schnell & günstig' },
-  { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro — leistungsstark' },
+  { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash — empfohlen' },
+  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (Preview) — leistungsstark' },
+  { value: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite — schnell & günstig' },
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash — bewährt' },
 ];
 const OLLAMA_MODEL_SUGGESTIONS = ['llama3', 'mistral', 'phi3'];
 const PAGE_SIZE = 25;
@@ -373,7 +375,8 @@ export function AiSettingsTab() {
           preferredProvider,
           claudeModel,
           openaiModel,
-          geminiModel,
+          // Migration alter gespeicherter Gemini-Modellnamen (z.B. gemini-2.0-flash)
+          geminiModel: normalizeGeminiModel(geminiModel),
           ollamaModel:
             ollamaModel === DEFAULTS.ai_preferred_model_ollama &&
             legacyOllamaModel !== DEFAULTS.ai_ollama_model

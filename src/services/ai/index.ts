@@ -1,2 +1,2 @@
-export { GEMINI_MODELS, GeminiProvider } from './providers/gemini';
+export { GEMINI_MODELS, GeminiProvider, normalizeGeminiModel } from './providers/gemini';
 export type { AIOptions, AIProvider } from './providers/gemini';
