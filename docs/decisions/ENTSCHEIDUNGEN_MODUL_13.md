@@ -86,3 +86,32 @@ ohne das Panel schließen zu müssen.
 
 Passt kein aktives Playbook (falscher Status, Plattform-Filter, deaktiviert), wird KEIN
 Run protokolliert — das Log bildet nur tatsächliche Ausführungen ab, keine Prüfungen.
+
+---
+
+Nachträge aus der Verifikations-Session (Juli 2026):
+
+## E13-14: Mehrere Playbooks pro Trigger laufen in Anlage-Reihenfolge
+
+Die Engine sortiert per `ORDER BY created_at, id`. Ohne ORDER BY war die Reihenfolge
+SQLite-implementierungsabhängig; jetzt ist sie deterministisch (ältestes Playbook zuerst).
+
+## E13-15: Engine ignoriert soft-gelöschte Aufträge
+
+`loadOrderContext` filtert `deleted_at IS NULL`. Ein Statuswechsel an einem gelöschten
+Auftrag (theoretisch nur programmatisch möglich) löst keine Playbooks aus. Der
+Produkt-Join bleibt bewusst ungefiltert: `{{produktname}}` ist auch bei inzwischen
+soft-gelöschtem Produkt auflösbar — konsistent mit `getOrderById`.
+
+## E13-16: Task-Titel wird nach Variablenersetzung auf 200 Zeichen gekürzt
+
+Das Task-Schema begrenzt Titel auf 200 Zeichen; lange Variablenwerte konnten die Grenze
+nach der Ersetzung sprengen und die Aktion sinnlos scheitern lassen. Die Engine kürzt
+mit Ellipse (…) statt zu fehlschlagen.
+
+## E13-17: Leere Variablenwerte bleiben Platzhalter, niemals "null" oder Leerstring
+
+Fehlt z.B. der Kundenname am Auftrag, bleibt `{{kundenname}}` als Rohtext im Ergebnis
+stehen und wird im Run-Result als nicht auflösbar gemeldet (Spec-Wortlaut). Es wird
+nie "null" oder ein Leerstring mitten im Satz eingesetzt. `{{bestellnummer}}` fällt
+ohne externe Bestellnummer auf die interne Belegnummer zurück (Registry-Verhalten).
