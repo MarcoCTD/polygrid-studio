@@ -14,7 +14,7 @@ import {
   type OrdersFilterState,
 } from './components';
 import { getOpenOrdersCount, getOrderById, getOrders } from './services';
-import { parseOrderStatusList, type OrdersSearch } from './searchParams';
+import { parseOrderPlatformList, parseOrderStatusList, type OrdersSearch } from './searchParams';
 import type { OrderFilters, OrderListItem, OrderStatus } from './types';
 
 const DEFAULT_STATUSES: OrderStatus[] = [
@@ -64,12 +64,12 @@ export function OrdersPage() {
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newOrderOpen, setNewOrderOpen] = useState(false);
-  // Statusfilter aus der URL übernehmen (z.B. Smart-Action-Navigation)
+  // Status-/Plattformfilter aus der URL übernehmen (z.B. Smart-Action-Navigation)
   const [filters, setFilters] = useState<OrdersFilterState>(() => {
     const statusesFromUrl = parseOrderStatusList(search.status);
     return {
       statuses: statusesFromUrl.length > 0 ? statusesFromUrl : DEFAULT_STATUSES,
-      platforms: [],
+      platforms: parseOrderPlatformList(search.platform),
       month: '',
       showDeleted: false,
     };

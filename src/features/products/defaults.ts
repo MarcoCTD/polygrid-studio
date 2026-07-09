@@ -7,6 +7,12 @@ import type { ColorVariant } from './schema';
  * Die vollständige Settings-UI zur Pflege kommt in Modul 11.
  */
 
+/**
+ * Plattformen mit Gebühren-Einstellung: Produkt-Plattformen plus "website"
+ * (Modul 16, Auftragsplattform ohne Produkt-Listing, Gebühr 0).
+ */
+export type FeePlatform = Platform | 'website';
+
 export interface ProductSettings {
   filamentPrices: Record<string, number>; // EUR pro kg
   materialOptions: string[];
@@ -14,7 +20,7 @@ export interface ProductSettings {
   printerPowerWatts: number;
   shippingPrices: Record<string, number>;
   shippingClassOptions: string[];
-  platformFees: Record<Platform, { percent: number; fixed: number }>;
+  platformFees: Record<FeePlatform, { percent: number; fixed: number }>;
   colorVariantLibrary: ColorVariant[];
   /** true = Käufer zahlt Versand (Versand NICHT in Marge), false = wir zahlen */
   shippingPaidByCustomerDefault: boolean;
@@ -47,6 +53,7 @@ export const DEFAULT_PRODUCT_SETTINGS: ProductSettings = {
     etsy: { percent: 6.5, fixed: 0.2 },
     ebay: { percent: 11.0, fixed: 0.0 },
     kleinanzeigen: { percent: 0.0, fixed: 0.0 },
+    website: { percent: 0.0, fixed: 0.0 },
   },
   colorVariantLibrary: [],
   shippingPaidByCustomerDefault: SHIPPING_PAID_BY_CUSTOMER_DEFAULT_VALUE,

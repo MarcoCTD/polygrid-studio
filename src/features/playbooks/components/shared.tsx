@@ -20,6 +20,7 @@ export const PLATFORM_LABELS: Record<OrderPlatform, string> = {
   ebay: 'eBay',
   kleinanzeigen: 'Kleinanzeigen',
   direkt: 'Direktverkauf',
+  website: 'Website',
 };
 
 export const ACTION_TYPE_LABELS: Record<PlaybookActionType, string> = {

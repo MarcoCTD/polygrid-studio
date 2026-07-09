@@ -78,7 +78,7 @@ interface ColorVariantSetting {
   hex: string;
 }
 
-type PlatformKey = 'etsy' | 'ebay' | 'kleinanzeigen';
+type PlatformKey = 'etsy' | 'ebay' | 'kleinanzeigen' | 'website';
 
 interface PlatformFeeSetting {
   percentFee: number;
@@ -149,6 +149,7 @@ const PLATFORM_LABELS: Record<PlatformKey, string> = {
   etsy: 'Etsy',
   ebay: 'eBay',
   kleinanzeigen: 'Kleinanzeigen',
+  website: 'Website',
 };
 
 function isSettingsTab(value: string | undefined): value is SettingsTab {

@@ -236,6 +236,7 @@ function orderBookingText(order: OrderListItem): string {
 function platformLabel(platform: OrderPlatform): string {
   if (platform === 'kleinanzeigen') return 'Kleinanzeigen';
   if (platform === 'direkt') return 'Direkt';
+  if (platform === 'website') return 'Website';
   return platform === 'etsy' ? 'Etsy' : 'eBay';
 }
 

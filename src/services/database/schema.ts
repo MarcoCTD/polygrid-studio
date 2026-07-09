@@ -589,3 +589,93 @@ export const playbookRuns = sqliteTable(
       .where(sql`status != 'dry_run'`),
   ],
 );
+
+// ============================================================
+// 15. clients (Modul 16) – Website-Kunden
+// ============================================================
+export const clients = sqliteTable(
+  'clients',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    contact_person: text('contact_person'),
+    email: text('email'),
+    phone: text('phone'),
+    // Nur Metadaten ({ id, label, username, url }); das Secret liegt im OS-Keychain.
+    credentials: text('credentials', { mode: 'json' }).$type<
+      { id: string; label: string; username: string | null; url: string | null }[]
+    >(),
+    notes: text('notes'),
+    created_at: text('created_at').notNull(),
+    updated_at: text('updated_at').notNull(),
+    deleted_at: text('deleted_at'),
+  },
+  (table) => [index('idx_clients_name').on(table.name)],
+);
+
+// ============================================================
+// 16. website_projects (Modul 16) – FKs zu clients und orders
+// ============================================================
+export const websiteProjects = sqliteTable(
+  'website_projects',
+  {
+    id: text('id').primaryKey(),
+    client_id: text('client_id')
+      .notNull()
+      .references(() => clients.id),
+    name: text('name').notNull(),
+    status: text('status').notNull(),
+    price: real('price'),
+    deadline: text('deadline'),
+    url: text('url'),
+    order_id: text('order_id').references(() => orders.id),
+    credentials: text('credentials', { mode: 'json' }).$type<
+      { id: string; label: string; username: string | null; url: string | null }[]
+    >(),
+    notes: text('notes'),
+    created_at: text('created_at').notNull(),
+    updated_at: text('updated_at').notNull(),
+    deleted_at: text('deleted_at'),
+  },
+  (table) => [
+    index('idx_website_projects_client_id').on(table.client_id),
+    index('idx_website_projects_status').on(table.status),
+    index('idx_website_projects_deadline').on(table.deadline),
+  ],
+);
+
+// ============================================================
+// 17. website_services (Modul 16) – laufende Posten
+// ============================================================
+export const websiteServices = sqliteTable(
+  'website_services',
+  {
+    id: text('id').primaryKey(),
+    client_id: text('client_id')
+      .notNull()
+      .references(() => clients.id),
+    project_id: text('project_id').references(() => websiteProjects.id),
+    type: text('type').notNull(),
+    label: text('label').notNull(),
+    cost_out: real('cost_out'),
+    cost_out_vendor: text('cost_out_vendor'),
+    price_in: real('price_in'),
+    interval: text('interval').notNull(),
+    next_due: text('next_due').notNull(),
+    expires_at: text('expires_at'),
+    active: integer('active', { mode: 'boolean' }).notNull().default(true),
+    // Idempotenz der Recurring-Engine: letztes Fälligkeitsdatum, für das
+    // bereits Ausgabe/Auftrag erzeugt wurde.
+    last_generated_until: text('last_generated_until'),
+    notes: text('notes'),
+    created_at: text('created_at').notNull(),
+    updated_at: text('updated_at').notNull(),
+    deleted_at: text('deleted_at'),
+  },
+  (table) => [
+    index('idx_website_services_client_id').on(table.client_id),
+    index('idx_website_services_next_due').on(table.next_due),
+    index('idx_website_services_type').on(table.type),
+    index('idx_website_services_expires_at').on(table.expires_at),
+  ],
+);

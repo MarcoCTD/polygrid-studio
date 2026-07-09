@@ -36,6 +36,7 @@ const PLATFORM_OPTIONS: { value: OrderPlatform; label: string }[] = [
   { value: 'ebay', label: 'eBay' },
   { value: 'kleinanzeigen', label: 'Kleinanzeigen' },
   { value: 'direkt', label: 'Direkt' },
+  { value: 'website', label: 'Website' },
 ];
 
 function platformLabel(value: OrderPlatform | undefined): string {

@@ -1,6 +1,7 @@
 import {
   BadgeEuro,
   CircleDollarSign,
+  Globe,
   Landmark,
   Lock,
   PackageCheck,
@@ -34,6 +35,7 @@ const PLATFORM_LABELS: Record<OrderPlatform, string> = {
   ebay: 'eBay',
   kleinanzeigen: 'KA',
   direkt: 'Direkt',
+  website: 'Website',
 };
 
 const statusClasses: Record<OrderStatus, string> = {
@@ -59,6 +61,7 @@ const platformClasses: Record<OrderPlatform, string> = {
   ebay: 'border-indigo-300 bg-indigo-100 text-indigo-700',
   kleinanzeigen: 'border-teal-300 bg-teal-100 text-teal-700',
   direkt: 'border-slate-300 bg-slate-100 text-slate-700',
+  website: 'border-sky-300 bg-sky-100 text-sky-700',
 };
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
@@ -85,7 +88,9 @@ export function OrderPlatformIcon({ platform }: { platform: OrderPlatform }) {
         ? BadgeEuro
         : platform === 'kleinanzeigen'
           ? Store
-          : Landmark;
+          : platform === 'website'
+            ? Globe
+            : Landmark;
 
   return (
     <Badge

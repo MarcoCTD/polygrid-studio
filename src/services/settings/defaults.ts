@@ -28,6 +28,7 @@ export const DEFAULTS = {
     etsy: { percentFee: 6.5, fixedFee: 0.2 },
     ebay: { percentFee: 11, fixedFee: 0 },
     kleinanzeigen: { percentFee: 0, fixedFee: 0 },
+    website: { percentFee: 0, fixedFee: 0 },
   },
   shipping_classes: [
     { name: 'Brief', price: 1.6 },

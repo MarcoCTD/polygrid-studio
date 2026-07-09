@@ -2,9 +2,10 @@ import { DEFAULTS, getSettingWithDefault } from '@/services/settings';
 import {
   DEFAULT_PRODUCT_SETTINGS,
   SHIPPING_PAID_BY_CUSTOMER_DEFAULT_KEY,
+  type FeePlatform,
   type ProductSettings,
 } from './defaults';
-import type { ColorVariant, Platform } from './schema';
+import type { ColorVariant } from './schema';
 
 interface FilamentPriceSetting {
   name: string;
@@ -91,7 +92,7 @@ function normalizePlatformFees(value: unknown): ProductSettings['platformFees'] 
   const defaults = DEFAULT_PRODUCT_SETTINGS.platformFees;
   if (!value || typeof value !== 'object') return defaults;
 
-  return (Object.keys(defaults) as Platform[]).reduce<ProductSettings['platformFees']>(
+  return (Object.keys(defaults) as FeePlatform[]).reduce<ProductSettings['platformFees']>(
     (result, platform) => {
       const fee = (value as Record<string, PlatformFeeSetting>)[platform] ?? {};
       result[platform] = {

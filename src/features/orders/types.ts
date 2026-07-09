@@ -13,7 +13,7 @@ export const OrderStatusEnum = z.enum([
 
 export const PaymentStatusEnum = z.enum(['pending', 'paid', 'refunded', 'disputed']);
 export const ShippingStatusEnum = z.enum(['not_shipped', 'shipped', 'delivered', 'returned']);
-export const OrderPlatformEnum = z.enum(['etsy', 'ebay', 'kleinanzeigen', 'direkt']);
+export const OrderPlatformEnum = z.enum(['etsy', 'ebay', 'kleinanzeigen', 'direkt', 'website']);
 export const OrderEventTypeEnum = z.enum(['status_change', 'note_added', 'tracking_added']);
 
 const uuid = z.string().uuid();
