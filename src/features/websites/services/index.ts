@@ -15,6 +15,12 @@ export {
   updateWebsiteProject,
 } from './projectsService';
 export {
+  addWebsiteServiceInterval,
+  MAX_CATCHUP_PERIODS,
+  runWebsiteRecurringEngine,
+  type WebsiteRecurringRunResult,
+} from './recurringEngine';
+export {
   calculateRecurringTotals,
   createWebsiteService,
   getWebsiteServiceById,

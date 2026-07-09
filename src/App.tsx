@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 import { useUIStore } from '@/stores';
 import { initDatabase } from '@/services/database';
 import { processDueRecurringExpenses } from '@/features/expenses/services';
+import { runWebsiteRecurringEngine } from '@/features/websites/services';
+import { notifyWebsiteRecurringResult } from '@/features/websites/notifications';
 import { useAutoSnapshot } from '@/features/analytics/hooks';
 import { useOrdersBadge } from '@/features/orders/hooks';
 import { useTaskBadge } from '@/features/tasks/hooks';
@@ -79,6 +81,15 @@ function App() {
               ),
             0,
           );
+        }
+
+        // Website-Recurring-Engine (Modul 16): wirft nie und blockiert den
+        // App-Start nicht – die App ist an dieser Stelle bereits bedienbar.
+        try {
+          const websiteResult = await runWebsiteRecurringEngine();
+          window.setTimeout(() => notifyWebsiteRecurringResult(websiteResult), 0);
+        } catch (err) {
+          console.error('[WebsiteRecurring] Unerwarteter Fehler beim App-Start', err);
         }
       })
       .catch((err: unknown) => {
