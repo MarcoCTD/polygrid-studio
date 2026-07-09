@@ -9,7 +9,8 @@ pub fn estimate_cost_eur(
     // Preise in USD pro 1 Mio. Tokens (Stand Juli 2026); Eintraege ohne
     // offizielle Preisliste sind konservative Schaetzungen.
     let (input_usd_per_million, output_usd_per_million) = match (provider, model) {
-        ("claude", "claude-sonnet-5") => (3.00, 15.00),
+        ("claude", "claude-sonnet-4-6") => (3.00, 15.00),
+        ("claude", "claude-fable-5") => (10.00, 50.00),
         ("claude", "claude-opus-4-8") => (5.00, 25.00),
         ("claude", m) if m.starts_with("claude-haiku-4-5") => (1.00, 5.00),
         ("claude", _) => (3.00, 15.00),

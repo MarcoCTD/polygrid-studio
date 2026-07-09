@@ -7,16 +7,20 @@ use serde_json::json;
 use super::provider::{AIRequest, AIResponse};
 
 const CLAUDE_ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
-const CLAUDE_DEFAULT_MODEL: &str = "claude-sonnet-5";
+const CLAUDE_DEFAULT_MODEL: &str = "claude-sonnet-4-6";
 
-/// Migriert abgeschaltete Claude-Modelle auf ihren Nachfolger,
-/// damit Requests nicht mit 404 scheitern.
+/// Migriert abgeschaltete bzw. ungültige Claude-Modelle auf ihren Nachfolger,
+/// damit Requests nicht mit 404 scheitern. Muss mit RETIRED_CLAUDE_MODELS in
+/// src/services/ai/models.ts übereinstimmen.
 fn resolve_claude_model(model: String) -> String {
     match model.as_str() {
-        "claude-sonnet-4-20250514"
+        // "claude-sonnet-5" existiert nicht in der Anthropic-API (war
+        // fälschlich als Registry-Wert gespeichert).
+        "claude-sonnet-5"
+        | "claude-sonnet-4-20250514"
         | "claude-3-7-sonnet-20250219"
         | "claude-3-5-sonnet-20241022"
-        | "claude-3-5-sonnet-20240620" => "claude-sonnet-5".to_string(),
+        | "claude-3-5-sonnet-20240620" => "claude-sonnet-4-6".to_string(),
         "claude-opus-4-20250514" | "claude-3-opus-20240229" => "claude-opus-4-8".to_string(),
         "claude-3-5-haiku-20241022" | "claude-3-haiku-20240307" => "claude-haiku-4-5".to_string(),
         _ => model,
@@ -131,4 +135,38 @@ pub async fn claude_test_connection(api_key: &str) -> Result<String, String> {
     claude_generate(api_key, &request)
         .await
         .map(|response| response.model)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resolve_claude_model_migriert_alte_und_ungueltige_namen() {
+        assert_eq!(resolve_claude_model("claude-sonnet-5".into()), "claude-sonnet-4-6");
+        assert_eq!(
+            resolve_claude_model("claude-sonnet-4-20250514".into()),
+            "claude-sonnet-4-6"
+        );
+        assert_eq!(
+            resolve_claude_model("claude-opus-4-20250514".into()),
+            "claude-opus-4-8"
+        );
+        assert_eq!(
+            resolve_claude_model("claude-3-5-haiku-20241022".into()),
+            "claude-haiku-4-5"
+        );
+    }
+
+    #[test]
+    fn resolve_claude_model_laesst_gueltige_namen_unveraendert() {
+        for model in [
+            "claude-sonnet-4-6",
+            "claude-fable-5",
+            "claude-opus-4-8",
+            "claude-haiku-4-5",
+        ] {
+            assert_eq!(resolve_claude_model(model.into()), model);
+        }
+    }
 }

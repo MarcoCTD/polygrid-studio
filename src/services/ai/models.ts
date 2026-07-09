@@ -14,8 +14,9 @@ export interface AIModelOption {
 }
 
 export const CLAUDE_MODELS: AIModelOption[] = [
-  { value: 'claude-sonnet-5', label: 'Claude Sonnet 5 — empfohlen' },
-  { value: 'claude-opus-4-8', label: 'Claude Opus 4.8 — leistungsstärkstes Modell' },
+  { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 — empfohlen' },
+  { value: 'claude-fable-5', label: 'Claude Fable 5 — leistungsstärkstes Modell' },
+  { value: 'claude-opus-4-8', label: 'Claude Opus 4.8 — sehr leistungsstark' },
   { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 — schnell & günstig' },
 ];
 
@@ -38,7 +39,7 @@ export const GEMINI_MODELS: AIModelOption[] = [
 export const OLLAMA_MODEL_SUGGESTIONS = ['llama3', 'mistral', 'phi3'];
 
 export const DEFAULT_MODELS: Record<AIModelProvider, string> = {
-  claude: 'claude-sonnet-5',
+  claude: 'claude-sonnet-4-6',
   openai: 'gpt-5.4',
   gemini: 'gemini-3.5-flash',
   ollama: 'llama3',
@@ -46,10 +47,13 @@ export const DEFAULT_MODELS: Record<AIModelProvider, string> = {
 
 /** Von Anthropic abgeschaltete bzw. zurueckgezogene Modelle -> Nachfolger. */
 const RETIRED_CLAUDE_MODELS: Record<string, string> = {
-  'claude-sonnet-4-20250514': 'claude-sonnet-5',
-  'claude-3-7-sonnet-20250219': 'claude-sonnet-5',
-  'claude-3-5-sonnet-20241022': 'claude-sonnet-5',
-  'claude-3-5-sonnet-20240620': 'claude-sonnet-5',
+  // "claude-sonnet-5" existiert nicht in der Anthropic-API (war fälschlich
+  // als Registry-Wert gespeichert) -> auf die gültige ID umbiegen.
+  'claude-sonnet-5': 'claude-sonnet-4-6',
+  'claude-sonnet-4-20250514': 'claude-sonnet-4-6',
+  'claude-3-7-sonnet-20250219': 'claude-sonnet-4-6',
+  'claude-3-5-sonnet-20241022': 'claude-sonnet-4-6',
+  'claude-3-5-sonnet-20240620': 'claude-sonnet-4-6',
   'claude-opus-4-20250514': 'claude-opus-4-8',
   'claude-3-opus-20240229': 'claude-opus-4-8',
   'claude-3-5-haiku-20241022': 'claude-haiku-4-5',

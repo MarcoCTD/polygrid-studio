@@ -68,11 +68,14 @@ test('KI-Modelle: Claude-Dropdown zeigt aktuelle Modelle mit Labels', async ({ p
   await expect(page.getByText('KI-Provider')).toBeVisible();
 
   // Claude-Panel ist standardmaessig geoeffnet; Trigger zeigt Label statt Rohwert
-  await page.getByText('Claude Sonnet 5 — empfohlen').click();
+  await page.getByText('Claude Sonnet 4.6 — empfohlen').click();
 
-  await expect(page.getByRole('option', { name: 'Claude Sonnet 5 — empfohlen' })).toBeVisible();
+  await expect(page.getByRole('option', { name: 'Claude Sonnet 4.6 — empfohlen' })).toBeVisible();
   await expect(
-    page.getByRole('option', { name: 'Claude Opus 4.8 — leistungsstärkstes Modell' }),
+    page.getByRole('option', { name: 'Claude Fable 5 — leistungsstärkstes Modell' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('option', { name: 'Claude Opus 4.8 — sehr leistungsstark' }),
   ).toBeVisible();
   await expect(
     page.getByRole('option', { name: 'Claude Haiku 4.5 — schnell & günstig' }),
@@ -121,9 +124,25 @@ test('KI-Modelle: abgeschaltetes Claude-Modell wird beim Lesen migriert', async 
     ai_preferred_model_claude: 'claude-sonnet-4-20250514',
   });
 
-  await expect(page.getByText('Claude Sonnet 5 — empfohlen')).toBeVisible();
+  await expect(page.getByText('Claude Sonnet 4.6 — empfohlen')).toBeVisible();
   await expect.poll(() => settingValue(tauri, 'ai_preferred_model_claude')).toBe(
-    'claude-sonnet-5',
+    'claude-sonnet-4-6',
+  );
+});
+
+test('KI-Modelle: gespeichertes claude-sonnet-5 wird auf claude-sonnet-4-6 migriert', async ({
+  page,
+  tauri,
+}) => {
+  // "claude-sonnet-5" existiert nicht in der Anthropic-API (war fälschlich
+  // als Registry-Wert gespeichert)
+  await gotoAiTabWithSeed(page, tauri, {
+    ai_preferred_model_claude: 'claude-sonnet-5',
+  });
+
+  await expect(page.getByText('Claude Sonnet 4.6 — empfohlen')).toBeVisible();
+  await expect.poll(() => settingValue(tauri, 'ai_preferred_model_claude')).toBe(
+    'claude-sonnet-4-6',
   );
 });
 
