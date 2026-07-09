@@ -1,17 +1,12 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { ZodSchema } from 'zod';
 import type { AIResponse } from '@/features/ai-assistant/types';
-
-export const GEMINI_MODELS = [
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite',
-  'gemini-1.5-pro',
-] as const;
+import { DEFAULT_MODELS, resolvePreferredModel } from '../models';
 
 export interface AIOptions {
   maxTokens?: number;
   temperature?: number;
-  model?: (typeof GEMINI_MODELS)[number] | string;
+  model?: string;
   systemPrompt?: string;
 }
 
@@ -80,7 +75,7 @@ export class GeminiProvider implements AIProvider {
       user_prompt: prompt,
       max_tokens: options?.maxTokens ?? null,
       temperature: options?.temperature ?? null,
-      model: options?.model ?? GEMINI_MODELS[0],
+      model: resolvePreferredModel('gemini', options?.model ?? DEFAULT_MODELS.gemini),
     });
     return toAIResponse(response);
   }
@@ -96,7 +91,7 @@ export class GeminiProvider implements AIProvider {
       user_prompt: `${prompt}\n\nAntworte ausschließlich mit gültigem JSON.`,
       max_tokens: options?.maxTokens ?? null,
       temperature: options?.temperature ?? null,
-      model: options?.model ?? GEMINI_MODELS[0],
+      model: resolvePreferredModel('gemini', options?.model ?? DEFAULT_MODELS.gemini),
     });
 
     return schema.parse(JSON.parse(cleanJson(response.text)));

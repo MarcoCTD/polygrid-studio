@@ -44,6 +44,7 @@ import {
   saveSetting,
 } from '@/services/settings';
 import { useAutoSave } from '../hooks/useAutoSave';
+import { NumberField } from './NumberField';
 
 interface BackupInfo {
   filename: string;
@@ -571,14 +572,14 @@ export function DataSecuritySettingsTab() {
           </Select>
         </FieldRow>
         <FieldRow label="Max. Backups">
-          <Input
-            type="number"
+          <NumberField
+            value={settings.backupMaxCount}
             min={1}
             max={365}
-            value={settings.backupMaxCount}
-            onChange={(event) =>
-              update('backupMaxCount', Number(event.target.value), 'backup_max_count')
-            }
+            step={1}
+            aria-label="Maximale Anzahl Backups"
+            className="max-w-44"
+            onValueChange={(value) => update('backupMaxCount', value, 'backup_max_count')}
           />
         </FieldRow>
         <FieldRow label="Backup-Verzeichnis">
@@ -663,6 +664,7 @@ export function DataSecuritySettingsTab() {
         <FieldRow label="Belegnummern-Format">
           <Input
             value={settings.receiptNumberFormat}
+            aria-label="Belegnummern-Format"
             onChange={(event) =>
               update('receiptNumberFormat', event.target.value, 'receipt_number_format', [
                 'receipt_number_prefix_format',
@@ -712,68 +714,55 @@ export function DataSecuritySettingsTab() {
           </Select>
         </FieldRow>
         <FieldRow label="Bank-Matching Betragsdifferenz">
-          <div className="relative max-w-44">
-            <Input
-              type="number"
-              step={0.01}
-              min={0}
-              value={settings.bankMatchingAmountTolerance}
-              className="pr-12"
-              onChange={(event) =>
-                update(
-                  'bankMatchingAmountTolerance',
-                  Number(event.target.value),
-                  'bank_matching_amount_tolerance',
-                  ['bank_match_amount_tolerance_eur'],
-                )
-              }
-            />
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary">
-              EUR
-            </span>
-          </div>
+          <NumberField
+            value={settings.bankMatchingAmountTolerance}
+            min={0}
+            max={10}
+            step={0.01}
+            unit="EUR"
+            aria-label="Bank-Matching Betragsdifferenz"
+            className="max-w-44"
+            inputClassName="pr-12"
+            onValueChange={(value) =>
+              update('bankMatchingAmountTolerance', value, 'bank_matching_amount_tolerance', [
+                'bank_match_amount_tolerance_eur',
+              ])
+            }
+          />
         </FieldRow>
         <FieldRow label="Zeitfenster Aufträge">
-          <div className="relative max-w-44">
-            <Input
-              type="number"
-              min={0}
-              value={settings.bankMatchingOrderDays}
-              className="pr-14"
-              onChange={(event) =>
-                update(
-                  'bankMatchingOrderDays',
-                  Number(event.target.value),
-                  'bank_matching_order_days',
-                  ['bank_match_time_window_days_orders'],
-                )
-              }
-            />
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary">
-              Tage
-            </span>
-          </div>
+          <NumberField
+            value={settings.bankMatchingOrderDays}
+            min={0}
+            max={365}
+            step={1}
+            unit="Tage"
+            aria-label="Zeitfenster Aufträge"
+            className="max-w-44"
+            inputClassName="pr-14"
+            onValueChange={(value) =>
+              update('bankMatchingOrderDays', value, 'bank_matching_order_days', [
+                'bank_match_time_window_days_orders',
+              ])
+            }
+          />
         </FieldRow>
         <FieldRow label="Zeitfenster Ausgaben">
-          <div className="relative max-w-44">
-            <Input
-              type="number"
-              min={0}
-              value={settings.bankMatchingExpenseDays}
-              className="pr-14"
-              onChange={(event) =>
-                update(
-                  'bankMatchingExpenseDays',
-                  Number(event.target.value),
-                  'bank_matching_expense_days',
-                  ['bank_match_time_window_days_expenses'],
-                )
-              }
-            />
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary">
-              Tage
-            </span>
-          </div>
+          <NumberField
+            value={settings.bankMatchingExpenseDays}
+            min={0}
+            max={365}
+            step={1}
+            unit="Tage"
+            aria-label="Zeitfenster Ausgaben"
+            className="max-w-44"
+            inputClassName="pr-14"
+            onValueChange={(value) =>
+              update('bankMatchingExpenseDays', value, 'bank_matching_expense_days', [
+                'bank_match_time_window_days_expenses',
+              ])
+            }
+          />
         </FieldRow>
         <FieldRow label="Payout-Keywords Etsy">
           <TagInput
@@ -796,20 +785,19 @@ export function DataSecuritySettingsTab() {
           label="Aufbewahrungsdauer"
           hint="Archivierte Dateien werden nach dieser Frist endgültig gelöscht"
         >
-          <div className="relative max-w-44">
-            <Input
-              type="number"
-              min={1}
-              value={settings.archiveRetentionDays}
-              className="pr-14"
-              onChange={(event) =>
-                update('archiveRetentionDays', Number(event.target.value), 'archive_retention_days')
-              }
-            />
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary">
-              Tage
-            </span>
-          </div>
+          <NumberField
+            value={settings.archiveRetentionDays}
+            min={1}
+            max={365}
+            step={1}
+            unit="Tage"
+            aria-label="Aufbewahrungsdauer"
+            className="max-w-44"
+            inputClassName="pr-14"
+            onValueChange={(value) =>
+              update('archiveRetentionDays', value, 'archive_retention_days')
+            }
+          />
         </FieldRow>
       </Section>
 

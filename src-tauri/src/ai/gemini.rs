@@ -7,7 +7,17 @@ use serde_json::json;
 use super::provider::{AIRequest, AIResponse};
 
 const GEMINI_BASE_ENDPOINT: &str = "https://generativelanguage.googleapis.com/v1beta";
-const GEMINI_DEFAULT_MODEL: &str = "gemini-2.0-flash";
+const GEMINI_DEFAULT_MODEL: &str = "gemini-3.5-flash";
+
+/// Google hat alle Gemini-1.x- und 2.0-Modelle abgeschaltet (Juni 2026);
+/// Requests dagegen liefern 404. Solche Modelle fallen auf den Default.
+fn resolve_gemini_model(model: String) -> String {
+    if model.starts_with("gemini-1.") || model.starts_with("gemini-2.0") {
+        GEMINI_DEFAULT_MODEL.to_string()
+    } else {
+        model
+    }
+}
 
 #[derive(Debug, Deserialize)]
 struct GeminiModelsResponse {
@@ -65,10 +75,12 @@ pub async fn gemini_generate(api_key: &str, request: &AIRequest) -> Result<AIRes
         return Err("Gemini API-Key fehlt.".to_string());
     }
 
-    let model = request
-        .model
-        .clone()
-        .unwrap_or_else(|| GEMINI_DEFAULT_MODEL.to_string());
+    let model = resolve_gemini_model(
+        request
+            .model
+            .clone()
+            .unwrap_or_else(|| GEMINI_DEFAULT_MODEL.to_string()),
+    );
     let mut system_prompt = request.system_prompt.clone();
     if request.json_mode {
         system_prompt.push_str("\nRespond only with valid JSON, no markdown, no preamble.");

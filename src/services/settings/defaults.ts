@@ -1,3 +1,5 @@
+import { DEFAULT_MODELS } from '@/services/ai/models';
+
 export const DEFAULTS = {
   theme: 'system',
   accent_color: 'sap_blue',
@@ -40,11 +42,11 @@ export const DEFAULTS = {
   color_variants_library: [],
 
   ai_preferred_provider: 'claude',
-  ai_preferred_model_claude: 'claude-sonnet-4-20250514',
-  ai_preferred_model_openai: 'gpt-4o',
-  ai_preferred_model_gemini: 'gemini-2.0-flash',
-  ai_preferred_model_ollama: 'llama3',
-  ai_ollama_model: 'llama3',
+  ai_preferred_model_claude: DEFAULT_MODELS.claude,
+  ai_preferred_model_openai: DEFAULT_MODELS.openai,
+  ai_preferred_model_gemini: DEFAULT_MODELS.gemini,
+  ai_preferred_model_ollama: DEFAULT_MODELS.ollama,
+  ai_ollama_model: DEFAULT_MODELS.ollama,
   ai_cost_limit_monthly: 10,
   ai_monthly_limit_eur: 10,
   ai_logging_enabled: true,
