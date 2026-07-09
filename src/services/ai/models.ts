@@ -28,7 +28,9 @@ export const OPENAI_MODELS: AIModelOption[] = [
 
 export const GEMINI_MODELS: AIModelOption[] = [
   { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash — empfohlen' },
-  { value: 'gemini-3.1-pro', label: 'Gemini 3.1 Pro — stärkstes Reasoning' },
+  // "gemini-3.1-pro" existiert in der Google-API nur als Preview-Variante
+  // (sonst HTTP 404) – daher die Preview-ID als gespeicherter Wert.
+  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro — stärkstes Reasoning' },
   { value: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite — günstig, z.B. Klassifikation' },
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash — stabil, weiterhin verfügbar' },
 ];
@@ -62,9 +64,31 @@ const RETIRED_OPENAI_MODELS: Record<string, string> = {
   'gpt-5.2': 'gpt-5.4',
 };
 
-/** Google hat alle Gemini-1.x- und 2.0-Modelle abgeschaltet (Juni 2026). */
-function isRetiredGeminiModel(model: string): boolean {
-  return model.startsWith('gemini-1.') || model.startsWith('gemini-2.0');
+/**
+ * Google hat alle Gemini-1.x- und 2.0-Modelle abgeschaltet (Juni 2026;
+ * Free Tier: HTTP 429 mit limit 0, sonst 404). Das Mapping muss mit
+ * normalize_model in src-tauri/src/ai/gemini.rs uebereinstimmen.
+ */
+function resolveGeminiModel(model: string): string {
+  switch (model) {
+    case 'gemini-2.0-flash':
+    case 'gemini-1.5-flash':
+    case 'gemini-flash-latest':
+      return DEFAULT_MODELS.gemini;
+    case 'gemini-2.0-flash-lite':
+    case 'gemini-1.5-flash-8b':
+      return 'gemini-3.1-flash-lite';
+    case 'gemini-1.5-pro':
+    case 'gemini-pro':
+    case 'gemini-3.1-pro':
+      return 'gemini-3.1-pro-preview';
+    default:
+      // Praefix-Fallback fuer nicht explizit gelistete Alt-Varianten
+      if (model.startsWith('gemini-1.') || model.startsWith('gemini-2.0')) {
+        return DEFAULT_MODELS.gemini;
+      }
+      return model;
+  }
 }
 
 /**
@@ -80,7 +104,7 @@ export function resolvePreferredModel(
   const trimmed = model?.trim();
   if (!trimmed) return DEFAULT_MODELS[provider];
 
-  if (provider === 'gemini' && isRetiredGeminiModel(trimmed)) return DEFAULT_MODELS.gemini;
+  if (provider === 'gemini') return resolveGeminiModel(trimmed);
   if (provider === 'claude' && trimmed in RETIRED_CLAUDE_MODELS) {
     return RETIRED_CLAUDE_MODELS[trimmed];
   }

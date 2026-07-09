@@ -152,7 +152,10 @@ test('KI-Modelle: Modellauswahl wird persistiert und nach Reload angezeigt', asy
   await page.getByText('Gemini 3.5 Flash — empfohlen').click();
   await page.getByRole('option', { name: 'Gemini 3.1 Pro — stärkstes Reasoning' }).click();
 
-  await expect.poll(() => settingValue(tauri, 'ai_preferred_model_gemini')).toBe('gemini-3.1-pro');
+  // Gespeichert wird die API-wahre Preview-ID ("gemini-3.1-pro" liefert 404)
+  await expect
+    .poll(() => settingValue(tauri, 'ai_preferred_model_gemini'))
+    .toBe('gemini-3.1-pro-preview');
 
   await page.reload();
   await page.getByRole('button', { name: 'Gemini (Google AI Studio)' }).nth(1).click();

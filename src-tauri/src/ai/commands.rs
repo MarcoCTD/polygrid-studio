@@ -128,7 +128,18 @@ async fn generate(
 }
 
 fn required_key(key: &str) -> Result<String, String> {
-    keychain_get_secret(KEYCHAIN_SERVICE, key)?
+    // Hinweis: In unsignierten Dev-Builds kann macOS den Keychain-Zugriff verweigern
+    // oder nach jedem Rebuild erneut eine Freigabe verlangen, weil sich die
+    // Binary-Signatur ändert. Der Fehlerpfad unten benennt das explizit, damit in
+    // der UI nicht nur eine generische Meldung landet.
+    keychain_get_secret(KEYCHAIN_SERVICE, key)
+        .map_err(|err| {
+            format!(
+                "Keychain-Zugriff fehlgeschlagen ({key}): {err} – \
+                 Bitte API-Key in den Einstellungen erneut speichern. \
+                 In unsignierten Dev-Builds kann macOS den Zugriff blockieren."
+            )
+        })?
         .filter(|value| !value.trim().is_empty())
         .ok_or_else(|| format!("API-Key fehlt im Keychain: {key}"))
 }

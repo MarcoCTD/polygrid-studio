@@ -9,13 +9,25 @@ use super::provider::{AIRequest, AIResponse};
 const GEMINI_BASE_ENDPOINT: &str = "https://generativelanguage.googleapis.com/v1beta";
 const GEMINI_DEFAULT_MODEL: &str = "gemini-3.5-flash";
 
-/// Google hat alle Gemini-1.x- und 2.0-Modelle abgeschaltet (Juni 2026);
-/// Requests dagegen liefern 404. Solche Modelle fallen auf den Default.
-fn resolve_gemini_model(model: String) -> String {
-    if model.starts_with("gemini-1.") || model.starts_with("gemini-2.0") {
-        GEMINI_DEFAULT_MODEL.to_string()
-    } else {
-        model
+/// Migriert veraltete/gespeicherte Modellnamen auf aktuell verfügbare Modelle,
+/// bevor der Request rausgeht. Gemini 1.5/2.0 sind im Free Tier abgeschaltet
+/// (429, limit: 0); "gemini-3.1-pro" existiert in der API nur als
+/// "gemini-3.1-pro-preview" (sonst 404).
+fn normalize_model(model: &str) -> String {
+    match model.trim() {
+        "" | "gemini-2.0-flash" | "gemini-1.5-flash" | "gemini-flash-latest" => {
+            GEMINI_DEFAULT_MODEL.to_string()
+        }
+        "gemini-2.0-flash-lite" | "gemini-1.5-flash-8b" => "gemini-3.1-flash-lite".to_string(),
+        "gemini-1.5-pro" | "gemini-pro" | "gemini-3.1-pro" => {
+            "gemini-3.1-pro-preview".to_string()
+        }
+        // Google hat auch alle restlichen Gemini-1.x-/2.0-Varianten
+        // abgeschaltet (Juni 2026) – auf den Default zurückfallen.
+        other if other.starts_with("gemini-1.") || other.starts_with("gemini-2.0") => {
+            GEMINI_DEFAULT_MODEL.to_string()
+        }
+        other => other.to_string(),
     }
 }
 
@@ -50,6 +62,9 @@ struct GeminiContent {
 #[derive(Debug, Deserialize)]
 struct GeminiPart {
     text: Option<String>,
+    // Thinking-Modelle (Gemini 3.x/3.5) liefern Thought-Parts mit thought=true,
+    // die nicht Teil der eigentlichen Antwort sind.
+    thought: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -75,12 +90,7 @@ pub async fn gemini_generate(api_key: &str, request: &AIRequest) -> Result<AIRes
         return Err("Gemini API-Key fehlt.".to_string());
     }
 
-    let model = resolve_gemini_model(
-        request
-            .model
-            .clone()
-            .unwrap_or_else(|| GEMINI_DEFAULT_MODEL.to_string()),
-    );
+    let model = normalize_model(request.model.as_deref().unwrap_or(""));
     let mut system_prompt = request.system_prompt.clone();
     if request.json_mode {
         system_prompt.push_str("\nRespond only with valid JSON, no markdown, no preamble.");
@@ -144,9 +154,19 @@ pub async fn gemini_generate(api_key: &str, request: &AIRequest) -> Result<AIRes
         .and_then(|candidates| candidates.first())
         .and_then(|candidate| candidate.content.as_ref())
         .and_then(|content| content.parts.as_ref())
-        .and_then(|parts| parts.first())
-        .and_then(|part| part.text.clone())
-        .ok_or_else(|| "Gemini-Antwort enthält keinen Text.".to_string())?;
+        .map(|parts| {
+            parts
+                .iter()
+                .filter(|part| !part.thought.unwrap_or(false))
+                .filter_map(|part| part.text.as_deref())
+                .collect::<Vec<_>>()
+                .join("")
+        })
+        .filter(|text| !text.is_empty())
+        .ok_or_else(|| {
+            "Gemini-Antwort enthält keinen Text (evtl. maxOutputTokens durch Thinking aufgebraucht)."
+                .to_string()
+        })?;
 
     let usage = parsed.usage_metadata.unwrap_or(GeminiUsage {
         prompt_token_count: Some(0),
@@ -178,7 +198,7 @@ pub async fn gemini_test_connection(api_key: &str) -> Result<String, String> {
 
     let response = Client::new()
         .get(format!("{GEMINI_BASE_ENDPOINT}/models"))
-        .query(&[("key", api_key)])
+        .query(&[("key", api_key), ("pageSize", "200")])
         .send()
         .await
         .map_err(|err| format!("Gemini-Modellliste konnte nicht geladen werden: {err}"))?;
@@ -200,4 +220,34 @@ pub async fn gemini_test_connection(api_key: &str) -> Result<String, String> {
         .find(|model| model.name.contains(GEMINI_DEFAULT_MODEL))
         .map(|model| model.name)
         .ok_or_else(|| "Gemini erreichbar, aber kein unterstütztes Modell gefunden.".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalize_model_migriert_alte_namen() {
+        assert_eq!(normalize_model("gemini-2.0-flash"), "gemini-3.5-flash");
+        assert_eq!(normalize_model("gemini-1.5-flash"), "gemini-3.5-flash");
+        assert_eq!(normalize_model("gemini-2.0-flash-lite"), "gemini-3.1-flash-lite");
+        assert_eq!(normalize_model("gemini-1.5-pro"), "gemini-3.1-pro-preview");
+        assert_eq!(normalize_model("gemini-3.1-pro"), "gemini-3.1-pro-preview");
+        // Präfix-Fallback für nicht explizit gelistete Alt-Varianten
+        assert_eq!(normalize_model("gemini-1.5-pro-002"), GEMINI_DEFAULT_MODEL);
+        assert_eq!(normalize_model("gemini-2.0-pro-exp"), GEMINI_DEFAULT_MODEL);
+    }
+
+    #[test]
+    fn normalize_model_laesst_aktuelle_namen_unveraendert() {
+        assert_eq!(normalize_model("gemini-3.5-flash"), "gemini-3.5-flash");
+        assert_eq!(normalize_model("gemini-2.5-flash"), "gemini-2.5-flash");
+        assert_eq!(normalize_model("gemini-3.1-flash-lite"), "gemini-3.1-flash-lite");
+    }
+
+    #[test]
+    fn normalize_model_leerer_name_ergibt_default() {
+        assert_eq!(normalize_model(""), GEMINI_DEFAULT_MODEL);
+        assert_eq!(normalize_model("  "), GEMINI_DEFAULT_MODEL);
+    }
 }
