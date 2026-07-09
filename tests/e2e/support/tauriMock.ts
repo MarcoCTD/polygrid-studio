@@ -153,6 +153,14 @@ export class TauriMock {
         return [];
       case 'get_file_info':
         return null;
+      case 'write_export_file': {
+        // Binärdatei-Export (Modul 14): Inhalt als Base64 ablegen, damit Tests
+        // die xlsx im Node-Prozess zurücklesen können.
+        const filePath = String(args.path ?? '');
+        const contents = Buffer.from((args.contents as number[]) ?? []).toString('base64');
+        this.writtenFiles.set(filePath, contents);
+        return filePath;
+      }
       case 'create_directory':
       case 'copy_file':
       case 'move_file':
@@ -190,6 +198,7 @@ export class TauriMock {
       }
       case 'plugin:opener|open_url':
       case 'plugin:opener|open_path':
+      case 'plugin:opener|reveal_item_in_dir':
         return null;
 
       default:

@@ -123,6 +123,36 @@ export async function undoLastOperation(): Promise<void> {
   await markOperationUndone(operation.id);
 }
 
+/**
+ * Schreibt eine Exportdatei in den OneDrive-Basisordner (relativer Pfad,
+ * z.B. "01_Finanzen/Exporte/euer_2026_firma.xlsx"). Legt die
+ * Standard-Ordnerstruktur bei Bedarf an. Liefert den absoluten Zielpfad.
+ */
+export async function writeExportFileToBase(
+  relativePath: string,
+  contents: Uint8Array,
+): Promise<string> {
+  const basePath = await requireBasePath();
+  await ensureOneDriveStructure(basePath);
+  return invoke<string>('write_export_file', {
+    path: `${basePath}/${relativePath}`,
+    basePath,
+    contents: Array.from(contents),
+  });
+}
+
+/** Schreibt eine Exportdatei an einen per Speichern-Dialog gewählten Pfad. */
+export async function writeExportFileToPath(
+  absolutePath: string,
+  contents: Uint8Array,
+): Promise<string> {
+  return invoke<string>('write_export_file', {
+    path: absolutePath,
+    basePath: null,
+    contents: Array.from(contents),
+  });
+}
+
 async function logSuccessfulOperation(result: WriteCommandResult): Promise<void> {
   // DB-Zugriff existiert im Frontend-Service via Tauri SQL Plugin; Rust bleibt auf sichere
   // Dateisystemoperationen beschraenkt und liefert nur relative Log-Metadaten zurueck.

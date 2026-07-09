@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SteuerExportTab } from '@/features/finance/components/SteuerExportTab';
 import {
   AiAnalysisSummary,
   AnalyticsKpiRow,
@@ -131,34 +133,54 @@ export function AnalyticsPage() {
   );
 
   return (
-    <div className="flex h-full flex-col gap-4 overflow-auto bg-bg-primary p-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-text-primary">Analysen</h1>
-          <p className="mt-1 text-sm text-text-secondary">
-            Historische Auswertung für Umsatz, Ausgaben, Margen und Listing-Status.
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 sm:items-end">
-          <TimeRangeSelector
-            value={range.preset}
-            allTimeStartDate={allTimeStartDate}
-            onChange={setRange}
-          />
-          <SnapshotRefreshButton />
-        </div>
+    <div className="flex h-full flex-col bg-bg-primary">
+      <header className="px-6 pt-6">
+        <h1 className="text-2xl font-semibold text-text-primary">Analysen</h1>
+        <p className="mt-1 text-sm text-text-secondary">
+          Historische Auswertung für Umsatz, Ausgaben, Margen und Listing-Status – plus
+          EÜR-Jahresexport.
+        </p>
       </header>
 
-      <AnalyticsKpiRow kpis={kpis} isLoading={isLoading} />
+      <Tabs defaultValue="auswertung" className="flex flex-1 flex-col overflow-hidden">
+        <TabsList variant="line" className="w-full justify-start px-6 pt-3">
+          <TabsTrigger value="auswertung">Auswertung</TabsTrigger>
+          <TabsTrigger value="steuer-export">Steuer-Export</TabsTrigger>
+        </TabsList>
 
-      <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <RevenueByPlatformChart data={revenueByPlatform} />
-        <ExpensesByCategoryChart data={expensesByCategory} />
-        <MarginByProductChart data={marginByProduct} />
-        <ListingStatusChart data={listingStatusDistribution} />
-      </section>
+        <div className="flex-1 overflow-y-auto p-6">
+          <TabsContent value="auswertung">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <TimeRangeSelector
+                  value={range.preset}
+                  allTimeStartDate={allTimeStartDate}
+                  onChange={setRange}
+                />
+                <SnapshotRefreshButton />
+              </div>
 
-      <AiAnalysisSummary input={aiInput} summary={aiSummary} onSummaryChange={setAiSummary} />
+              <AnalyticsKpiRow kpis={kpis} isLoading={isLoading} />
+
+              <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <RevenueByPlatformChart data={revenueByPlatform} />
+                <ExpensesByCategoryChart data={expensesByCategory} />
+                <MarginByProductChart data={marginByProduct} />
+                <ListingStatusChart data={listingStatusDistribution} />
+              </section>
+
+              <AiAnalysisSummary
+                input={aiInput}
+                summary={aiSummary}
+                onSummaryChange={setAiSummary}
+              />
+            </div>
+          </TabsContent>
+          <TabsContent value="steuer-export">
+            <SteuerExportTab />
+          </TabsContent>
+        </div>
+      </Tabs>
     </div>
   );
 }
