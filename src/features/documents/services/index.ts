@@ -13,13 +13,27 @@ export {
   markQuoteAccepted,
   markQuoteRejected,
   resolveDocumentAccentColor,
-  resolveDocumentVariables,
   softDeleteDocument,
   updateDocument,
   updateDocumentPdfPath,
   type DocumentFilters,
   type InvoiceSettings,
 } from './documentsService';
+export {
+  composeDocumentSnapshot,
+  resolveDocumentVariables,
+  type ComposeSnapshotArgs,
+} from './composeSnapshot';
+export {
+  confirmOneDrivePdfSaved,
+  documentNameSlug,
+  documentOneDriveSubdirectory,
+  documentPdfFilename,
+  isOneDriveConfigured,
+  openOneDriveExportFolder,
+  prepareOneDriveExportTarget,
+  type OneDriveExportTarget,
+} from './documentPdf';
 export {
   DOCUMENT_NUMBER_PREFIXES,
   formatDocumentNumber,

@@ -1,20 +1,21 @@
 /**
- * Search-Params der Websites-Route (Modul 16).
- * - tab: aktiver Tab (projects | clients | services)
+ * Search-Params der Websites-Route (Modul 16, erweitert in Modul 17).
+ * - tab: aktiver Tab (projects | clients | services | documents)
  * - filter: Vorfilter aus Smart-Action-Navigation
  *   - expiring: Laufende Posten mit ablaufender Domain
  *   - deadline: Projekte mit naher/überschrittener Deadline
+ *   - overdue: Überfällige Rechnungen (Dokumente-Tab, Modul 17)
  */
-export type WebsitesTab = 'projects' | 'clients' | 'services';
-export type WebsitesFilter = 'expiring' | 'deadline';
+export type WebsitesTab = 'projects' | 'clients' | 'services' | 'documents';
+export type WebsitesFilter = 'expiring' | 'deadline' | 'overdue';
 
 export interface WebsitesSearch {
   tab?: WebsitesTab;
   filter?: WebsitesFilter;
 }
 
-const TABS: readonly WebsitesTab[] = ['projects', 'clients', 'services'];
-const FILTERS: readonly WebsitesFilter[] = ['expiring', 'deadline'];
+const TABS: readonly WebsitesTab[] = ['projects', 'clients', 'services', 'documents'];
+const FILTERS: readonly WebsitesFilter[] = ['expiring', 'deadline', 'overdue'];
 
 export function validateWebsitesSearch(search: Record<string, unknown>): WebsitesSearch {
   const result: WebsitesSearch = {};

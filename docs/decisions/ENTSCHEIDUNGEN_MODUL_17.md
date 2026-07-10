@@ -109,6 +109,45 @@ Ausstellen nur Kunde und mindestens eine Position – ein Angebot ohne
 Steuernummer ist rechtlich unkritisch. Die Stammdaten erscheinen natürlich
 trotzdem im Layout, sobald sie gepflegt sind.
 
+## E17-10: Kein Print-to-PDF in Tauri 2 ohne Plugin – dokumentierter Fallback für PDF-Weg 2
+
+Tauri 2 (WKWebView/WebView2) bietet ohne Zusatz-Plugin KEINE programmatische
+Print-to-PDF-API; `window.print()` öffnet nur den Systemdruckdialog. Die in
+der Spec vorgesehene Rückfall-Entscheidung greift daher: KEINE schwere
+PDF-Dependency (kein jsPDF/pdf-lib/Drittanbieter-Plugin) ohne Rückfrage.
+"In OneDrive ablegen" ist als geführter Systemdruck umgesetzt:
+
+1. Zielordner `/01_Finanzen/Rechnungen_{JJJJ}/` bzw. `Angebote_{JJJJ}/` wird
+   angelegt (bestehende Rust-Commands, kein neuer Code)
+2. Dialog zeigt erwarteten Dateinamen `{nummer}_{kundenname-slug}.pdf` und
+   Zielordner, mit Buttons "Ordner öffnen" und "Druckdialog öffnen"
+   (macOS: "Als PDF sichern")
+3. "Gespeichert – prüfen" prüft per `check_path_exists`, ob die PDF am
+   erwarteten Pfad liegt; wenn ja werden `pdf_path` gesetzt und ein
+   `file_link` (entity_type `document`, file_type `beleg`, relativer Pfad)
+   angelegt
+
+Damit ist das Akzeptanzkriterium "PDF-Ablage in OneDrive funktioniert oder
+dokumentierter Fallback auf Systemdruck" über den Fallback erfüllt. Sollte
+später ein offizielles Print-to-PDF-Plugin freigegeben werden, ist nur
+Schritt 2 zu ersetzen.
+
+## E17-11: Positionen umsortieren über Pfeil-Buttons statt Drag-and-Drop
+
+Die Spec verlangt "Zeilen hinzufügen/entfernen/umsortieren", ohne die Technik
+vorzugeben. Umgesetzt sind Hoch/Runter-Buttons je Zeile statt dnd-kit:
+tastaturbedienbar, ohne Autoscroll-Flakiness in den E2E-Tests (bekanntes
+Problem der Kanban-Drag-Gesten) und bei typischen Dokumenten mit wenigen
+Positionen mindestens gleich schnell.
+
+## E17-12: Live-Vorschau komponiert über denselben Snapshot-Weg
+
+Die Editor-Vorschau eines Drafts baut ihren Anzeige-Snapshot über dieselbe
+pure Funktion `composeDocumentSnapshot`, die auch das Ausstellen verwendet
+(Nummer als Platzhalter "R-JJJJ-…", Datum = heute). Vorschau und späteres
+Dokument können damit nicht auseinanderlaufen. Ausgestellte Dokumente zeigen
+ausschließlich den gespeicherten Snapshot – auch in der Vorschau-Spalte.
+
 ## E17-09: Variablen-Auflösung beim Ausstellen in den Snapshot
 
 Intro-/Outro-Texte unterstützen die {{variablen}}-Syntax der Registry

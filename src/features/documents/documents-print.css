@@ -1,0 +1,78 @@
+/*
+ * Print-Stylesheet für Angebote und Rechnungen (Modul 17).
+ *
+ * Bildschirm: .pg-doc-sheet ist ein A4-Blatt (Vorschau, immer hell).
+ * Druck: Das App-Root (#root) wird ausgeblendet, nur das Print-Portal
+ * (#pg-print-root) wird gerendert. Die Positions-Tabelle wiederholt ihren
+ * <thead> auf Folgeseiten (Kopfwiederholung, Spec Abschnitt 4).
+ */
+
+.pg-doc-sheet {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 18mm 16mm;
+  background: #ffffff;
+  color: #111111;
+  font-size: 10.5pt;
+  line-height: 1.5;
+}
+
+.pg-doc-sheet a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Positions-Tabelle: thead wiederholt sich beim Seitenumbruch */
+.pg-doc-positions {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pg-doc-positions th,
+.pg-doc-positions td {
+  vertical-align: top;
+  text-align: left;
+}
+
+.pg-doc-positions .pg-doc-num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-doc-positions tr,
+.pg-doc-avoid-break {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Print-Portal existiert nur während des Druckens, am Bildschirm unsichtbar */
+#pg-print-root {
+  display: none;
+}
+
+@page {
+  size: A4;
+  margin: 16mm 16mm 18mm 16mm;
+}
+
+@media print {
+  #root {
+    display: none !important;
+  }
+
+  #pg-print-root {
+    display: block !important;
+  }
+
+  #pg-print-root .pg-doc-sheet {
+    width: auto;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .pg-doc-sheet {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

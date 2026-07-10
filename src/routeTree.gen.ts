@@ -18,6 +18,7 @@ import { TasksPage } from '@/features/tasks';
 import { AnalyticsPage } from '@/features/analytics';
 import { FinancePage } from '@/features/finance';
 import { WebsitesPage } from '@/features/websites';
+import { DocumentEditorPage } from '@/features/documents';
 import { AIAssistantPage } from '@/features/ai-assistant';
 import { SettingsPage } from '@/features/settings';
 
@@ -112,6 +113,12 @@ const websitesRoute = createRoute({
   validateSearch: validateWebsitesSearch,
 });
 
+const documentEditRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/documents/$documentId',
+  component: DocumentEditorPage,
+});
+
 const aiRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/ai',
@@ -147,6 +154,7 @@ export const routeTree = rootRoute.addChildren([
   analyticsRoute,
   financeRoute,
   websitesRoute,
+  documentEditRoute,
   aiRoute,
   settingsRoute,
   settingsTabRoute,

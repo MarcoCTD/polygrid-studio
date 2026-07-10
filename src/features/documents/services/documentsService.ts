@@ -20,8 +20,6 @@ import type { Order } from '@/features/orders/types';
 import { ACCENT_PRESETS, type AccentPresetKey } from '@/utils/colors';
 import {
   DocumentSchema,
-  DocumentSnapshotSchema,
-  KLEINUNTERNEHMER_SATZ,
   NewDocumentSchema,
   UpdateDocumentSchema,
   calculateDocumentTotal,
@@ -35,27 +33,18 @@ import {
   type SnapshotIssuer,
   type UpdateDocumentInput,
 } from '../schemas';
+import { composeDocumentSnapshot } from './composeSnapshot';
 import { generateDocumentNumber } from './documentNumber';
+import {
+  addDaysISO as addDays,
+  formatGermanDateFromISO as formatGermanDate,
+  toISODate,
+} from '../utils/dates';
 
 type Row = Record<string, unknown>;
 
 function now(): string {
   return new Date().toISOString();
-}
-
-function toISODate(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function addDays(isoDate: string, days: number): string {
-  const [year, month, day] = isoDate.split('-').map(Number);
-  const date = new Date(year, month - 1, day + days);
-  return toISODate(date);
-}
-
-function formatGermanDate(isoDate: string): string {
-  const [year, month, day] = isoDate.split('-');
-  return `${day}.${month}.${year}`;
 }
 
 function errorText(error: unknown): string {
@@ -209,25 +198,6 @@ async function loadProjectName(projectId: string | null): Promise<string | null>
     [projectId],
   );
   return (rows[0]?.name as string | undefined) ?? null;
-}
-
-// ------------------------------------------------------------
-// Variablen ({{kundenname}}, {{projektname}}, … über die Registry-Syntax)
-// ------------------------------------------------------------
-const VARIABLE_REGEX = /\{\{([^}]+)\}\}/g;
-
-export function resolveDocumentVariables(
-  text: string | null,
-  values: Record<string, string | null>,
-): string | null {
-  if (!text) return text;
-  return text.replace(VARIABLE_REGEX, (match, rawName: string) => {
-    const name = rawName.trim().toLowerCase();
-    const value = values[name];
-    // Unbekannte oder leere Variablen bleiben sichtbar stehen,
-    // damit fehlende Angaben im Dokument auffallen.
-    return value === undefined || value === null || value === '' ? match : value;
-  });
 }
 
 // ------------------------------------------------------------
@@ -526,7 +496,7 @@ async function issueDocumentExclusive(id: string, nowDate: Date): Promise<Busine
       ? ((await getDocumentById(document.related_document_id))?.number ?? null)
       : null;
 
-    const snapshot = DocumentSnapshotSchema.parse({
+    const snapshot = composeDocumentSnapshot({
       type: document.type,
       number,
       issuer: settings.issuer,
@@ -536,19 +506,18 @@ async function issueDocumentExclusive(id: string, nowDate: Date): Promise<Busine
         address: client.address,
       },
       line_items: document.line_items,
-      total: document.total,
       issue_date: issueDate,
       due_date: dueDate,
       valid_until: validUntil,
       service_date: document.service_date,
-      intro_text: resolveDocumentVariables(document.intro_text, variableValues),
-      outro_text: resolveDocumentVariables(document.outro_text, variableValues),
+      intro_text: document.intro_text,
+      outro_text: document.outro_text,
       layout: document.layout,
       accent_color: resolveDocumentAccentColor(settings),
       logo: settings.logo || null,
-      kleinunternehmer_hinweis: document.type === 'invoice' ? KLEINUNTERNEHMER_SATZ : null,
       related_document_number: relatedNumber,
-    } satisfies DocumentSnapshot);
+      variable_values: variableValues,
+    });
 
     await db.execute(
       `UPDATE documents
@@ -784,13 +753,12 @@ async function cancelInvoiceExclusive(
 
     // Empfänger aus dem Original-Snapshot: Das Storno gehört kaufmännisch
     // zum Original und darf spätere Kundenänderungen nicht aufnehmen.
-    const snapshot = DocumentSnapshotSchema.parse({
+    const snapshot = composeDocumentSnapshot({
       type: 'invoice',
       number,
       issuer: settings.issuer,
       recipient: original.snapshot.recipient,
       line_items: stornoItems,
-      total: stornoTotal,
       issue_date: issueDate,
       due_date: null,
       valid_until: null,
@@ -800,9 +768,9 @@ async function cancelInvoiceExclusive(
       layout: original.layout,
       accent_color: resolveDocumentAccentColor(settings),
       logo: settings.logo || null,
-      kleinunternehmer_hinweis: KLEINUNTERNEHMER_SATZ,
       related_document_number: original.number,
-    } satisfies DocumentSnapshot);
+      variable_values: {},
+    });
 
     const stornoId = crypto.randomUUID();
     const timestamp = now();

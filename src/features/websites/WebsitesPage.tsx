@@ -20,7 +20,7 @@ import {
   ServicesTab,
 } from './components';
 import { notifyWebsiteRecurringResult } from './notifications';
-import type { WebsitesSearch, WebsitesTab } from './searchParams';
+import type { WebsitesFilter, WebsitesSearch, WebsitesTab } from './searchParams';
 import type { ClientListItem, WebsiteProjectListItem, WebsiteServiceListItem } from './schemas';
 import {
   calculateRecurringTotals,
@@ -34,6 +34,13 @@ const TAB_LABELS: Record<WebsitesTab, string> = {
   projects: 'Projekte',
   clients: 'Kunden',
   services: 'Laufende Posten',
+  documents: 'Dokumente',
+};
+
+const FILTER_LABELS: Record<WebsitesFilter, string> = {
+  expiring: 'Ablaufende Domains',
+  deadline: 'Nahe Deadlines',
+  overdue: 'Überfällige Rechnungen',
 };
 
 function isoDaysAhead(days: number): string {
@@ -300,7 +307,7 @@ export function WebsitesPage() {
             aria-label="Filter entfernen"
             onClick={clearFilter}
           >
-            {filter === 'expiring' ? 'Ablaufende Domains' : 'Nahe Deadlines'}
+            {FILTER_LABELS[filter]}
             <X className="size-3.5" />
           </Button>
         )}
