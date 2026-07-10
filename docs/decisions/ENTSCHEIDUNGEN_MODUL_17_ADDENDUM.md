@@ -92,6 +92,61 @@ Werte fallen still auf die mitgelieferten Konstanten zurück. Ein gespeicherter
 Nutzer-Standard ist nie leer (abgewählte Blöcke bleiben mit `enabled: false`
 im Array), daher ist `[]` als „nicht gesetzt"-Sentinel eindeutig.
 
+## EB-01: Bausteine rendern in allen drei Layouts
+
+Die Spec beschreibt das Fließen der Bausteine nur für polygrid. Bausteine
+sind aber Dokument-INHALT, keine Layout-Dekoration: Ein aktivierter Baustein,
+der beim Umschalten auf modern/classic aus der Live-Vorschau verschwände,
+wäre irreführend. modern/classic rendern die Snapshot-Bausteine daher über
+eine gemeinsame `ContentBlocksSection` (schlicht gestylt) nach dem
+Summen-/§19-Bereich. Alt-Dokumente haben leere Snapshot-Bausteine – deren
+Rendering bleibt exakt unverändert (Regressions-Kriterium).
+
+## EB-02: Fußzeile auf jeder Seite über tfoot-Wiederholung
+
+Das polygrid-Blatt ist ein Rahmen-`<table>` (`pg-polygrid-frame`): der
+gesamte Inhalt liegt in einer tbody-Zelle, die Fußzeile im `<tfoot>`.
+Browser wiederholen thead/tfoot beim Druck auf jeder Seite – ohne
+`position: fixed` (Überlappungsrisiko mit Inhalt) und ohne JS-Paginierung.
+Die dunkle Positions-Kopfzeile wiederholt sich analog über ihren `<thead>`.
+
+## EB-03: Positionstitel = erste Zeile der Beschreibung
+
+Die Referenz zeigt Positionen mit fettem Titel und grauem Detailtext;
+`line_items` hat aber nur EIN Beschreibungsfeld. polygrid rendert die erste
+Zeile der Beschreibung fett als Titel, alle weiteren Zeilen kleiner/grau –
+ohne Datenmodell-Änderung, mehrzeilige Bestandsdaten sehen automatisch
+richtig aus. modern/classic bleiben bei der unveränderten Darstellung.
+
+## EB-04: Mengenspalte bei Menge ≠ 1 (nicht nur > 1)
+
+Spec Abschnitt 2 blendet die Mengenspalte aus, „wenn alle Positionen Menge 1
+haben"; das Akzeptanzkriterium formuliert „mindestens eine Position Menge
+> 1". Umgesetzt ist Menge ≠ 1: auch Bruchmengen (z.B. 0,5 Stunden) brauchen
+die Spalte, sonst wäre der Einzelpreis nicht nachvollziehbar.
+
+## EB-05: „Gesamtbetrag (Festpreis)" bei Angeboten, „Gesamtbetrag" bei Rechnungen
+
+Die Spec nennt beide Varianten ohne Zuordnung („bzw."). Die Referenz (ein
+Angebot) trägt „(Festpreis)" – zugeordnet nach Typ: Angebote versprechen den
+Festpreis, Rechnungen weisen schlicht den Betrag aus (bei Storno mit
+negativem Betrag wäre „Festpreis" zudem falsch).
+
+## EB-06: Angebots-Metazeile „Angebotsnr.:" ergänzt
+
+Die Spec listet für Angebote nur „Datum:" (die manuell erstellte Referenz
+hatte keinen Nummernkreis). Da ausgestellte Angebote eine lückenlose Nummer
+tragen, zeigt polygrid sie als erste Metazeile – sonst wäre die Nummer
+nirgends auf dem Dokument sichtbar.
+
+## EB-07: E2E-Anpassung an das neue Default-Layout
+
+`documents.spec.ts` prüfte den Modern-Titel („Rechnung R-JJJJ-NNN" in einem
+Element). Im polygrid-Kopf stehen Typ (groß) und Nummer (Metazeile) getrennt –
+die Assertion wurde auf `doc-title` (Typ) + `doc-meta` (Nummer) aufgeteilt.
+Kein Verhaltens-Fix „am Test vorbei": das Default-Layout hat sich gewollt
+geändert, Tests mit explizitem Layout modern/classic laufen unverändert.
+
 ## EA-10: Umwandlung Angebot→Rechnung lädt Rechnungs-Defaults im Service
 
 Spec 3.5 verortet das Verhalten im Editor (Etappe C), umgesetzt ist es eine

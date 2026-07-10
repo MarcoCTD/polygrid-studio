@@ -28,7 +28,8 @@ export const DocumentStatusEnum = z.enum([
   'cancelled',
 ]);
 
-export const DocumentLayoutEnum = z.enum(['modern', 'classic']);
+/** polygrid ist seit dem Addendum das Default-Layout; modern/classic bleiben wählbar. */
+export const DocumentLayoutEnum = z.enum(['polygrid', 'modern', 'classic']);
 
 /** Pflichtsatz §19 UStG – fix, nicht abwählbar, steht auf jeder Rechnung. */
 export const KLEINUNTERNEHMER_SATZ = 'Gemäß §19 UStG wird keine Umsatzsteuer berechnet.';
@@ -267,6 +268,7 @@ export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
 };
 
 export const DOCUMENT_LAYOUT_LABELS: Record<DocumentLayout, string> = {
+  polygrid: 'PolyGrid',
   modern: 'Modern',
   classic: 'Klassisch',
 };

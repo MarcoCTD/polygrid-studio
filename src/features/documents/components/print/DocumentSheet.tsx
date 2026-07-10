@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import type { DocumentSnapshot } from '../../schemas';
 import { ClassicLayout } from './ClassicLayout';
 import { ModernLayout } from './ModernLayout';
+import { PolygridLayout } from './PolygridLayout';
 
 export function DocumentSheet({
   snapshot,
@@ -20,8 +21,10 @@ export function DocumentSheet({
     <div className={cn('pg-doc-sheet shadow-lg', className)} data-testid="document-sheet">
       {snapshot.layout === 'classic' ? (
         <ClassicLayout snapshot={snapshot} />
-      ) : (
+      ) : snapshot.layout === 'modern' ? (
         <ModernLayout snapshot={snapshot} />
+      ) : (
+        <PolygridLayout snapshot={snapshot} />
       )}
     </div>
   );

@@ -123,7 +123,7 @@ export function DocumentEditorPage() {
       service_date: '',
       intro_text: '',
       outro_text: '',
-      layout: 'modern',
+      layout: 'polygrid',
       line_items: [],
     },
   });
@@ -205,7 +205,7 @@ export function DocumentEditorPage() {
         service_date: watched.service_date?.trim() || null,
         intro_text: watched.intro_text?.trim() || null,
         outro_text: watched.outro_text?.trim() || null,
-        layout: (watched.layout as DocumentLayout | undefined) ?? 'modern',
+        layout: (watched.layout as DocumentLayout | undefined) ?? 'polygrid',
         accent_color: resolveDocumentAccentColor(settings),
         logo: settings.logo || null,
         related_document_number: relatedNumber,
@@ -499,6 +499,9 @@ export function DocumentEditorPage() {
                 render={({ field }) => (
                   <Tabs value={field.value} onValueChange={field.onChange}>
                     <TabsList>
+                      <TabsTrigger value="polygrid" data-testid="layout-polygrid">
+                        {DOCUMENT_LAYOUT_LABELS.polygrid}
+                      </TabsTrigger>
                       <TabsTrigger value="modern" data-testid="layout-modern">
                         {DOCUMENT_LAYOUT_LABELS.modern}
                       </TabsTrigger>

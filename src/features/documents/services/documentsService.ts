@@ -178,7 +178,7 @@ export async function loadInvoiceSettings(): Promise<InvoiceSettings> {
 /** Standard-Layout aus den Settings; Unbekanntes fällt auf das Default-Layout zurück. */
 function parseDocumentLayout(value: string): DocumentLayout {
   const parsed = DocumentLayoutEnum.safeParse(value);
-  return parsed.success ? parsed.data : 'modern';
+  return parsed.success ? parsed.data : 'polygrid';
 }
 
 /** Markenfarbe aus den Einstellungen, sonst die App-Akzentfarbe (Hell-Variante). */

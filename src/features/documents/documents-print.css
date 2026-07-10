@@ -46,6 +46,103 @@
   page-break-inside: avoid;
 }
 
+/* ------------------------------------------------------------
+ * Bausteine (Addendum Modul 17)
+ * Seitenumbruch-Regeln: kein Baustein-Titel verwaist am Seitenende.
+ * ------------------------------------------------------------ */
+.pg-doc-block {
+  margin-top: 5mm;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.pg-doc-block-title {
+  font-size: 10.5pt;
+  font-weight: 700;
+  margin: 0 0 1.5mm;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+.pg-doc-block-list {
+  margin: 0;
+  padding-left: 5mm;
+}
+
+.pg-doc-block-list li {
+  margin: 0.5mm 0;
+}
+
+.pg-doc-block-text {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.pg-doc-signature {
+  display: flex;
+  gap: 18mm;
+  margin-top: 14mm;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.pg-doc-signature-field {
+  flex: 1;
+  max-width: 65mm;
+  font-size: 8.5pt;
+  color: #555555;
+}
+
+.pg-doc-signature-line {
+  border-bottom: 1px solid #999999;
+  height: 10mm;
+  margin-bottom: 1.5mm;
+}
+
+/* ------------------------------------------------------------
+ * Layout polygrid (Addendum Modul 17)
+ * Rahmen-Table: tfoot wiederholt die Fußzeile im Druck auf jeder Seite.
+ * ------------------------------------------------------------ */
+.pg-polygrid-frame {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pg-polygrid-frame > tbody > tr > td,
+.pg-polygrid-frame > tfoot > tr > td {
+  padding: 0;
+  vertical-align: top;
+}
+
+.pg-polygrid-footer {
+  margin-top: 9mm;
+  padding-top: 2.5mm;
+  border-top: 0.5pt solid #bbbbbb;
+  text-align: center;
+  font-size: 7.5pt;
+  color: #777777;
+}
+
+/* VON/AN-Label: Markenfarbe, Versalien, klein, gesperrt */
+.pg-polygrid-label {
+  font-size: 7.5pt;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  margin-bottom: 1.5mm;
+}
+
+/* Dunkle Tabellenkopfzeile (fast schwarz), weiße Versalien */
+.pg-polygrid-positions thead th {
+  background: #161616;
+  color: #ffffff;
+  font-size: 8pt;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 2.5mm 3mm;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
 /* Print-Portal existiert nur während des Druckens, am Bildschirm unsichtbar */
 #pg-print-root {
   display: none;

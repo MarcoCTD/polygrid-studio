@@ -49,10 +49,13 @@ interface InvoiceSettingsState {
   iban: string;
   bic: string;
   bankName: string;
+  email: string;
+  phone: string;
+  website: string;
   paymentTermsDays: number;
   quoteValidityDays: number;
   logo: string;
-  defaultLayout: 'modern' | 'classic';
+  defaultLayout: 'polygrid' | 'modern' | 'classic';
   brandColor: string;
 }
 
@@ -66,12 +69,19 @@ const EMPTY_STATE: InvoiceSettingsState = {
   iban: DEFAULTS.invoice_iban,
   bic: DEFAULTS.invoice_bic,
   bankName: DEFAULTS.invoice_bank_name,
+  email: DEFAULTS.invoice_email,
+  phone: DEFAULTS.invoice_phone,
+  website: DEFAULTS.invoice_website,
   paymentTermsDays: DEFAULTS.invoice_payment_terms_days,
   quoteValidityDays: DEFAULTS.invoice_quote_validity_days,
   logo: DEFAULTS.invoice_logo,
   defaultLayout: DEFAULTS.invoice_default_layout,
   brandColor: DEFAULTS.invoice_brand_color,
 };
+
+function parseLayoutSetting(value: unknown): InvoiceSettingsState['defaultLayout'] {
+  return value === 'modern' || value === 'classic' ? value : 'polygrid';
+}
 
 function Section({
   title,
@@ -147,6 +157,9 @@ export function InvoiceSettingsSection({ companyName }: InvoiceSettingsSectionPr
           iban,
           bic,
           bankName,
+          email,
+          phone,
+          website,
           paymentTermsDays,
           quoteValidityDays,
           logo,
@@ -162,6 +175,9 @@ export function InvoiceSettingsSection({ companyName }: InvoiceSettingsSectionPr
           getSettingWithDefault('invoice_iban'),
           getSettingWithDefault('invoice_bic'),
           getSettingWithDefault('invoice_bank_name'),
+          getSettingWithDefault('invoice_email'),
+          getSettingWithDefault('invoice_phone'),
+          getSettingWithDefault('invoice_website'),
           getSettingWithDefault('invoice_payment_terms_days'),
           getSettingWithDefault('invoice_quote_validity_days'),
           getSettingWithDefault('invoice_logo'),
@@ -180,10 +196,13 @@ export function InvoiceSettingsSection({ companyName }: InvoiceSettingsSectionPr
           iban,
           bic,
           bankName,
+          email,
+          phone,
+          website,
           paymentTermsDays: Number(paymentTermsDays) || 14,
           quoteValidityDays: Number(quoteValidityDays) || 30,
           logo,
-          defaultLayout: String(defaultLayout) === 'classic' ? 'classic' : 'modern',
+          defaultLayout: parseLayoutSetting(String(defaultLayout)),
           brandColor,
         });
       } catch (error) {
@@ -225,9 +244,9 @@ export function InvoiceSettingsSection({ companyName }: InvoiceSettingsSectionPr
       bic: state.bic.trim(),
       bank_name: state.bankName.trim(),
       // Kontaktfelder sind keine Pflichtangaben (nur Layout polygrid)
-      email: '',
-      phone: '',
-      website: '',
+      email: state.email.trim(),
+      phone: state.phone.trim(),
+      website: state.website.trim(),
     };
     return getMissingIssuerFields(issuer);
   }, [companyName, state]);
@@ -400,6 +419,34 @@ export function InvoiceSettingsSection({ companyName }: InvoiceSettingsSectionPr
       </FieldRow>
 
       <FieldRow
+        label="E-Mail"
+        hint="Erscheint im VON-Block und in der Fußzeile des PolyGrid-Layouts"
+      >
+        <Input
+          value={state.email}
+          data-testid="invoice-email"
+          onChange={(event) => updateField('email', event.target.value, 'invoice_email')}
+        />
+      </FieldRow>
+
+      <FieldRow label="Telefon / Website">
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            value={state.phone}
+            placeholder="Telefon"
+            data-testid="invoice-phone"
+            onChange={(event) => updateField('phone', event.target.value, 'invoice_phone')}
+          />
+          <Input
+            value={state.website}
+            placeholder="www.example.de"
+            data-testid="invoice-website"
+            onChange={(event) => updateField('website', event.target.value, 'invoice_website')}
+          />
+        </div>
+      </FieldRow>
+
+      <FieldRow
         label="Zahlungsziel"
         hint="Fälligkeit der Rechnung = Ausstellungsdatum + Zahlungsziel"
       >
@@ -474,17 +521,14 @@ export function InvoiceSettingsSection({ companyName }: InvoiceSettingsSectionPr
           value={state.defaultLayout}
           items={DOCUMENT_LAYOUT_LABELS}
           onValueChange={(value) =>
-            updateField(
-              'defaultLayout',
-              value === 'classic' ? 'classic' : 'modern',
-              'invoice_default_layout',
-            )
+            updateField('defaultLayout', parseLayoutSetting(value), 'invoice_default_layout')
           }
         >
           <SelectTrigger className="w-full max-w-60" data-testid="invoice-default-layout">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="polygrid">{DOCUMENT_LAYOUT_LABELS.polygrid}</SelectItem>
             <SelectItem value="modern">{DOCUMENT_LAYOUT_LABELS.modern}</SelectItem>
             <SelectItem value="classic">{DOCUMENT_LAYOUT_LABELS.classic}</SelectItem>
           </SelectContent>
