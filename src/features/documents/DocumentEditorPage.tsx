@@ -35,6 +35,7 @@ import {
   DOCUMENT_LAYOUT_LABELS,
   DOCUMENT_TYPE_LABELS,
   type BusinessDocument,
+  type ContentBlock,
   type DocumentLayout,
   type DocumentSnapshot,
   type LineItem,
@@ -42,12 +43,14 @@ import {
 import {
   composeDocumentSnapshot,
   confirmOneDrivePdfSaved,
+  getDefaultContentBlocksForType,
   getDocumentById,
   getMissingIssueRequirements,
   loadInvoiceSettings,
   openOneDriveExportFolder,
   prepareOneDriveExportTarget,
   resolveDocumentAccentColor,
+  saveDefaultContentBlocksForType,
   updateDocument,
   DOCUMENT_NUMBER_PREFIXES,
   type InvoiceSettings,
@@ -57,6 +60,7 @@ import { addDaysISO, formatGermanDateFromISO, toISODate } from './utils/dates';
 import { DocumentStatusBadge, DocumentTypeBadge } from './components/DocumentBadges';
 import { DocumentSheet } from './components/print/DocumentSheet';
 import { DocumentPrintPortal } from './components/print/DocumentPrintPortal';
+import { ContentBlocksEditor } from './components/ContentBlocksEditor';
 import { LineItemsEditor } from './components/LineItemsEditor';
 import type { DocumentFormValues } from './components/documentFormTypes';
 import { DocumentActions } from './components/DocumentActions';
@@ -72,6 +76,10 @@ function toFormValues(document: BusinessDocument): DocumentFormValues {
     outro_text: document.outro_text ?? '',
     layout: document.layout,
     line_items: document.line_items.map((item) => ({ ...item })),
+    content_blocks: document.content_blocks.map((block) => ({
+      ...block,
+      items: [...block.items],
+    })),
   };
 }
 
@@ -102,6 +110,46 @@ function previewLineItems(rows: readonly PartialLineItemRow[] | undefined): Line
   }));
 }
 
+/** useWatch liefert DeepPartial-Bausteine – zurück zu vollständigen Blöcken. */
+interface PartialContentBlockRow {
+  id?: string;
+  kind?: ContentBlock['kind'];
+  enabled?: boolean;
+  title?: string;
+  body_type?: ContentBlock['body_type'];
+  items?: (string | undefined)[];
+  text?: string;
+}
+
+function sanitizeContentBlocks(
+  rows: readonly (PartialContentBlockRow | undefined)[] | undefined,
+): ContentBlock[] {
+  return (rows ?? []).flatMap((row) => {
+    if (!row?.id || !row.kind) return [];
+    return [
+      {
+        id: row.id,
+        kind: row.kind,
+        enabled: row.enabled === true,
+        title: row.title ?? '',
+        body_type: row.body_type === 'bullets' ? ('bullets' as const) : ('paragraph' as const),
+        items: (row.items ?? []).map((item) => item ?? ''),
+        text: row.text ?? '',
+      },
+    ];
+  });
+}
+
+/** Beim Speichern: Titel/Bullets trimmen, leere Bullets entfernen. */
+function saveContentBlocks(rows: ContentBlock[]): ContentBlock[] {
+  return rows.map((block) => ({
+    ...block,
+    title: block.title.trim(),
+    items: block.items.map((item) => item.trim()).filter((item) => item.length > 0),
+    text: block.text.trim(),
+  }));
+}
+
 export function DocumentEditorPage() {
   const { documentId } = useParams({ strict: false }) as { documentId: string };
   const navigate = useNavigate();
@@ -125,6 +173,7 @@ export function DocumentEditorPage() {
       outro_text: '',
       layout: 'polygrid',
       line_items: [],
+      content_blocks: [],
     },
   });
   const watched = useWatch({ control: form.control });
@@ -196,7 +245,7 @@ export function DocumentEditorPage() {
             }
           : { name: '(Kunde wählen)', contact_person: null, address: null, email: null },
         line_items: previewLineItems(watched.line_items),
-        content_blocks: document.content_blocks,
+        content_blocks: sanitizeContentBlocks(watched.content_blocks),
         issue_date: issueDate,
         due_date:
           document.type === 'invoice' ? addDaysISO(issueDate, settings.payment_terms_days) : null,
@@ -256,6 +305,7 @@ export function DocumentEditorPage() {
         outro_text: values.outro_text.trim() || null,
         layout: values.layout,
         line_items: sanitizeLineItems(values.line_items),
+        content_blocks: saveContentBlocks(values.content_blocks),
       });
       setDocument(updated);
       form.reset(toFormValues(updated));
@@ -266,6 +316,32 @@ export function DocumentEditorPage() {
       return null;
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  /** Speichert die aktuelle Baustein-Konfiguration als Vorbelegung des Typs (Spec 3.3). */
+  async function handleSaveBlocksAsDefault() {
+    if (!document) return;
+    try {
+      const blocks = saveContentBlocks(form.getValues().content_blocks);
+      await saveDefaultContentBlocksForType(document.type, blocks);
+      toast.success(
+        `Bausteine als Standard für ${DOCUMENT_TYPE_LABELS[document.type]}e gespeichert`,
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Speichern fehlgeschlagen');
+    }
+  }
+
+  /** Lädt den Nutzer-Standard (bzw. die Konstanten) erneut in das Formular. */
+  async function handleResetBlocksToDefault() {
+    if (!document) return;
+    try {
+      const defaults = await getDefaultContentBlocksForType(document.type);
+      form.setValue('content_blocks', defaults, { shouldDirty: true });
+      toast.success('Bausteine auf Standard zurückgesetzt');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Zurücksetzen fehlgeschlagen');
     }
   }
 
@@ -490,6 +566,46 @@ export function DocumentEditorPage() {
                 {...form.register('outro_text')}
               />
             </label>
+
+            {/* Bausteine (Addendum, Spec 3.4) */}
+            <div className="space-y-1.5 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium">Bausteine</span>
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    data-testid="blocks-save-default"
+                    onClick={() => void handleSaveBlocksAsDefault()}
+                  >
+                    Als meinen Standard speichern
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    data-testid="blocks-reset-default"
+                    onClick={() => void handleResetBlocksToDefault()}
+                  >
+                    Auf Standard zurücksetzen
+                  </Button>
+                </div>
+              </div>
+              <Controller
+                control={form.control}
+                name="content_blocks"
+                render={({ field }) => (
+                  <ContentBlocksEditor
+                    value={field.value}
+                    onChange={field.onChange}
+                    documentType={document.type}
+                  />
+                )}
+              />
+            </div>
 
             <div className="space-y-1.5 text-sm">
               <span className="font-medium">Layout</span>

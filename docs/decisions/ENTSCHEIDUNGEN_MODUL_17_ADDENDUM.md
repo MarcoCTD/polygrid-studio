@@ -147,6 +147,34 @@ die Assertion wurde auf `doc-title` (Typ) + `doc-meta` (Nummer) aufgeteilt.
 Kein Verhaltens-Fix „am Test vorbei": das Default-Layout hat sich gewollt
 geändert, Tests mit explizitem Layout modern/classic laufen unverändert.
 
+## EC-01: Standard-Bausteine abwählen statt löschen, nur custom löschbar
+
+Die 7 Standard-Bausteine bleiben immer in der Liste (Checkbox aus = nicht
+gerendert) – so bleibt die Auswahl vollständig sichtbar und ein versehentlich
+entfernter Standard wäre sonst nur über „Auf Standard zurücksetzen" (mit
+Verlust aller anderen Anpassungen) zurückzuholen. Eigene Bausteine (custom)
+sind beliebig hinzufüg- und löschbar; nur sie haben einen Lösch-Button und
+einen Umschalter Absatz/Bullet-Liste.
+
+## EC-02: Variablen-Einfügen als Chip-Buttons an der Absatz-Textarea
+
+„Variablen-Einfügen-Buttons wie gehabt" (Spec 3.4) ist als Chip-Reihe unter
+der jeweiligen Absatz-Textarea umgesetzt – Einfügen an der Cursorposition,
+identische Mechanik wie der Vorlagen-Editor (Modul 07). Angeboten werden die
+Dokument-Variablen inkl. der neuen Addendum-Variablen; {{gueltig_bis}} nur
+bei Angeboten. Die volle Variablen-Sidebar der Vorlagenbibliothek wäre hier
+Overkill (keine eigenen Variablendefinitionen pro Dokument).
+
+## EC-03: Bausteine als ein Controller-Feld statt useFieldArray
+
+Der Baustein-Zustand lebt als EIN react-hook-form-Feld `content_blocks`
+(Controller mit value/onChange auf dem ganzen Array) statt verschachtelter
+useFieldArray-Strukturen: Umsortieren, Bullets-Verschachtelung und die
+Live-Vorschau über useWatch bleiben damit trivial; die Formulare sind klein
+genug, dass Feld-Granularität keinen Performance-Vorteil brächte. Leere
+Bullets bleiben während der Eingabe erhalten und werden erst beim Speichern
+entfernt (getrimmt).
+
 ## EA-10: Umwandlung Angebot→Rechnung lädt Rechnungs-Defaults im Service
 
 Spec 3.5 verortet das Verhalten im Editor (Etappe C), umgesetzt ist es eine

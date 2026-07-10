@@ -1,4 +1,4 @@
-import type { DocumentLayout } from '../schemas';
+import type { ContentBlock, DocumentLayout } from '../schemas';
 
 /** Formularwerte des Dokument-Editors (nur Drafts sind editierbar). */
 export interface DocumentFormValues {
@@ -10,4 +10,6 @@ export interface DocumentFormValues {
   outro_text: string;
   layout: DocumentLayout;
   line_items: { description: string; quantity: number; unit_price: number }[];
+  /** Bausteine (Addendum): komplette Konfiguration inkl. abgewählter Blöcke. */
+  content_blocks: ContentBlock[];
 }
