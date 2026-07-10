@@ -12,6 +12,7 @@ import {
   CheckSquare,
   BarChart3,
   Wallet,
+  Globe,
   Sparkles,
   Settings,
   PanelLeftClose,
@@ -38,6 +39,7 @@ const mainNavItems: NavItem[] = [
   { label: 'Aufgaben', icon: CheckSquare, route: '/tasks' },
   { label: 'Analysen', icon: BarChart3, route: '/analytics' },
   { label: 'Finanzen', icon: Wallet, route: '/finance' },
+  { label: 'Websites', icon: Globe, route: '/websites' },
 ];
 
 const bottomNavItems: NavItem[] = [

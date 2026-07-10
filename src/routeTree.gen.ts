@@ -4,6 +4,7 @@ import { validateOrdersSearch } from '@/features/orders/searchParams';
 import { validateExpensesSearch } from '@/features/expenses/searchParams';
 import { validateTasksSearch } from '@/features/tasks/searchParams';
 import { validateListingsSearch } from '@/features/listings/searchParams';
+import { validateWebsitesSearch } from '@/features/websites/searchParams';
 import { DashboardPage } from '@/features/dashboard';
 import { ProductsPage } from '@/features/products';
 import { ProductEditPage } from '@/features/products/components/ProductEditPage';
@@ -16,6 +17,7 @@ import { FilesPage } from '@/features/files';
 import { TasksPage } from '@/features/tasks';
 import { AnalyticsPage } from '@/features/analytics';
 import { FinancePage } from '@/features/finance';
+import { WebsitesPage } from '@/features/websites';
 import { AIAssistantPage } from '@/features/ai-assistant';
 import { SettingsPage } from '@/features/settings';
 
@@ -103,6 +105,13 @@ const financeRoute = createRoute({
   component: FinancePage,
 });
 
+const websitesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/websites',
+  component: WebsitesPage,
+  validateSearch: validateWebsitesSearch,
+});
+
 const aiRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/ai',
@@ -137,6 +146,7 @@ export const routeTree = rootRoute.addChildren([
   tasksRoute,
   analyticsRoute,
   financeRoute,
+  websitesRoute,
   aiRoute,
   settingsRoute,
   settingsTabRoute,
