@@ -25,6 +25,7 @@ interface NewClientFormValues {
   contact_person: string;
   email: string;
   phone: string;
+  address: string;
   notes: string;
 }
 
@@ -33,6 +34,7 @@ const EMPTY: NewClientFormValues = {
   contact_person: '',
   email: '',
   phone: '',
+  address: '',
   notes: '',
 };
 
@@ -48,6 +50,7 @@ export function NewClientModal({ open, onOpenChange, onCreated }: NewClientModal
         contact_person: values.contact_person.trim() || null,
         email: values.email.trim() || null,
         phone: values.phone.trim() || null,
+        address: values.address.trim() || null,
         notes: values.notes.trim() || null,
       });
       toast.success('Kunde angelegt');
@@ -97,6 +100,17 @@ export function NewClientModal({ open, onOpenChange, onCreated }: NewClientModal
               <Input {...form.register('phone')} />
             </label>
           </div>
+          <label className="block space-y-1.5 text-sm">
+            <span className="font-medium">Rechnungsanschrift</span>
+            <Textarea
+              rows={3}
+              placeholder={'Straße Hausnummer\nPLZ Ort'}
+              {...form.register('address')}
+            />
+            <span className="text-xs text-text-secondary">
+              Pflicht, sobald Rechnungen an diesen Kunden ausgestellt werden.
+            </span>
+          </label>
           <label className="block space-y-1.5 text-sm">
             <span className="font-medium">Notizen</span>
             <Textarea rows={3} {...form.register('notes')} />

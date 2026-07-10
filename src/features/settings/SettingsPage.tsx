@@ -44,6 +44,7 @@ import { AutomationSettingsTab } from '@/features/playbooks/components';
 import { AiSettingsTab } from './components/AiSettingsTab';
 import { BrandSettingsTab } from './components/BrandSettingsTab';
 import { DataSecuritySettingsTab } from './components/DataSecuritySettingsTab';
+import { InvoiceSettingsSection } from './components/InvoiceSettingsSection';
 import { NumberField } from './components/NumberField';
 import { useAutoSave } from './hooks/useAutoSave';
 
@@ -764,6 +765,9 @@ export function SettingsPage() {
           </FieldRow>
         </SettingsSection>
 
+        {/* Rechnungsstellung (Modul 17): Stammdaten, Zahlungsziel, Logo, Layout */}
+        <InvoiceSettingsSection companyName={settings.companyName} />
+
         <SettingsSection title="Dashboard">
           <FieldRow label="Auto-Snapshot">
             <SwitchControl
@@ -843,7 +847,9 @@ export function SettingsPage() {
                           disabled={!isEditing}
                           aria-label={`Preis pro kg ${material.name}`.trim()}
                           inputClassName="pr-12"
-                          onValueChange={(pricePerKg) => updateMaterial(material.id, { pricePerKg })}
+                          onValueChange={(pricePerKg) =>
+                            updateMaterial(material.id, { pricePerKg })
+                          }
                           onCommit={() => commitMaterials(materialsSettings.materials)}
                         />
                       </td>
@@ -1016,7 +1022,9 @@ export function SettingsPage() {
                           disabled={!isEditing}
                           aria-label={`Preis ${shippingClass.name}`.trim()}
                           inputClassName="pr-12"
-                          onValueChange={(price) => updateShippingClass(shippingClass.id, { price })}
+                          onValueChange={(price) =>
+                            updateShippingClass(shippingClass.id, { price })
+                          }
                           onCommit={() => commitShippingClasses(materialsSettings.shippingClasses)}
                         />
                       </td>

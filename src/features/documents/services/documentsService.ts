@@ -233,6 +233,20 @@ export function resolveDocumentVariables(
 // ------------------------------------------------------------
 // Pflichtangaben-Validierung (Spec 2.3)
 // ------------------------------------------------------------
+/** Fehlende Aussteller-Pflichtangaben (auch für die Settings-Checkliste). */
+export function getMissingIssuerFields(issuer: SnapshotIssuer): string[] {
+  const missing: string[] = [];
+  if (!issuer.company_name && !issuer.owner_name) {
+    missing.push('Name des Ausstellers (Firmenname oder Inhabername)');
+  }
+  if (!issuer.street) missing.push('Straße des Ausstellers');
+  if (!issuer.zip || !issuer.city) missing.push('PLZ/Ort des Ausstellers');
+  if (!issuer.tax_number && !issuer.vat_id) {
+    missing.push('Steuernummer oder USt-IdNr des Ausstellers');
+  }
+  return missing;
+}
+
 export function getMissingIssueRequirements(
   document: Pick<BusinessDocument, 'type' | 'line_items' | 'service_date'>,
   issuer: SnapshotIssuer,
@@ -257,14 +271,7 @@ export function getMissingIssueRequirements(
     return missing;
   }
 
-  if (!issuer.company_name && !issuer.owner_name) {
-    missing.push('Name des Ausstellers (Firmenname oder Inhabername)');
-  }
-  if (!issuer.street) missing.push('Straße des Ausstellers');
-  if (!issuer.zip || !issuer.city) missing.push('PLZ/Ort des Ausstellers');
-  if (!issuer.tax_number && !issuer.vat_id) {
-    missing.push('Steuernummer oder USt-IdNr des Ausstellers');
-  }
+  missing.push(...getMissingIssuerFields(issuer));
   if (!document.service_date?.trim()) {
     missing.push('Leistungsdatum oder -zeitraum');
   }

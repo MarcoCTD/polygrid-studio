@@ -38,6 +38,7 @@ function rowToClient(row: Row): Client {
     contact_person: row.contact_person ?? null,
     email: row.email ?? null,
     phone: row.phone ?? null,
+    address: row.address ?? null,
     credentials: parseCredentials(row.credentials),
     notes: row.notes ?? null,
     created_at: row.created_at,
@@ -55,15 +56,16 @@ export async function createClient(data: NewClientInput): Promise<Client> {
 
     await db.execute(
       `INSERT INTO clients (
-        id, name, contact_person, email, phone, credentials, notes,
+        id, name, contact_person, email, phone, address, credentials, notes,
         created_at, updated_at, deleted_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
       [
         id,
         input.name,
         input.contact_person ?? null,
         input.email ?? null,
         input.phone ?? null,
+        input.address ?? null,
         JSON.stringify([]),
         input.notes ?? null,
         timestamp,
@@ -87,6 +89,7 @@ const CLIENT_UPDATE_FIELDS = [
   'contact_person',
   'email',
   'phone',
+  'address',
   'credentials',
   'notes',
 ] as const;

@@ -45,6 +45,9 @@ export const ClientSchema = z.object({
   contact_person: nullableText,
   email: nullableText,
   phone: nullableText,
+  // Rechnungsanschrift (Modul 17, E17-02): mehrzeiliger Freitext,
+  // Pflicht nur beim Ausstellen von Rechnungen an diesen Kunden.
+  address: nullableText,
   credentials: credentialsList,
   notes: nullableText,
   created_at: z.string().min(1),
@@ -57,6 +60,7 @@ export const NewClientSchema = z.object({
   contact_person: optionalNullableText,
   email: optionalNullableText,
   phone: optionalNullableText,
+  address: optionalNullableText,
   notes: optionalNullableText,
 });
 

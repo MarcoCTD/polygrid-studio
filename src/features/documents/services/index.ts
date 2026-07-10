@@ -5,6 +5,7 @@ export {
   getDocumentById,
   getDocuments,
   getMissingIssueRequirements,
+  getMissingIssuerFields,
   issueDocument,
   loadInvoiceSettings,
   markInvoicePaid,

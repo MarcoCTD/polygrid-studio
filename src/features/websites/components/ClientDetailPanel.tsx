@@ -23,6 +23,7 @@ interface ClientFormValues {
   contact_person: string;
   email: string;
   phone: string;
+  address: string;
   notes: string;
 }
 
@@ -32,6 +33,7 @@ function toFormValues(client: Client): ClientFormValues {
     contact_person: client.contact_person ?? '',
     email: client.email ?? '',
     phone: client.phone ?? '',
+    address: client.address ?? '',
     notes: client.notes ?? '',
   };
 }
@@ -54,6 +56,7 @@ export function ClientDetailPanel({
         contact_person: values.contact_person.trim() || null,
         email: values.email.trim() || null,
         phone: values.phone.trim() || null,
+        address: values.address.trim() || null,
         notes: values.notes.trim() || null,
       });
       setCurrentClient(updated);
@@ -96,6 +99,15 @@ export function ClientDetailPanel({
             <Input {...form.register('phone')} />
           </label>
         </div>
+        <label className="block space-y-1.5 text-sm">
+          <span className="font-medium">Rechnungsanschrift</span>
+          <Textarea
+            rows={3}
+            placeholder={'Straße Hausnummer\nPLZ Ort'}
+            data-testid="client-address"
+            {...form.register('address')}
+          />
+        </label>
         <label className="block space-y-1.5 text-sm">
           <span className="font-medium">Notizen</span>
           <Textarea rows={3} {...form.register('notes')} />
