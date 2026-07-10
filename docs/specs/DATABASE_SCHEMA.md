@@ -1,6 +1,14 @@
 # Datenbank-Schema
 
-PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Juli 2026 | Version 1.7
+PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Juli 2026 | Version 1.8
+
+> **Änderungen in v1.8 gegenüber v1.7:**
+>
+> - Modul 17 (Angebote und Rechnungen): neue Tabelle `documents` (Migration `0015_modul_17_documents`)
+> - `clients` additiv um `address` (mehrzeilige Rechnungsanschrift) erweitert – Pflicht nur für das Ausstellen von Rechnungen an diesen Kunden (E17-02)
+> - Partieller Unique-Index `idx_documents_number_unique` auf `documents.number` (WHERE number IS NOT NULL): Nummern sind eindeutig, Drafts haben keine Nummer
+> - Neue Settings-Keys `invoice_*` (Firmen-Stammdaten, Zahlungsziel, Angebots-Gültigkeit, Logo als Data-URL, Standard-Layout, Markenfarbe)
+> - Unveränderbarkeit: Nach Ausstellung sind alle Inhaltsfelder gesperrt (Service + UI); Druck/PDF rendert ausschließlich aus `documents.snapshot`
 
 > **Änderungen in v1.7 gegenüber v1.6:**
 >
@@ -63,6 +71,7 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 | `clients`            | Modul 16     | Website-Kunden                                     |
 | `website_projects`   | Modul 16     | Einmalige Website-Projekte                         |
 | `website_services`   | Modul 16     | Laufende Posten (Hosting, Domain, Wartung)         |
+| `documents`          | Modul 17     | Angebote und Rechnungen                            |
 | `app_settings`       | Modul 01     | Key-Value-Einstellungen                            |
 
 ---
@@ -417,6 +426,7 @@ Junction-Tabelle für Sammelauszahlungen. Eine Banktransaktion (Plattform-Auszah
 | contact_person | TEXT        | Nein    |                                                                                                                            |
 | email          | TEXT        | Nein    |                                                                                                                            |
 | phone          | TEXT        | Nein    |                                                                                                                            |
+| address        | TEXT        | Nein    | Rechnungsanschrift (mehrzeilig, Freitext) – Modul 17, Pflicht nur beim Ausstellen von Rechnungen an diesen Kunden          |
 | credentials    | TEXT (JSON) | Nein    | Array von `{ id, label, username, url }` – NUR Metadaten, das Secret liegt im OS-Keychain unter `polygrid_credential_{id}` |
 | notes          | TEXT        | Nein    |                                                                                                                            |
 | created_at     | TEXT (ISO)  | Ja      |                                                                                                                            |
@@ -470,6 +480,37 @@ Junction-Tabelle für Sammelauszahlungen. Eine Banktransaktion (Plattform-Auszah
 **Zod-Refinement**: Mindestens eines von `cost_out` und `price_in` muss gesetzt sein (auch nach Updates, geprüft gegen den gemergten Zustand).
 
 **Indizes**: `idx_website_services_client_id`, `idx_website_services_next_due`, `idx_website_services_type`, `idx_website_services_expires_at`.
+
+## documents (Modul 17)
+
+| Feld                | Typ         | Pflicht | Beschreibung                                                                                          |
+| ------------------- | ----------- | ------- | ------------------------------------------------------------------------------------------------------ |
+| id                  | TEXT (UUID) | Ja      | Primärschlüssel                                                                                       |
+| type                | TEXT        | Ja      | `quote`, `invoice`                                                                                    |
+| number              | TEXT        | Nein    | Vergeben erst bei Ausstellung: `A-JJJJ-NNN` / `R-JJJJ-NNN`, lückenlos pro Typ und Jahr                |
+| status              | TEXT        | Ja      | `draft`, `issued`, `accepted`/`rejected` (nur quote), `paid`/`cancelled` (nur invoice)                |
+| client_id           | TEXT (FK)   | Ja      | → clients.id                                                                                          |
+| project_id          | TEXT (FK)   | Nein    | → website_projects.id                                                                                 |
+| order_id            | TEXT (FK)   | Nein    | → orders.id; bei Rechnung aus Abrechnung bzw. beim Bezahlt-Markieren gesetzt                          |
+| related_document_id | TEXT (FK)   | Nein    | → documents.id; Rechnung → Angebot, Storno → Original                                                 |
+| line_items          | TEXT (JSON) | Ja      | Array `{ description, quantity, unit_price }`; Storno trägt negierte Einzelpreise                     |
+| total               | REAL        | Ja      | Berechnet, brutto = netto (Kleinunternehmer §19 UStG)                                                 |
+| issue_date          | TEXT (ISO)  | Nein    | Gesetzt bei Ausstellung                                                                               |
+| due_date            | TEXT (ISO)  | Nein    | Rechnungen: issue_date + Zahlungsziel (`invoice_payment_terms_days`)                                  |
+| valid_until         | TEXT (ISO)  | Nein    | Angebote: issue_date + Gültigkeit (`invoice_quote_validity_days`)                                     |
+| service_date        | TEXT        | Nein    | Leistungsdatum oder -zeitraum (Freitext, Pflicht beim Ausstellen einer Rechnung)                      |
+| intro_text          | TEXT        | Nein    | Freitext über den Positionen, {{variablen}} erlaubt                                                   |
+| outro_text          | TEXT        | Nein    | Freitext unter den Positionen, {{variablen}} erlaubt                                                  |
+| layout              | TEXT        | Ja      | `modern`, `classic`                                                                                   |
+| snapshot            | TEXT (JSON) | Nein    | Bei Ausstellung eingefrorene Kopie ALLER gerenderten Daten (Aussteller, Empfänger, Positionen, Texte mit aufgelösten Variablen, Farbe, Logo, §19-Satz). Druck/PDF rendert NUR hieraus |
+| pdf_path            | TEXT        | Nein    | Pfad der exportierten PDF                                                                             |
+| created_at          | TEXT (ISO)  | Ja      |                                                                                                       |
+| updated_at          | TEXT (ISO)  | Ja      |                                                                                                       |
+| deleted_at          | TEXT (ISO)  | Nein    | Soft-Delete NUR für Drafts; ausgestellte Rechnungen sind nicht löschbar, nur stornierbar              |
+
+**Unveränderbarkeit (Spec 2.2)**: `updateDocument`/`softDeleteDocument` arbeiten nur auf Drafts. Nach `issued` ändern sich ausschließlich Status (`paid`, `cancelled`, `accepted`, `rejected`) sowie die Link-/Metadaten-Felder `order_id` und `pdf_path`.
+
+**Indizes**: `idx_documents_number_unique` (UNIQUE, partiell WHERE number IS NOT NULL), `idx_documents_type`, `idx_documents_status`, `idx_documents_client_id`, `idx_documents_order_id`, `idx_documents_due_date`.
 
 ## app_settings (Modul 01)
 
@@ -551,6 +592,17 @@ Diese Keys werden über verschiedene Module hinweg verwendet. Die vollständige 
 
 - `smart_action_snoozes`: JSON-Objekt `{ "<ruleId>": { "until": "<ISO>", "count": <Zahl> } }` (Default: `{}`). Verworfene Smart-Action-Karten mit Ablaufdatum (+7 Tage) und Count beim Verwerfen; Karte kehrt bei Ablauf oder gestiegenem Count zurück.
 
+**Rechnungsstellung (Modul 17):**
+
+- `invoice_owner_name`, `invoice_street`, `invoice_zip`, `invoice_city`: String (Default: `""`) – Aussteller-Anschrift (Firmenname kommt aus `company_name`)
+- `invoice_tax_number`, `invoice_vat_id`: String (Default: `""`) – mindestens eines ist Pflicht beim Ausstellen von Rechnungen
+- `invoice_iban`, `invoice_bic`, `invoice_bank_name`: String (Default: `""`)
+- `invoice_payment_terms_days`: Number (Default: 14) – Zahlungsziel für due_date
+- `invoice_quote_validity_days`: Number (Default: 30) – Angebots-Gültigkeit für valid_until
+- `invoice_logo`: String (Default: `""`) – Logo als Base64-Data-URL (Kopie der gewählten Datei, E17-04)
+- `invoice_default_layout`: String (Default: `"modern"`) – `modern` oder `classic`
+- `invoice_brand_color`: String (Default: `""`) – feste Markenfarbe (Hex); leer = App-Akzentfarbe
+
 **Sicherheit & Backup (Modul 11):**
 
 - `backup_interval_hours`: Number (Default: 24)
@@ -578,8 +630,14 @@ playbooks ←── playbook_runs.playbook_id (pflicht)
 
 clients  ←── website_projects.client_id (pflicht)
          ←── website_services.client_id (pflicht)
+         ←── documents.client_id (pflicht)
 
 website_projects ←── website_services.project_id (optional)
+                 ←── documents.project_id (optional)
+
+orders   ←── documents.order_id (optional, Abrechnung/Bezahlt-Markieren)
+
+documents ←── documents.related_document_id (optional, self-referencing: Rechnung → Angebot, Storno → Original)
 
 listings ←── tasks.listing_id (optional)
 

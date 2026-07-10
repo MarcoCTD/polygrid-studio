@@ -601,6 +601,8 @@ export const clients = sqliteTable(
     contact_person: text('contact_person'),
     email: text('email'),
     phone: text('phone'),
+    // Modul 17 (additiv): Rechnungsanschrift des Kunden (mehrzeilig, Freitext).
+    address: text('address'),
     // Nur Metadaten ({ id, label, username, url }); das Secret liegt im OS-Keychain.
     credentials: text('credentials', { mode: 'json' }).$type<
       { id: string; label: string; username: string | null; url: string | null }[]
@@ -677,5 +679,55 @@ export const websiteServices = sqliteTable(
     index('idx_website_services_next_due').on(table.next_due),
     index('idx_website_services_type').on(table.type),
     index('idx_website_services_expires_at').on(table.expires_at),
+  ],
+);
+
+// ============================================================
+// 18. documents (Modul 17) – Angebote und Rechnungen
+// ============================================================
+export const documents = sqliteTable(
+  'documents',
+  {
+    id: text('id').primaryKey(),
+    type: text('type').notNull(),
+    // Vergeben erst bei Ausstellung (A-2026-001 / R-2026-001), Drafts haben keine Nummer.
+    number: text('number'),
+    status: text('status').notNull(),
+    client_id: text('client_id')
+      .notNull()
+      .references(() => clients.id),
+    project_id: text('project_id').references(() => websiteProjects.id),
+    order_id: text('order_id').references(() => orders.id),
+    related_document_id: text('related_document_id').references(
+      (): AnySQLiteColumn => documents.id,
+    ),
+    line_items: text('line_items', { mode: 'json' })
+      .notNull()
+      .$type<{ description: string; quantity: number; unit_price: number }[]>(),
+    total: real('total').notNull(),
+    issue_date: text('issue_date'),
+    due_date: text('due_date'),
+    valid_until: text('valid_until'),
+    service_date: text('service_date'),
+    intro_text: text('intro_text'),
+    outro_text: text('outro_text'),
+    layout: text('layout').notNull(),
+    // Bei Ausstellung eingefrorene Kopie ALLER gerenderten Daten (inkl. Stammdaten
+    // und Kundenadresse). Druck/PDF rendert ausschließlich hieraus.
+    snapshot: text('snapshot', { mode: 'json' }).$type<Record<string, unknown>>(),
+    pdf_path: text('pdf_path'),
+    created_at: text('created_at').notNull(),
+    updated_at: text('updated_at').notNull(),
+    deleted_at: text('deleted_at'),
+  },
+  (table) => [
+    uniqueIndex('idx_documents_number_unique')
+      .on(table.number)
+      .where(sql`number IS NOT NULL`),
+    index('idx_documents_type').on(table.type),
+    index('idx_documents_status').on(table.status),
+    index('idx_documents_client_id').on(table.client_id),
+    index('idx_documents_order_id').on(table.order_id),
+    index('idx_documents_due_date').on(table.due_date),
   ],
 );

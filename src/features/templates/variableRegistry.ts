@@ -71,6 +71,11 @@ export const STANDARD_VARIABLES: StandardVariable[] = [
     source: { type: 'order', field: 'platform' },
   },
   {
+    name: 'projektname',
+    label: 'Projektname',
+    description: 'Name des Website-Projekts (in Dokumenten automatisch befüllt)',
+  },
+  {
     name: 'lieferzeit',
     label: 'Lieferzeit',
     description: 'Voraussichtliche Lieferzeit, z.B. „3–5 Werktage“',
