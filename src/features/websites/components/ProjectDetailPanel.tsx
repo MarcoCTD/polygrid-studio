@@ -190,7 +190,7 @@ export function ProjectDetailPanel({ project, clients, onChanged }: ProjectDetai
             onClick={() => void handleBillWithInvoice()}
           >
             <ReceiptText className="size-4" />
-            Abrechnen mit Rechnung
+            Mit Rechnung abrechnen
           </Button>
         </div>
       )}

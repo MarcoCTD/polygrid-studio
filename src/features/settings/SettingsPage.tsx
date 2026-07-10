@@ -765,9 +765,6 @@ export function SettingsPage() {
           </FieldRow>
         </SettingsSection>
 
-        {/* Rechnungsstellung (Modul 17): Stammdaten, Zahlungsziel, Logo, Layout */}
-        <InvoiceSettingsSection companyName={settings.companyName} />
-
         <SettingsSection title="Dashboard">
           <FieldRow label="Auto-Snapshot">
             <SwitchControl
@@ -799,6 +796,11 @@ export function SettingsPage() {
             />
           </FieldRow>
         </SettingsSection>
+
+        {/* Rechnungsstellung (Modul 17): Stammdaten, Zahlungsziel, Logo, Layout.
+            Bewusst NACH dem Dashboard-Abschnitt: bestehende Tests und Nutzer
+            erwarten den Marge-Schwellwert als erstes Zahlenfeld des Tabs. */}
+        <InvoiceSettingsSection companyName={settings.companyName} />
       </div>
     );
   }

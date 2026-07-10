@@ -318,7 +318,10 @@ export function InvoiceSettingsSection({ companyName }: InvoiceSettingsSectionPr
         </div>
       )}
 
-      <FieldRow label="Inhabername" hint="Der Firmenname kommt aus den Grundeinstellungen oben">
+      <FieldRow
+        label="Inhabername"
+        hint="Der Firmenname wird oben unter „Firmenname / Shopname“ gepflegt"
+      >
         <Input
           value={state.ownerName}
           data-testid="invoice-owner-name"
