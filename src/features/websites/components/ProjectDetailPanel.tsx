@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from '@tanstack/react-router';
 import { useForm, Controller } from 'react-hook-form';
-import { Receipt, SquareArrowOutUpRight } from 'lucide-react';
+import { Receipt, ReceiptText, SquareArrowOutUpRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,11 @@ import {
   type WebsiteProjectListItem,
   type WebsiteProjectStatus,
 } from '../schemas';
-import { billWebsiteProject, updateWebsiteProject } from '../services';
+import {
+  billWebsiteProject,
+  billWebsiteProjectWithInvoice,
+  updateWebsiteProject,
+} from '../services';
 import { numberOrNull } from '@/utils';
 import { CredentialsSection } from './CredentialsSection';
 import { ProjectStatusBadge } from './WebsiteBadges';
@@ -104,6 +108,23 @@ export function ProjectDetailPanel({ project, clients, onChanged }: ProjectDetai
     }
   }
 
+  /** "Mit Rechnung" (Modul 17): Auftrag + Rechnungs-Draft, dann in den Editor. */
+  async function handleBillWithInvoice() {
+    setIsBilling(true);
+    try {
+      const { order, invoice } = await billWebsiteProjectWithInvoice(currentProject.id);
+      toast.success(`Auftrag ${order.receipt_number} und Rechnungs-Entwurf erstellt`);
+      onChanged();
+      void router.navigate({ to: '/documents/$documentId', params: { documentId: invoice.id } });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Projekt konnte nicht abgerechnet werden',
+      );
+    } finally {
+      setIsBilling(false);
+    }
+  }
+
   async function persistCredentials(credentials: WebsiteProject['credentials']) {
     const updated = await updateWebsiteProject(currentProject.id, { credentials });
     setCurrentProject(updated);
@@ -141,20 +162,37 @@ export function ProjectDetailPanel({ project, clients, onChanged }: ProjectDetai
           </Button>
         </div>
       ) : (
-        <Button
-          className="w-full gap-2"
-          disabled={isBilling || currentProject.price === null}
-          title={
-            currentProject.price === null
-              ? 'Erst einen Projektpreis eintragen und speichern'
-              : undefined
-          }
-          onClick={() => void handleBill()}
-        >
-          <Receipt className="size-4" />
-          Abrechnen
-          {currentProject.price !== null && ` (${formatEUR(currentProject.price)})`}
-        </Button>
+        <div className="space-y-2">
+          <Button
+            className="w-full gap-2"
+            disabled={isBilling || currentProject.price === null}
+            title={
+              currentProject.price === null
+                ? 'Erst einen Projektpreis eintragen und speichern'
+                : undefined
+            }
+            onClick={() => void handleBill()}
+          >
+            <Receipt className="size-4" />
+            Abrechnen
+            {currentProject.price !== null && ` (${formatEUR(currentProject.price)})`}
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            disabled={isBilling || currentProject.price === null}
+            title={
+              currentProject.price === null
+                ? 'Erst einen Projektpreis eintragen und speichern'
+                : 'Erzeugt Auftrag UND Rechnungs-Entwurf mit einer Position aus dem Projektpreis'
+            }
+            data-testid="bill-with-invoice"
+            onClick={() => void handleBillWithInvoice()}
+          >
+            <ReceiptText className="size-4" />
+            Abrechnen mit Rechnung
+          </Button>
+        </div>
       )}
 
       <Separator />

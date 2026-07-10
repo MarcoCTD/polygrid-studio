@@ -148,6 +148,26 @@ pure Funktion `composeDocumentSnapshot`, die auch das Ausstellen verwendet
 Dokument können damit nicht auseinanderlaufen. Ausgestellte Dokumente zeigen
 ausschließlich den gespeicherten Snapshot – auch in der Vorschau-Spalte.
 
+## E17-13: Command-Palette-Einträge seitenbezogen (Muster Modul 16)
+
+"Neues Angebot" und "Neue Rechnung" sind – wie ALLE Aktions-Commands der App
+(Produkte, Aufgaben, Websites) – beim Mount der jeweiligen Seite registriert
+und damit auf der Websites-Seite verfügbar. Global registriert die Palette
+nur Foundation-Navigation. Ein globales Registrieren wäre ein Bruch mit dem
+etablierten Registry-Muster und hätte einen Modal-Kontext außerhalb der
+Seite gebraucht; wer von woanders kommt, erreicht die Aktion über
+"Zu Websites" → Cmd+K → "Neue Rechnung".
+
+## E17-14: "Abrechnen mit Rechnung" – Teilfehler-Verhalten
+
+`billWebsiteProjectWithInvoice` erzeugt erst den Auftrag (bestehender Weg
+inkl. Verknüpfung am Projekt), dann den Rechnungs-Draft (eine Position aus
+dem Projektpreis, verknüpft mit Kunde, Projekt UND Auftrag). Schlägt der
+Draft fehl, bleibt der Auftrag bestehen (die Abrechnung ist fachlich
+erfolgt); die Fehlermeldung nennt die Belegnummer und dass nur die Rechnung
+fehlt. Ein zweiter Klick ist durch `order_id` am Projekt blockiert – die
+Rechnung lässt sich dann regulär über den Dokumente-Tab anlegen.
+
 ## E17-09: Variablen-Auflösung beim Ausstellen in den Snapshot
 
 Intro-/Outro-Texte unterstützen die {{variablen}}-Syntax der Registry

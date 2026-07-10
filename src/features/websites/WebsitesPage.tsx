@@ -29,6 +29,14 @@ import {
   getWebsiteServices,
   runWebsiteRecurringEngine,
 } from './services';
+import { DocumentsTab } from '@/features/documents/components/DocumentsTab';
+import { NewDocumentModal } from '@/features/documents/components/NewDocumentModal';
+import { getDocuments } from '@/features/documents/services';
+import {
+  isInvoiceOverdue,
+  type DocumentListItem,
+  type DocumentType,
+} from '@/features/documents/schemas';
 
 const TAB_LABELS: Record<WebsitesTab, string> = {
   projects: 'Projekte',
@@ -93,22 +101,26 @@ export function WebsitesPage() {
   const [clients, setClients] = useState<ClientListItem[]>([]);
   const [projects, setProjects] = useState<WebsiteProjectListItem[]>([]);
   const [services, setServices] = useState<WebsiteServiceListItem[]>([]);
+  const [documents, setDocuments] = useState<DocumentListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isChecking, setIsChecking] = useState(false);
   const [newClientOpen, setNewClientOpen] = useState(false);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [newServiceOpen, setNewServiceOpen] = useState(false);
+  const [newDocumentType, setNewDocumentType] = useState<DocumentType | null>(null);
 
   const loadData = useCallback(async () => {
     try {
-      const [clientList, projectList, serviceList] = await Promise.all([
+      const [clientList, projectList, serviceList, documentList] = await Promise.all([
         getClients(),
         getWebsiteProjects(),
         getWebsiteServices(),
+        getDocuments(),
       ]);
       setClients(clientList);
       setProjects(projectList);
       setServices(serviceList);
+      setDocuments(documentList);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Website-Daten konnten nicht geladen werden',
@@ -129,6 +141,8 @@ export function WebsitesPage() {
       onNewProject: () => setNewProjectOpen(true),
       onNewClient: () => setNewClientOpen(true),
       onNewService: () => setNewServiceOpen(true),
+      onNewQuote: () => setNewDocumentType('quote'),
+      onNewInvoice: () => setNewDocumentType('invoice'),
       onNavigateWebsites: () => void router.navigate({ to: '/websites' }),
     });
     registerCommands(commands);
@@ -163,6 +177,12 @@ export function WebsitesPage() {
         service.expires_at <= limit,
     );
   }, [filter, services]);
+
+  const filteredDocuments = useMemo(() => {
+    if (filter !== 'overdue') return documents;
+    const today = isoDaysAhead(0);
+    return documents.filter((document) => isInvoiceOverdue(document, today));
+  }, [filter, documents]);
 
   function switchTab(tab: WebsitesTab) {
     void router.navigate({ to: '/websites', search: { tab } });
@@ -230,6 +250,28 @@ export function WebsitesPage() {
         <Plus className="size-4" />
         Neuer Kunde
       </Button>
+    ) : activeTab === 'documents' ? (
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-2"
+          data-testid="new-quote-button"
+          onClick={() => setNewDocumentType('quote')}
+        >
+          <Plus className="size-4" />
+          Neues Angebot
+        </Button>
+        <Button
+          size="sm"
+          className="gap-2"
+          data-testid="new-invoice-button"
+          onClick={() => setNewDocumentType('invoice')}
+        >
+          <Plus className="size-4" />
+          Neue Rechnung
+        </Button>
+      </div>
     ) : (
       <Button size="sm" className="gap-2" onClick={() => setNewServiceOpen(true)}>
         <Plus className="size-4" />
@@ -337,6 +379,18 @@ export function WebsitesPage() {
           onChanged={() => void loadData()}
         />
       )}
+      {activeTab === 'documents' && (
+        <DocumentsTab
+          documents={filteredDocuments}
+          isLoading={isLoading}
+          onOpenDocument={(document) =>
+            void router.navigate({
+              to: '/documents/$documentId',
+              params: { documentId: document.id },
+            })
+          }
+        />
+      )}
 
       <NewClientModal
         open={newClientOpen}
@@ -355,6 +409,19 @@ export function WebsitesPage() {
         clients={clients}
         projects={projects}
         onCreated={() => void loadData()}
+      />
+      <NewDocumentModal
+        type={newDocumentType}
+        onOpenChange={(open) => {
+          if (!open) setNewDocumentType(null);
+        }}
+        clients={clients}
+        onCreated={(document) =>
+          void router.navigate({
+            to: '/documents/$documentId',
+            params: { documentId: document.id },
+          })
+        }
       />
     </div>
   );

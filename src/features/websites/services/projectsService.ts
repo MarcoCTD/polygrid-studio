@@ -5,6 +5,8 @@
  */
 import { createOrder } from '@/features/orders/services';
 import type { Order } from '@/features/orders/types';
+import { createDocument } from '@/features/documents/services';
+import type { BusinessDocument } from '@/features/documents/schemas';
 import { getDatabase } from '@/services/database';
 import {
   NewWebsiteProjectSchema,
@@ -224,6 +226,42 @@ export async function billWebsiteProject(
   } catch (error) {
     throw new Error(
       `Projekt konnte nicht abgerechnet werden: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+/**
+ * "Abrechnen mit Rechnung" (Modul 17): erzeugt Auftrag UND Rechnungs-Draft
+ * mit einer Position aus dem Projektpreis; Rechnung ist mit Kunde, Projekt
+ * und Auftrag verknüpft. Schlägt das Anlegen des Drafts fehl, bleibt der
+ * Auftrag bestehen (Abrechnung ist dann normal erfolgt) – der Fehler nennt
+ * das explizit.
+ */
+export async function billWebsiteProjectWithInvoice(
+  projectId: string,
+): Promise<{ project: WebsiteProject; order: Order; invoice: BusinessDocument }> {
+  const { project, order } = await billWebsiteProject(projectId);
+  try {
+    const invoice = await createDocument({
+      type: 'invoice',
+      client_id: project.client_id,
+      project_id: project.id,
+      order_id: order.id,
+      line_items: [
+        {
+          description: `Website-Projekt „${project.name}“`,
+          quantity: 1,
+          unit_price: order.sale_price,
+        },
+      ],
+      intro_text: 'vielen Dank für Ihren Auftrag. Wir berechnen Ihnen wie vereinbart:',
+    });
+    return { project, order, invoice };
+  } catch (error) {
+    throw new Error(
+      `Auftrag ${order.receipt_number} wurde erstellt, aber der Rechnungs-Entwurf schlug fehl: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
     );
   }
 }

@@ -8,6 +8,7 @@ export {
 } from './clientsService';
 export {
   billWebsiteProject,
+  billWebsiteProjectWithInvoice,
   createWebsiteProject,
   getWebsiteProjectById,
   getWebsiteProjects,

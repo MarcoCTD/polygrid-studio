@@ -7,6 +7,7 @@
  *   dann nach Count absteigend
  */
 import { WEBSITE_SMART_ACTION_RULES } from '@/features/websites/smartActionRules';
+import { DOCUMENT_SMART_ACTION_RULES } from '@/features/documents/smartActionRules';
 import { getRegisteredSmartActionRules, registerSmartActionRules } from './registry';
 import { SMART_ACTION_RULES } from './rules';
 import { getSnoozes, isSnoozed, snoozeSmartAction } from './snoozeService';
@@ -17,6 +18,8 @@ import { SEVERITY_RANK, type SmartAction } from './types';
 registerSmartActionRules(SMART_ACTION_RULES);
 // Website-Regeln (Modul 16) über denselben Registry-Mechanismus
 registerSmartActionRules(WEBSITE_SMART_ACTION_RULES);
+// Dokumente-Regel invoice_overdue (Modul 17)
+registerSmartActionRules(DOCUMENT_SMART_ACTION_RULES);
 
 export const MAX_SMART_ACTIONS = 5;
 

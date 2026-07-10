@@ -181,6 +181,19 @@ export interface DocumentListItem extends BusinessDocument {
   client_name: string;
 }
 
+/** Rechnung issued mit überschrittener Fälligkeit (Smart Action, Filter, Badge). */
+export function isInvoiceOverdue(
+  document: Pick<BusinessDocument, 'type' | 'status' | 'due_date'>,
+  today: string,
+): boolean {
+  return (
+    document.type === 'invoice' &&
+    document.status === 'issued' &&
+    document.due_date !== null &&
+    document.due_date < today
+  );
+}
+
 // ------------------------------------------------------------
 // Labels (UI)
 // ------------------------------------------------------------

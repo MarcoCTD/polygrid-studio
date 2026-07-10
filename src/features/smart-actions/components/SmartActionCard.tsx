@@ -5,6 +5,7 @@ import {
   Globe,
   Package,
   Receipt,
+  ReceiptText,
   ShieldAlert,
   ShoppingCart,
   X,
@@ -20,6 +21,7 @@ const CATEGORY_ICONS: Record<SmartActionCategory, LucideIcon> = {
   expenses: Receipt,
   tasks: CheckSquare,
   websites: Globe,
+  documents: ReceiptText,
   system: ShieldAlert,
 };
 

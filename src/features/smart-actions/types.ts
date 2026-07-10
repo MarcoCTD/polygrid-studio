@@ -13,6 +13,7 @@ export type SmartActionCategory =
   | 'expenses'
   | 'tasks'
   | 'websites'
+  | 'documents'
   | 'system';
 
 /** Ergebnis einer Regel-Auswertung. null = nichts zu tun, Karte bleibt still. */
