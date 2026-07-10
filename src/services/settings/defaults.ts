@@ -99,6 +99,10 @@ export const DEFAULTS = {
   invoice_iban: '',
   invoice_bic: '',
   invoice_bank_name: '',
+  // Kontakt für Layout polygrid (Addendum): VON-Block und Fußzeile
+  invoice_email: '',
+  invoice_phone: '',
+  invoice_website: '',
   invoice_payment_terms_days: 14,
   invoice_quote_validity_days: 30,
   // Logo als Data-URL (Kopie der gewählten Datei, siehe ENTSCHEIDUNGEN_MODUL_17 E17-04)

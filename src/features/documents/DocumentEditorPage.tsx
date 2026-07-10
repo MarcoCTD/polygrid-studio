@@ -192,9 +192,11 @@ export function DocumentEditorPage() {
               name: selectedClient.name,
               contact_person: selectedClient.contact_person,
               address: selectedClient.address,
+              email: selectedClient.email,
             }
-          : { name: '(Kunde wählen)', contact_person: null, address: null },
+          : { name: '(Kunde wählen)', contact_person: null, address: null, email: null },
         line_items: previewLineItems(watched.line_items),
+        content_blocks: document.content_blocks,
         issue_date: issueDate,
         due_date:
           document.type === 'invoice' ? addDaysISO(issueDate, settings.payment_terms_days) : null,
@@ -212,6 +214,14 @@ export function DocumentEditorPage() {
           projektname: project?.name ?? null,
           firmenname: settings.issuer.company_name,
           datum: formatGermanDateFromISO(issueDate),
+          zahlungsziel_tage: String(settings.payment_terms_days),
+          iban: settings.issuer.iban || null,
+          bic: settings.issuer.bic || null,
+          kontoinhaber: settings.issuer.owner_name || settings.issuer.company_name || null,
+          gueltig_bis:
+            document.type === 'quote'
+              ? formatGermanDateFromISO(addDaysISO(issueDate, settings.quote_validity_days))
+              : null,
         },
       });
     } catch (error) {

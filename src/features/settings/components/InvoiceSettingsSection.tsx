@@ -224,6 +224,10 @@ export function InvoiceSettingsSection({ companyName }: InvoiceSettingsSectionPr
       iban: state.iban.trim(),
       bic: state.bic.trim(),
       bank_name: state.bankName.trim(),
+      // Kontaktfelder sind keine Pflichtangaben (nur Layout polygrid)
+      email: '',
+      phone: '',
+      website: '',
     };
     return getMissingIssuerFields(issuer);
   }, [companyName, state]);
