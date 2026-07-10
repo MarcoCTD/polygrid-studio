@@ -26,6 +26,7 @@ import {
   type WebsiteServiceType,
 } from '../schemas';
 import { updateWebsiteService } from '../services';
+import { numberOrNull } from '../utils';
 import { ServiceTypeIcon } from './WebsiteBadges';
 
 interface ServiceDetailPanelProps {
@@ -232,7 +233,7 @@ export function ServiceDetailPanel({
               min="0"
               step="0.01"
               {...form.register('cost_out', {
-                setValueAs: (value: string) => (value === '' ? null : Number(value)),
+                setValueAs: numberOrNull,
               })}
             />
           </label>
@@ -249,7 +250,7 @@ export function ServiceDetailPanel({
             min="0"
             step="0.01"
             {...form.register('price_in', {
-              setValueAs: (value: string) => (value === '' ? null : Number(value)),
+              setValueAs: numberOrNull,
             })}
           />
         </label>

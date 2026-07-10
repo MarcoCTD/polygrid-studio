@@ -2,6 +2,7 @@ import {
   ArrowRight,
   CheckSquare,
   FileText,
+  Globe,
   Package,
   Receipt,
   ShieldAlert,
@@ -18,6 +19,7 @@ const CATEGORY_ICONS: Record<SmartActionCategory, LucideIcon> = {
   listings: FileText,
   expenses: Receipt,
   tasks: CheckSquare,
+  websites: Globe,
   system: ShieldAlert,
 };
 

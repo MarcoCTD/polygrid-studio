@@ -6,6 +6,7 @@
  * - Maximal 5 Karten, sortiert nach Severity (danger > warning > info),
  *   dann nach Count absteigend
  */
+import { WEBSITE_SMART_ACTION_RULES } from '@/features/websites/smartActionRules';
 import { getRegisteredSmartActionRules, registerSmartActionRules } from './registry';
 import { SMART_ACTION_RULES } from './rules';
 import { getSnoozes, isSnoozed, snoozeSmartAction } from './snoozeService';
@@ -14,6 +15,8 @@ import { SEVERITY_RANK, type SmartAction } from './types';
 
 // Start-Regeln beim Laden des Moduls registrieren (idempotent)
 registerSmartActionRules(SMART_ACTION_RULES);
+// Website-Regeln (Modul 16) über denselben Registry-Mechanismus
+registerSmartActionRules(WEBSITE_SMART_ACTION_RULES);
 
 export const MAX_SMART_ACTIONS = 5;
 

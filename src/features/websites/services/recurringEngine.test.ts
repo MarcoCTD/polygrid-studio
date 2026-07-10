@@ -434,6 +434,30 @@ describe('runWebsiteRecurringEngine', () => {
     expect(select('SELECT id FROM orders')).toHaveLength(1);
   });
 
+  it('serialisiert nebenläufige Läufe (StrictMode-Doppel-Start erzeugt keine Duplikate)', async () => {
+    const clientId = await seedClientId();
+    await createWebsiteService({
+      client_id: clientId,
+      type: 'hosting',
+      label: 'Parallel-Hosting',
+      cost_out: 5,
+      price_in: 15,
+      interval: 'monthly',
+      next_due: '2026-07-09',
+    });
+
+    // Beide Läufe gleichzeitig starten – wie der doppelte Init-Effekt in Dev
+    const [first, second] = await Promise.all([
+      runWebsiteRecurringEngine(TODAY),
+      runWebsiteRecurringEngine(TODAY),
+    ]);
+
+    expect(first.expensesCreated + second.expensesCreated).toBe(1);
+    expect(first.ordersCreated + second.ordersCreated).toBe(1);
+    expect(select('SELECT id FROM expenses')).toHaveLength(1);
+    expect(select('SELECT id FROM orders')).toHaveLength(1);
+  });
+
   it('wirft auch bei kaputter DB nicht (App-Start bleibt frei)', async () => {
     holder.db = {
       select: async () => {

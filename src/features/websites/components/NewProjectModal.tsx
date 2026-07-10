@@ -26,6 +26,7 @@ import {
   type WebsiteProjectStatus,
 } from '../schemas';
 import { createWebsiteProject } from '../services';
+import { numberOrNull } from '../utils';
 
 interface NewProjectModalProps {
   open: boolean;
@@ -164,7 +165,7 @@ export function NewProjectModal({ open, onOpenChange, clients, onCreated }: NewP
                 min="0"
                 step="0.01"
                 {...form.register('price', {
-                  setValueAs: (value: string) => (value === '' ? null : Number(value)),
+                  setValueAs: numberOrNull,
                 })}
               />
             </label>

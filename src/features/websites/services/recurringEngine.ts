@@ -192,10 +192,22 @@ async function processService(
 /**
  * Zentraler Einstiegspunkt. Wirft niemals – das Ergebnis trägt Zähler,
  * Limit-Warnungen und Fehlermeldungen für die Toast-Ausgabe.
+ *
+ * Läufe sind serialisiert (Queue analog receiptNumber.runExclusive):
+ * gleichzeitige Aufrufe – z.B. doppelter Init-Effekt im React-StrictMode
+ * oder "Jetzt prüfen" während des App-Starts – warten aufeinander, der
+ * spätere Lauf findet dank Idempotenz nichts mehr zu erzeugen.
  */
-export async function runWebsiteRecurringEngine(
-  now = new Date(),
-): Promise<WebsiteRecurringRunResult> {
+let engineQueue: Promise<unknown> = Promise.resolve();
+
+export function runWebsiteRecurringEngine(now = new Date()): Promise<WebsiteRecurringRunResult> {
+  const run = engineQueue.then(() => executeEngineRun(now));
+  // Fehler des Vorgängers dürfen die Queue nicht vergiften (Engine wirft ohnehin nie).
+  engineQueue = run.catch(() => undefined);
+  return run;
+}
+
+async function executeEngineRun(now: Date): Promise<WebsiteRecurringRunResult> {
   const result: WebsiteRecurringRunResult = {
     expensesCreated: 0,
     ordersCreated: 0,

@@ -30,6 +30,7 @@ import {
   type WebsiteServiceType,
 } from '../schemas';
 import { createWebsiteService } from '../services';
+import { numberOrNull } from '../utils';
 
 interface NewServiceModalProps {
   open: boolean;
@@ -253,7 +254,7 @@ export function NewServiceModal({
                 min="0"
                 step="0.01"
                 {...form.register('cost_out', {
-                  setValueAs: (value: string) => (value === '' ? null : Number(value)),
+                  setValueAs: numberOrNull,
                 })}
               />
             </label>
@@ -270,7 +271,7 @@ export function NewServiceModal({
               min="0"
               step="0.01"
               {...form.register('price_in', {
-                setValueAs: (value: string) => (value === '' ? null : Number(value)),
+                setValueAs: numberOrNull,
               })}
             />
           </label>

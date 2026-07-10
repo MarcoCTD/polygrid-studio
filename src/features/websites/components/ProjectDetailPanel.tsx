@@ -24,6 +24,7 @@ import {
   type WebsiteProjectStatus,
 } from '../schemas';
 import { billWebsiteProject, updateWebsiteProject } from '../services';
+import { numberOrNull } from '../utils';
 import { CredentialsSection } from './CredentialsSection';
 import { ProjectStatusBadge } from './WebsiteBadges';
 
@@ -218,7 +219,7 @@ export function ProjectDetailPanel({ project, clients, onChanged }: ProjectDetai
               min="0"
               step="0.01"
               {...form.register('price', {
-                setValueAs: (value: string) => (value === '' ? null : Number(value)),
+                setValueAs: numberOrNull,
               })}
             />
           </label>
