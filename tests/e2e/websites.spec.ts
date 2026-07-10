@@ -156,6 +156,26 @@ async function gotoWebsites(page: Page, tab?: string): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Websites' })).toBeVisible();
 }
 
+/** Anzahl der Engine-Abfragen auf website_services im Invoke-Log. */
+function engineSelectCount(tauri: TauriMock): number {
+  return tauri.invokeLog.filter(
+    (entry) =>
+      entry.cmd === 'plugin:sql|select' &&
+      String((entry.args as { query?: unknown }).query ?? '').includes('FROM website_services'),
+  ).length;
+}
+
+/**
+ * Wartet, bis die Boot-Engine des letzten App-Starts durch ist. Der
+ * React-StrictMode mountet den Init-Effekt doppelt, pro Boot laufen also
+ * zwei (serialisierte) Engine-Läufe – erst danach ist Seeden race-frei.
+ */
+async function waitForBootEngine(tauri: TauriMock, baseline = 0): Promise<void> {
+  await expect
+    .poll(() => engineSelectCount(tauri) - baseline, { timeout: 10_000 })
+    .toBeGreaterThanOrEqual(2);
+}
+
 // ------------------------------------------------------------
 // CRUD über die UI
 // ------------------------------------------------------------
@@ -363,6 +383,7 @@ test('Recurring-Engine erzeugt beim App-Start Ausgabe und Auftrags-Entwurf exakt
   tauri,
 }) => {
   await bootApp(page);
+  await waitForBootEngine(tauri);
   seedClient(tauri);
   const serviceId = seedService(tauri, {
     label: 'Hetzner Webspace',
@@ -414,6 +435,7 @@ test('Recurring-Engine holt verpasste Perioden nach (3 Monate zurück: 3 Posten)
   tauri,
 }) => {
   await bootApp(page);
+  await waitForBootEngine(tauri);
   seedClient(tauri);
 
   // next_due so wählen, dass exakt 3 Monatsperioden fällig sind
@@ -456,13 +478,18 @@ test('"Jetzt prüfen"-Button stößt die Engine manuell an', async ({ page, taur
     nextDue: toIso(new Date()),
   });
 
+  // Toast tolerant prüfen (.first()): falls der Boot-Engine-Lauf des letzten
+  // page.goto noch lief, kann derselbe Text bereits einmal als Toast stehen –
+  // die harte Idempotenz-Prüfung passiert auf DB-Ebene.
   await page.getByRole('button', { name: 'Jetzt prüfen' }).click();
-  await expect(page.getByText('Website-Posten: 1 Ausgabe automatisch erzeugt')).toBeVisible();
+  await expect(
+    page.getByText('Website-Posten: 1 Ausgabe automatisch erzeugt').first(),
+  ).toBeVisible();
   expect(tauri.select(`SELECT id FROM expenses`)).toHaveLength(1);
 
   // Zweiter Klick: nichts Neues
   await page.getByRole('button', { name: 'Jetzt prüfen' }).click();
-  await expect(page.getByText('Keine fälligen Posten – alles aktuell.')).toBeVisible();
+  await expect(page.getByText('Keine fälligen Posten – alles aktuell.').first()).toBeVisible();
   expect(tauri.select(`SELECT id FROM expenses`)).toHaveLength(1);
 });
 
