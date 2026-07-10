@@ -26,7 +26,7 @@ import {
   type WebsiteProjectStatus,
 } from '../schemas';
 import { createWebsiteProject } from '../services';
-import { numberOrNull } from '../utils';
+import { numberOrNull } from '@/utils';
 
 interface NewProjectModalProps {
   open: boolean;

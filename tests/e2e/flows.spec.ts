@@ -62,8 +62,11 @@ test('Auftrag anlegen und im Kanban per Drag-and-Drop Status ändern', async ({ 
   await dialog.getByRole('button', { name: 'Auftrag erstellen' }).click();
   await expect(dialog).toBeHidden();
 
-  const orders = tauri.select('SELECT id, status, receipt_number FROM orders');
+  const orders = tauri.select('SELECT id, status, receipt_number, shipping_revenue FROM orders');
   expect(orders).toHaveLength(1);
+  // Regression numberOrNull: leerer Versanderlös muss NULL bleiben, nicht 0
+  // (React Hook Form reicht den Default null durch setValueAs).
+  expect(orders[0].shipping_revenue).toBeNull();
   const initialStatus = String(orders[0].status);
 
   // In den Kanban-Modus wechseln

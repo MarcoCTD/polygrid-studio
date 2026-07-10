@@ -17,6 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { formatEUR } from '@/features/products/utils';
+import { numberOrNull } from '@/utils';
 import { TemplateSuggestionBanner } from '@/features/playbooks/components';
 import { ManualBankMatchDialog, StatusUpdateSuggestionDialog } from '@/features/finance/components';
 import type { ConfirmMatchResult } from '@/features/finance/services';
@@ -79,10 +80,6 @@ const SHIPPING_OPTIONS: { value: ShippingStatus; label: string }[] = [
 function textOrNull(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? '';
   return trimmed.length > 0 ? trimmed : null;
-}
-
-function numberOrNull(value: number | null | undefined): number | null {
-  return value === null || value === undefined || Number.isNaN(value) ? null : value;
 }
 
 function toInputDate(value: string | null): string {
@@ -483,7 +480,9 @@ function OverviewTab({
             step="0.01"
             disabled={!editable}
             {...form.register('shipping_revenue', {
-              setValueAs: (value: string) => (value === '' ? null : Number(value)),
+              // numberOrNull statt Number(): RHF reicht auch den Default
+              // null durch setValueAs, Number(null) wäre 0.
+              setValueAs: numberOrNull,
             })}
           />
         </Field>

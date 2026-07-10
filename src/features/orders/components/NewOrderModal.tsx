@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import type { Product } from '@/features/products/schema';
+import { numberOrNull } from '@/utils';
 import { NewOrderSchema, type NewOrderInput, type Order, type OrderPlatform } from '../types';
 import { createOrder, estimateOrderCosts, getActiveProductsForOrders } from '../services';
 
@@ -262,7 +263,9 @@ export function NewOrderModal({ open, onOpenChange, onCreated }: NewOrderModalPr
                 min="0"
                 step="0.01"
                 {...form.register('shipping_revenue', {
-                  setValueAs: (value: string) => (value === '' ? null : Number(value)),
+                  // numberOrNull statt Number(): RHF reicht auch den Default
+                  // null durch setValueAs, Number(null) wäre 0.
+                  setValueAs: numberOrNull,
                 })}
               />
             </label>

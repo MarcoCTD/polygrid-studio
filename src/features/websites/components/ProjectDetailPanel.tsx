@@ -24,7 +24,7 @@ import {
   type WebsiteProjectStatus,
 } from '../schemas';
 import { billWebsiteProject, updateWebsiteProject } from '../services';
-import { numberOrNull } from '../utils';
+import { numberOrNull } from '@/utils';
 import { CredentialsSection } from './CredentialsSection';
 import { ProjectStatusBadge } from './WebsiteBadges';
 

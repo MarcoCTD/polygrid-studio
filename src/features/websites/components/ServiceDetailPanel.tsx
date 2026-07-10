@@ -26,7 +26,7 @@ import {
   type WebsiteServiceType,
 } from '../schemas';
 import { updateWebsiteService } from '../services';
-import { numberOrNull } from '../utils';
+import { numberOrNull } from '@/utils';
 import { ServiceTypeIcon } from './WebsiteBadges';
 
 interface ServiceDetailPanelProps {

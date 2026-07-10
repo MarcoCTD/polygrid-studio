@@ -30,7 +30,7 @@ import {
   type WebsiteServiceType,
 } from '../schemas';
 import { createWebsiteService } from '../services';
-import { numberOrNull } from '../utils';
+import { numberOrNull } from '@/utils';
 
 interface NewServiceModalProps {
   open: boolean;
