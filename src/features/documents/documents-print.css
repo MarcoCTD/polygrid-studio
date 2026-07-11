@@ -131,6 +131,20 @@
   margin-bottom: 1.5mm;
 }
 
+/* Optional-Baustein als Markenfarben-Kasten (Addendum 2, Spec 3).
+ * Hintergrund/linker Rand kommen inline aus der Snapshot-Akzentfarbe;
+ * print-color-adjust erzwingt den Hintergrund auch im macOS-Druck. */
+.pg-polygrid-optional {
+  border-radius: 2mm;
+  padding: 3.5mm 4mm;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.pg-polygrid-optional .pg-doc-block-title {
+  margin-bottom: 2mm;
+}
+
 /* Dunkle Tabellenkopfzeile (fast schwarz), weiße Versalien */
 .pg-polygrid-positions thead th {
   background: #161616;

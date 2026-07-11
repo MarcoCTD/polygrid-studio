@@ -127,6 +127,42 @@ Verhaltensänderung. Gleiches gilt für „Position hinzufügen": der Button
 öffnet jetzt die Vorlagen-Auswahl, die Test-Helfer klicken zusätzlich
 „Leere Position".
 
+## EK2-13: Optional-Kasten – Subtle-Farbe aus der Snapshot-Akzentfarbe berechnet
+
+Die Spec nennt die Design-Tokens `--accent-primary-subtle`/`--accent-primary`.
+Das Dokument-Blatt rendert aber bewusst NICHT aus den App-Tokens, sondern aus
+der beim Ausstellen eingefrorenen `accent_color` (Hex) im Snapshot – sonst
+würde ein späterer Akzentfarben-Wechsel ausgestellte Dokumente umfärben.
+Der Kasten-Hintergrund wird deshalb mit derselben Formel wie das
+Akzentfarben-System (Sättigung −20, Helligkeit 95 – Hell-Modus, das Blatt
+ist immer hell) aus der Snapshot-Farbe berechnet. `print-color-adjust:
+exact` liegt direkt auf dem Kasten (`.pg-polygrid-optional`). Der Kasten ist
+reine Darstellung des kind `optional_offer` im polygrid-Layout;
+modern/classic und bestehende Snapshots rendern unverändert.
+
+## EK2-14: Logo-Diagnose (Spec 5) – Befund und Fixes
+
+Diagnose in der Spec-Reihenfolge, verifiziert per E2E gegen den echten
+Render-Weg:
+
+- (a) Layout-Bug? NEIN – polygrid rendert `snapshot.logo` als `<img>`;
+  mit konfiguriertem Logo erscheint es oben links in der Vorschau.
+- (b) Laden/Einfrieren (E17-04)? NEIN – die Data-URL aus `invoice_logo`
+  landet über `loadInvoiceSettings` → `composeDocumentSnapshot` korrekt im
+  Snapshot (Test inkl. späterem Logo-Wechsel: Snapshot bleibt unverändert).
+- (c) Druck? JA, hier lag ein echter Fehler: `DocumentPrintPortal` wartete
+  vor `window.print()` nur zwei Animation-Frames. Das garantiert Layout,
+  aber NICHT das Decoding der Bilder – ein großes Data-URL-Logo konnte im
+  gedruckten PDF fehlen (leere Stelle oben links), obwohl die Vorschau es
+  zeigte. Fix: vor dem Druck `img.decode()` aller Bilder im Print-Portal
+  abwarten; Decode-Fehler blockieren den Druck nicht.
+
+Zusätzlich gemäß Spec 5: Der Fallback ohne konfiguriertes Logo rendert den
+Firmennamen fett in Markenfarbe (vorher schwarz) – nie eine leere Lücke.
+Verbleibende mögliche Ursache beim Nutzer ist eine fehlende Konfiguration
+(z.B. Logo-Datei über 1 MB beim Auswählen abgelehnt, E17-04); das deckt der
+Fallback jetzt sichtbar ab und gehört in die manuelle Prüfliste.
+
 ## EK2-07: Positionsvorlage → Position: Titel wird erste Beschreibungszeile
 
 `line_items` hat weiterhin nur EIN Beschreibungsfeld (kein Schema-Umbau).

@@ -32,6 +32,7 @@ export function DocumentPrintPortal({
   useEffect(() => {
     document.body.appendChild(container);
     let finished = false;
+    let cancelled = false;
     const finish = () => {
       if (finished) return;
       finished = true;
@@ -43,20 +44,32 @@ export function DocumentPrintPortal({
     // Zwei Frames warten, damit das Blatt fertig gelayoutet ist.
     const raf = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        if (printInFlight) return;
+        if (printInFlight || cancelled) return;
         printInFlight = true;
-        try {
-          window.print();
-        } catch (error) {
-          console.error('[Documents] Druckdialog konnte nicht geöffnet werden', error);
-        }
-        // window.print() blockiert bis der Dialog geschlossen ist;
-        // afterprint dient als Fallback für abweichende Webviews.
-        finish();
+        // Logo-Fix (Addendum 2, Spec 5c): window.print() wartet NICHT auf
+        // das Decoding der Bilder – ein Data-URL-Logo fehlte sonst im
+        // gedruckten PDF. Erst alle Bilder decodieren, dann drucken;
+        // Decode-Fehler blockieren den Druck nicht.
+        const images = Array.from(container.querySelectorAll('img'));
+        void Promise.all(images.map((image) => image.decode().catch(() => undefined))).then(() => {
+          if (cancelled) {
+            printInFlight = false;
+            return;
+          }
+          try {
+            window.print();
+          } catch (error) {
+            console.error('[Documents] Druckdialog konnte nicht geöffnet werden', error);
+          }
+          // window.print() blockiert bis der Dialog geschlossen ist;
+          // afterprint dient als Fallback für abweichende Webviews.
+          finish();
+        });
       });
     });
 
     return () => {
+      cancelled = true;
       cancelAnimationFrame(raf);
       window.removeEventListener('afterprint', finish);
       container.remove();

@@ -9,6 +9,7 @@
  * §19-Satz kursiv, danach die Bausteine. Fußzeile auf jeder Druckseite
  * über den tfoot des Rahmen-Table (pg-polygrid-frame).
  */
+import { hexToHSL, hslToHex } from '@/utils/colors';
 import { DOCUMENT_TYPE_LABELS, lineItemTotal, type DocumentSnapshot } from '../../schemas';
 import { ContentBlockBody } from './ContentBlocksSection';
 import { formatDocumentDate, formatDocumentEUR, formatDocumentQuantity } from './format';
@@ -19,6 +20,20 @@ const DARK = '#161616';
 function splitDescription(description: string): { title: string; detail: string } {
   const [first, ...rest] = description.split('\n');
   return { title: first, detail: rest.join('\n').trim() };
+}
+
+/**
+ * Subtle-Variante der Markenfarbe für den Optional-Kasten (Addendum 2,
+ * Spec 3): gleiche Formel wie das Akzentfarben-System (Hell-Modus), da der
+ * Snapshot nur den aufgelösten Hex-Wert trägt und das Blatt immer hell ist.
+ */
+function subtleAccent(accentHex: string): string {
+  try {
+    const hsl = hexToHSL(accentHex);
+    return hslToHex({ h: hsl.h, s: Math.max(0, hsl.s - 20), l: 95 });
+  } catch {
+    return '#F2F2F2';
+  }
 }
 
 export function PolygridLayout({ snapshot }: { snapshot: DocumentSnapshot }) {
@@ -88,7 +103,14 @@ export function PolygridLayout({ snapshot }: { snapshot: DocumentSnapshot }) {
                     style={{ maxHeight: '22mm', maxWidth: '55mm', objectFit: 'contain' }}
                   />
                 ) : (
-                  <div style={{ fontSize: '14pt', fontWeight: 700 }}>{issuerName}</div>
+                  // Ohne konfiguriertes Logo: Firmenname fett in Markenfarbe,
+                  // nie eine leere Lücke (Addendum 2, Spec 5)
+                  <div
+                    style={{ fontSize: '14pt', fontWeight: 700, color: accent }}
+                    data-testid="doc-logo-fallback"
+                  >
+                    {snapshot.issuer.company_name || snapshot.issuer.owner_name}
+                  </div>
                 )}
               </div>
               <div style={{ textAlign: 'right' }}>
@@ -273,21 +295,39 @@ export function PolygridLayout({ snapshot }: { snapshot: DocumentSnapshot }) {
               </p>
             ) : null}
 
-            {/* Bausteine fließen nach der Summenzeile (Spec Abschnitt 2) */}
+            {/* Bausteine fließen nach der Summenzeile (Spec Abschnitt 2).
+                optional_offer (und nur dieser) wird als Markenfarben-Kasten
+                gerendert (Addendum 2, Spec 3) – reine Darstellung des kind. */}
             {snapshot.content_blocks.length > 0 ? (
               <div style={{ marginTop: '9mm' }} data-testid="doc-blocks">
-                {snapshot.content_blocks.map((block) => (
-                  <section
-                    key={block.id}
-                    className="pg-doc-block"
-                    data-testid={`doc-block-${block.kind}`}
-                  >
-                    <h3 className="pg-doc-block-title" style={{ color: DARK }}>
-                      {block.title}
-                    </h3>
-                    <ContentBlockBody block={block} recipientName={snapshot.recipient.name} />
-                  </section>
-                ))}
+                {snapshot.content_blocks.map((block) => {
+                  const isOptionalBox = block.kind === 'optional_offer';
+                  return (
+                    <section
+                      key={block.id}
+                      className={
+                        isOptionalBox ? 'pg-doc-block pg-polygrid-optional' : 'pg-doc-block'
+                      }
+                      style={
+                        isOptionalBox
+                          ? {
+                              background: subtleAccent(accent),
+                              borderLeft: `3px solid ${accent}`,
+                            }
+                          : undefined
+                      }
+                      data-testid={`doc-block-${block.kind}`}
+                    >
+                      <h3
+                        className="pg-doc-block-title"
+                        style={{ color: isOptionalBox ? accent : DARK }}
+                      >
+                        {block.title}
+                      </h3>
+                      <ContentBlockBody block={block} recipientName={snapshot.recipient.name} />
+                    </section>
+                  );
+                })}
               </div>
             ) : null}
           </td>

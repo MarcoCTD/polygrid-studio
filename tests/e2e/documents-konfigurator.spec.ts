@@ -11,6 +11,9 @@ import type { TauriMock } from './support/tauriMock';
 import type { Page } from '@playwright/test';
 
 const CLIENT_ID = 'dddddddd-4444-4444-8444-444444444444';
+// 1x1 rotes PNG für Logo-Tests
+const LOGO_DATA_URL =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
 async function bootApp(page: Page): Promise<void> {
   await page.goto('/');
@@ -266,4 +269,115 @@ test('Standard-Einleitungstexte: Konfigurator belegt neue Dokumente vor, Variabl
   // Rechnungen bleiben unberührt (eigener, leerer Standard)
   await createDraftViaUI(page, 'invoice');
   await expect(page.getByTestId('document-intro')).toHaveValue('');
+});
+
+// ------------------------------------------------------------
+// Darstellung (Etappe D): Optional-Kasten und Logo
+// ------------------------------------------------------------
+
+test('Optional-Baustein erscheint in polygrid als Markenfarben-Kasten, druckfest', async ({
+  page,
+  tauri,
+}) => {
+  await bootApp(page);
+  seedIssuerSettings(tauri);
+  seedClient(tauri);
+  // Feste Markenfarbe, damit die Kasten-Farben deterministisch sind
+  setSetting(tauri, 'invoice_brand_color', '#0070F2');
+
+  await createDraftViaUI(page, 'quote');
+  await page.getByTestId('block-toggle-optional_offer').click();
+
+  const box = page.getByTestId('doc-block-optional_offer');
+  await expect(box).toBeVisible();
+  // Linker Rand 3px in Markenfarbe, abgerundete Ecken, farbiger Hintergrund
+  // (Inline-Style statt computed – die Vorschau skaliert per zoom)
+  await expect(box).toHaveClass(/pg-polygrid-optional/);
+  const borderLeft = await box.evaluate((element) => (element as HTMLElement).style.borderLeft);
+  expect(borderLeft).toBe('3px solid rgb(0, 112, 242)');
+  const backgroundColor = await box.evaluate(
+    (element) => getComputedStyle(element).backgroundColor,
+  );
+  expect(backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+  const borderRadius = await box.evaluate((element) => getComputedStyle(element).borderRadius);
+  expect(borderRadius).not.toBe('0px');
+  // Titel in Markenfarbe
+  await expect(box.locator('.pg-doc-block-title')).toHaveCSS('color', 'rgb(0, 112, 242)');
+  // Druckfest: print-color-adjust exact direkt am Kasten (macOS druckt
+  // Hintergründe sonst weiß)
+  const printColorAdjust = await box.evaluate((element) =>
+    getComputedStyle(element).getPropertyValue('-webkit-print-color-adjust'),
+  );
+  expect(printColorAdjust).toBe('exact');
+
+  // Position: standardmäßig letzter Baustein vor validity_signature
+  const blockKinds = await page
+    .getByTestId('doc-blocks')
+    .locator('section')
+    .evaluateAll((sections) =>
+      sections.map((section) => section.getAttribute('data-testid') ?? ''),
+    );
+  const optionalIndex = blockKinds.indexOf('doc-block-optional_offer');
+  expect(blockKinds[optionalIndex + 1]).toBe('doc-block-validity_signature');
+
+  // Nur polygrid rendert den Kasten – modern zeigt den Block schlicht
+  await page.getByTestId('layout-modern').click();
+  await expect(page.getByTestId('doc-block-optional_offer')).toBeVisible();
+  await expect(page.getByTestId('doc-block-optional_offer')).not.toHaveClass(
+    /pg-polygrid-optional/,
+  );
+});
+
+test('Logo: konfigurierte Data-URL erscheint oben links und wird in den Snapshot eingefroren', async ({
+  page,
+  tauri,
+}) => {
+  await bootApp(page);
+  seedIssuerSettings(tauri);
+  seedClient(tauri);
+  setSetting(tauri, 'invoice_logo', LOGO_DATA_URL);
+
+  await createDraftViaUI(page, 'quote');
+  await page.getByTestId('add-line-item').click();
+  await page.getByTestId('add-line-item-empty').click();
+  await page.getByLabel('Position 1: Beschreibung').fill('Website');
+  await page.getByLabel('Position 1: Einzelpreis').fill('590');
+
+  // Vorschau: img mit Data-URL, kein Firmennamen-Fallback
+  const logo = page.getByTestId('document-sheet').locator('img[alt="Logo"]');
+  await expect(logo).toBeVisible();
+  expect(await logo.getAttribute('src')).toBe(LOGO_DATA_URL);
+  await expect(page.getByTestId('doc-logo-fallback')).toHaveCount(0);
+
+  // Ausstellen friert das Logo in den Snapshot ein (E17-04); ein späterer
+  // Logo-Wechsel verändert das ausgestellte Dokument nicht
+  await page.getByTestId('document-save').click();
+  await expect(page.getByText('Entwurf gespeichert')).toBeVisible();
+  await page.getByTestId('document-issue').click();
+  await expect(page.getByText(/ausgestellt/)).toBeVisible();
+  const rows = tauri.select('SELECT snapshot FROM documents');
+  const snapshot = JSON.parse(String(rows[0].snapshot)) as { logo: string | null };
+  expect(snapshot.logo).toBe(LOGO_DATA_URL);
+
+  setSetting(tauri, 'invoice_logo', '');
+  await page.reload();
+  await expect(page.getByTestId('document-sheet').locator('img[alt="Logo"]')).toBeVisible();
+});
+
+test('Logo: ohne Konfiguration erscheint der Firmenname in Markenfarbe, nie eine Lücke', async ({
+  page,
+  tauri,
+}) => {
+  await bootApp(page);
+  seedIssuerSettings(tauri);
+  seedClient(tauri);
+  setSetting(tauri, 'invoice_brand_color', '#0070F2');
+
+  await createDraftViaUI(page, 'quote');
+  const sheet = page.getByTestId('document-sheet');
+  await expect(sheet.locator('img[alt="Logo"]')).toHaveCount(0);
+  const fallback = page.getByTestId('doc-logo-fallback');
+  await expect(fallback).toHaveText('PolyGrid Studio');
+  await expect(fallback).toHaveCSS('font-weight', '700');
+  await expect(fallback).toHaveCSS('color', 'rgb(0, 112, 242)');
 });
