@@ -1,6 +1,13 @@
 # Datenbank-Schema
 
-PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Juli 2026 | Version 1.9
+PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Juli 2026 | Version 1.10
+
+> **Änderungen in v1.10 gegenüber v1.9 (Addendum 2 Modul 17 – Dokument-Konfigurator):**
+>
+> - KEINE Tabellen- oder Migrationsänderung; nur neue `app_settings`-Keys
+> - `document_position_templates`: JSON-Array der Positionsvorlagen `{ id, name, title, description, unit_price, default_quantity }`; Seed beim ersten Laden (Komplettpaket 590 / Onepager 390 / Refresh 490)
+> - `document_default_intro_quote`/`_invoice`, `document_default_outro_quote`/`_invoice`: String (Default `""`) – Standard-Einleitungstexte, Vorbelegung neuer Dokumente
+> - Baustein-`items` sind jetzt `{ text, enabled }[]`; alte Werte (string[]) in `documents.content_blocks`, in Snapshots und in `document_default_blocks_*` bleiben gültig und werden beim Lesen als `enabled: true` interpretiert (Zod-Transform, kein Migrationslauf – Snapshots werden nie umgeschrieben)
 
 > **Änderungen in v1.9 gegenüber v1.8 (Addendum Modul 17 – PolyGrid-Layout und Bausteine):**
 >
@@ -610,7 +617,9 @@ Diese Keys werden über verschiedene Module hinweg verwendet. Die vollständige 
 - `invoice_logo`: String (Default: `""`) – Logo als Base64-Data-URL (Kopie der gewählten Datei, E17-04)
 - `invoice_default_layout`: String (Default: `"polygrid"` seit Addendum) – `polygrid`, `modern` oder `classic`
 - `invoice_brand_color`: String (Default: `""`) – feste Markenfarbe (Hex); leer = App-Akzentfarbe
-- `document_default_blocks_quote`, `document_default_blocks_invoice`: JSON-Array (kein DEFAULTS-Eintrag; ungesetzt/leer = mitgelieferte Konstanten) – Nutzer-Standard der Bausteine pro Dokumenttyp (Addendum, Spec 3.3)
+- `document_default_blocks_quote`, `document_default_blocks_invoice`: JSON-Array (kein DEFAULTS-Eintrag; ungesetzt/leer = mitgelieferte Konstanten) – Standard-Bausteine pro Dokumenttyp; seit Addendum 2 pflegt sie der Konfigurator, Baustein-`items` als `{ text, enabled }[]` (alte string[]-Werte bleiben lesbar)
+- `document_position_templates`: JSON-Array (kein DEFAULTS-Eintrag; fehlender Key = Seed beim ersten Laden, leeres Array = bewusst keine Vorlagen) – Positionsvorlagen des Konfigurators (Addendum 2, Spec 2.2)
+- `document_default_intro_quote`, `document_default_outro_quote`, `document_default_intro_invoice`, `document_default_outro_invoice`: String (Default: `""`) – Standard-Einleitungstexte je Dokumenttyp, Vorbelegung neuer Dokumente (Addendum 2, Spec 2.4)
 
 **Sicherheit & Backup (Modul 11):**
 

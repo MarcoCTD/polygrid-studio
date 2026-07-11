@@ -381,3 +381,292 @@ test('Logo: ohne Konfiguration erscheint der Firmenname in Markenfarbe, nie eine
   await expect(fallback).toHaveCSS('font-weight', '700');
   await expect(fallback).toHaveCSS('color', 'rgb(0, 112, 242)');
 });
+
+// ------------------------------------------------------------
+// Stichpunkte: Editor überschreibt Defaults pro Dokument
+// ------------------------------------------------------------
+
+test('Stichpunkt-Checkboxen im Editor: Override pro Dokument, deaktivierte Punkte bleiben erhalten', async ({
+  page,
+  tauri,
+}) => {
+  await bootApp(page);
+  seedIssuerSettings(tauri);
+  seedClient(tauri);
+
+  await createDraftViaUI(page, 'quote');
+
+  // Nutzer-Beispiel (Spec 2.3): "Professionelles Fotoshooting" abschalten
+  await page.getByTestId('block-expand-excluded').click();
+  await expect(page.getByTestId('block-item-excluded-1')).toHaveValue(
+    'Professionelles Fotoshooting',
+  );
+  const excludedPreview = page.getByTestId('doc-block-excluded');
+  await expect(excludedPreview).toContainText('Professionelles Fotoshooting');
+  await page.getByTestId('block-item-toggle-excluded-1').click();
+
+  // Live-Vorschau: Punkt verschwindet, die übrigen bleiben
+  await expect(excludedPreview).not.toContainText('Professionelles Fotoshooting');
+  await expect(excludedPreview).toContainText('Logo-Design / Branding');
+
+  // Speichern: der Punkt bleibt am Dokument gespeichert (enabled false)
+  await page.getByTestId('document-save').click();
+  await expect(page.getByText('Entwurf gespeichert')).toBeVisible();
+  const rows = tauri.select('SELECT content_blocks FROM documents');
+  const blocks = JSON.parse(String(rows[0].content_blocks)) as Array<{
+    kind: string;
+    items: { text: string; enabled: boolean }[];
+  }>;
+  const excluded = blocks.find((block) => block.kind === 'excluded');
+  expect(excluded?.items.find((item) => item.text === 'Professionelles Fotoshooting')).toEqual({
+    text: 'Professionelles Fotoshooting',
+    enabled: false,
+  });
+
+  // Nach Reload: Checkbox aus, Text erhalten, wieder aktivierbar
+  await page.reload();
+  await page.getByTestId('block-expand-excluded').click();
+  await expect(page.getByTestId('block-item-excluded-1')).toHaveValue(
+    'Professionelles Fotoshooting',
+  );
+  await expect(page.getByTestId('block-item-toggle-excluded-1')).not.toBeChecked();
+  await page.getByTestId('block-item-toggle-excluded-1').click();
+  await expect(page.getByTestId('doc-block-excluded')).toContainText(
+    'Professionelles Fotoshooting',
+  );
+});
+
+// ------------------------------------------------------------
+// Abwärtskompatibilität: alte Dokumente und Snapshots (string[]-items)
+// ------------------------------------------------------------
+
+test('Alte Dokumente und Snapshots mit string[]-items laden und rendern fehlerfrei', async ({
+  page,
+  tauri,
+}) => {
+  await bootApp(page);
+  seedIssuerSettings(tauri);
+  seedClient(tauri);
+  const now = new Date().toISOString();
+  const legacyBlocks = [
+    {
+      id: 'legacy-included',
+      kind: 'included',
+      enabled: true,
+      title: 'Im Festpreis enthalten',
+      body_type: 'bullets',
+      items: ['Konzeption und Umsetzung', 'Mobile Optimierung'],
+      text: '',
+    },
+  ];
+
+  // Alt-DRAFT (vor Addendum 2): items als string[]
+  const draftId = crypto.randomUUID();
+  tauri.execute(
+    `INSERT INTO documents (
+       id, type, number, status, client_id, line_items, total,
+       layout, content_blocks, created_at, updated_at
+     ) VALUES ($1, 'quote', NULL, 'draft', $2, $3, 590, 'polygrid', $4, $5, $6)`,
+    [
+      draftId,
+      CLIENT_ID,
+      JSON.stringify([{ description: 'Website-Erstellung', quantity: 1, unit_price: 590 }]),
+      JSON.stringify(legacyBlocks),
+      now,
+      now,
+    ],
+  );
+
+  await page.goto(`/documents/${draftId}`);
+  await expect(page.getByTestId('document-editor-title')).toContainText('Angebot (Entwurf)');
+  // Editor zeigt die Punkte als aktivierte Checkboxen, Vorschau rendert sie
+  await page.getByTestId('block-expand-included').click();
+  await expect(page.getByTestId('block-item-toggle-included-0')).toBeChecked();
+  await expect(page.getByTestId('doc-block-included')).toContainText('Konzeption und Umsetzung');
+  await expect(page.getByTestId('doc-block-included')).toContainText('Mobile Optimierung');
+
+  // Alt-AUSGESTELLT: Snapshot mit string[]-items rendert unverändert aus dem Snapshot
+  const issuedId = crypto.randomUUID();
+  const legacySnapshot = {
+    type: 'quote',
+    number: 'A-2026-001',
+    issuer: {
+      company_name: 'PolyGrid Studio',
+      owner_name: 'Marco Kromer',
+      street: 'Musterstraße 1',
+      zip: '12345',
+      city: 'Musterstadt',
+      tax_number: '12/345/67890',
+      vat_id: '',
+      iban: 'DE02120300000000202051',
+      bic: 'BYLADEM1001',
+      bank_name: 'Testbank',
+    },
+    recipient: { name: 'Malerbetrieb Weber', contact_person: null, address: 'Wandweg 3' },
+    line_items: [{ description: 'Website-Erstellung', quantity: 1, unit_price: 590 }],
+    total: 590,
+    issue_date: '2026-06-01',
+    due_date: null,
+    valid_until: '2026-07-01',
+    service_date: null,
+    intro_text: null,
+    outro_text: null,
+    layout: 'polygrid',
+    accent_color: '#0070F2',
+    logo: null,
+    kleinunternehmer_hinweis: 'Gemäß §19 UStG wird keine Umsatzsteuer berechnet.',
+    related_document_number: null,
+    content_blocks: legacyBlocks,
+  };
+  tauri.execute(
+    `INSERT INTO documents (
+       id, type, number, status, client_id, line_items, total,
+       issue_date, valid_until, layout, content_blocks, snapshot, created_at, updated_at
+     ) VALUES ($1, 'quote', 'A-2026-001', 'issued', $2, $3, 590, '2026-06-01', '2026-07-01',
+       'polygrid', $4, $5, $6, $7)`,
+    [
+      issuedId,
+      CLIENT_ID,
+      JSON.stringify([{ description: 'Website-Erstellung', quantity: 1, unit_price: 590 }]),
+      JSON.stringify(legacyBlocks),
+      JSON.stringify(legacySnapshot),
+      now,
+      now,
+    ],
+  );
+
+  await page.goto(`/documents/${issuedId}`);
+  await expect(page.getByTestId('document-editor-title')).toContainText('Angebot A-2026-001');
+  await expect(page.getByTestId('doc-block-included')).toContainText('Konzeption und Umsetzung');
+  await expect(page.getByTestId('doc-block-included')).toContainText('Mobile Optimierung');
+
+  // Harte Regel: Lesen/Rendern schreibt den alten Snapshot NICHT um
+  const raw = tauri.select('SELECT snapshot FROM documents WHERE id = $1', [issuedId]);
+  expect(String(raw[0].snapshot)).toBe(JSON.stringify(legacySnapshot));
+});
+
+// ------------------------------------------------------------
+// Migration der alten "Als Standard speichern"-Keys
+// ------------------------------------------------------------
+
+test('Alte Standard-Keys erscheinen ohne Datenverlust im Konfigurator und wirken auf neue Dokumente', async ({
+  page,
+  tauri,
+}) => {
+  await bootApp(page);
+  seedIssuerSettings(tauri);
+  seedClient(tauri);
+
+  // "Als Standard speichern"-Wert aus der Zeit vor dem Konfigurator (string[]-items)
+  setSetting(tauri, 'document_default_blocks_quote', [
+    {
+      id: 'old-1',
+      kind: 'included',
+      enabled: true,
+      title: 'Mein alter Leistungsumfang',
+      body_type: 'bullets',
+      items: ['Alter Punkt A', 'Alter Punkt B'],
+      text: '',
+    },
+    {
+      id: 'old-2',
+      kind: 'payment_terms',
+      enabled: true,
+      title: 'Zahlungsbedingungen',
+      body_type: 'paragraph',
+      items: [],
+      text: 'Zahlbar innerhalb von {{zahlungsziel_tage}} Tagen.',
+    },
+  ]);
+
+  // Konfigurator zeigt die alten Werte (Migration-on-read, kein Datenverlust)
+  await page.goto('/documents/templates?section=blocks');
+  await expect(page.getByTestId('block-row-included')).toContainText('Mein alter Leistungsumfang');
+  await page.getByTestId('block-expand-included').click();
+  await expect(page.getByTestId('block-item-included-0')).toHaveValue('Alter Punkt A');
+  await expect(page.getByTestId('block-item-toggle-included-0')).toBeChecked();
+
+  // Speichern über den Konfigurator schreibt das neue Format
+  await page.getByTestId('configurator-blocks-save').click();
+  await expect(page.getByText(/Baustein-Standards für Angebote gespeichert/)).toBeVisible();
+  const stored = tauri.select(
+    "SELECT value FROM app_settings WHERE key = 'document_default_blocks_quote'",
+  );
+  const migrated = JSON.parse(String(stored[0].value)) as Array<{
+    items: { text: string; enabled: boolean }[];
+  }>;
+  expect(migrated[0].items).toEqual([
+    { text: 'Alter Punkt A', enabled: true },
+    { text: 'Alter Punkt B', enabled: true },
+  ]);
+
+  // Neue Dokumente nutzen die migrierten Standards
+  await createDraftViaUI(page, 'quote');
+  await expect(page.getByTestId('doc-block-included')).toContainText('Alter Punkt A');
+  await expect(page.getByTestId('block-row-included')).toContainText('Mein alter Leistungsumfang');
+});
+
+// ------------------------------------------------------------
+// Snapshot-Isolation gegen Konfigurator-Änderungen
+// ------------------------------------------------------------
+
+test('Ausgestellte Dokumente bleiben bei Konfigurator-Änderungen unverändert (Snapshot-Isolation)', async ({
+  page,
+  tauri,
+}) => {
+  await bootApp(page);
+  seedIssuerSettings(tauri);
+  seedClient(tauri);
+
+  // Angebot aus Vorlage mit Einleitungstext-Vorbelegung ausstellen
+  await page.goto('/documents/templates?section=texts');
+  await page.getByTestId('configurator-intro-quote').fill('Vielen Dank für Ihr Vertrauen.');
+  await page.getByTestId('configurator-texts-save-quote').click();
+  await expect(page.getByText('Einleitungstexte für Angebote gespeichert')).toBeVisible();
+
+  await createDraftViaUI(page, 'quote');
+  await page.getByTestId('add-line-item').click();
+  await page.getByTestId('line-item-template-Komplettpaket').click();
+  await page.getByTestId('document-save').click();
+  await expect(page.getByText('Entwurf gespeichert')).toBeVisible();
+  await page.getByTestId('document-issue').click();
+  await expect(page.getByText(/ausgestellt/)).toBeVisible();
+  await expect(page.getByTestId('doc-intro')).toContainText('Vielen Dank für Ihr Vertrauen.');
+  await expect(page.getByTestId('doc-positions')).toContainText(
+    'Website-Erstellung (Komplettpaket)',
+  );
+
+  const snapshotBefore = String(tauri.select('SELECT snapshot FROM documents')[0].snapshot);
+
+  // ALLE Konfigurator-Inhalte nachträglich umkrempeln
+  await page.goto('/documents/templates');
+  await page.getByTestId('position-template-edit-Komplettpaket').click();
+  await page.getByTestId('position-template-title').fill('GEÄNDERTER TITEL');
+  await page.getByTestId('position-template-price').fill('999');
+  await page.getByTestId('position-template-save').click();
+  await expect(page.getByText('Vorlage aktualisiert')).toBeVisible();
+  await page.getByTestId('configurator-section-blocks').click();
+  await page.getByTestId('block-expand-included').click();
+  await page.getByTestId('block-title-included').fill('GEÄNDERTER BAUSTEIN');
+  await page.getByTestId('configurator-blocks-save').click();
+  await expect(page.getByText(/Baustein-Standards für Angebote gespeichert/)).toBeVisible();
+  await page.getByTestId('configurator-section-texts').click();
+  await page.getByTestId('configurator-intro-quote').fill('GEÄNDERTE EINLEITUNG');
+  await page.getByTestId('configurator-texts-save-quote').click();
+  await expect(page.getByText('Einleitungstexte für Angebote gespeichert')).toBeVisible();
+
+  // Das ausgestellte Dokument rendert unverändert aus seinem Snapshot
+  const documentId = String(tauri.select('SELECT id FROM documents')[0].id);
+  await page.goto(`/documents/${documentId}`);
+  await expect(page.getByTestId('doc-intro')).toContainText('Vielen Dank für Ihr Vertrauen.');
+  await expect(page.getByTestId('doc-positions')).toContainText(
+    'Website-Erstellung (Komplettpaket)',
+  );
+  await expect(page.getByTestId('doc-total')).toContainText('590,00');
+  await expect(page.getByTestId('document-sheet')).not.toContainText('GEÄNDERT');
+
+  const snapshotAfter = String(
+    tauri.select('SELECT snapshot FROM documents WHERE id = $1', [documentId])[0].snapshot,
+  );
+  expect(snapshotAfter).toBe(snapshotBefore);
+});
