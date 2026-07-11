@@ -191,6 +191,52 @@ test('Konfigurator-Bausteine: Default-Flags pro Baustein und Stichpunkt landen i
   await expect(page.getByTestId('block-item-toggle-excluded-1')).not.toBeChecked();
 });
 
+test('Editor: Position aus Vorlage übernimmt alle Felder; Bearbeitung wirkt nur im Dokument', async ({
+  page,
+  tauri,
+}) => {
+  await bootApp(page);
+  seedIssuerSettings(tauri);
+  seedClient(tauri);
+
+  await createDraftViaUI(page, 'quote');
+
+  // "Position hinzufügen" öffnet die Auswahl mit Suche (Name und Preis)
+  await page.getByTestId('add-line-item').click();
+  await expect(page.getByTestId('line-item-template-Komplettpaket')).toContainText('590,00');
+  await page.getByTestId('line-item-template-search').fill('one');
+  await expect(page.getByTestId('line-item-template-Komplettpaket')).toHaveCount(0);
+  await expect(page.getByTestId('line-item-template-Onepager')).toContainText('390,00');
+
+  // Vorlage übernimmt Titel, Beschreibung, Preis und Menge
+  await page.getByTestId('line-item-template-Onepager').click();
+  const description = page.getByLabel('Position 1: Beschreibung');
+  await expect(description).toHaveValue(/^Website-Erstellung Onepager\n/);
+  await expect(page.getByLabel('Position 1: Menge')).toHaveValue('1');
+  await expect(page.getByLabel('Position 1: Einzelpreis')).toHaveValue('390');
+  // polygrid rendert die erste Zeile fett als Positionstitel (EB-03)
+  await expect(page.getByTestId('doc-positions')).toContainText('Website-Erstellung Onepager');
+  await expect(page.getByTestId('doc-total')).toContainText('390,00');
+
+  // Nachträgliche Bearbeitung wirkt nur im Dokument, nie auf die Vorlage
+  await page.getByLabel('Position 1: Einzelpreis').fill('450');
+  await page.getByTestId('document-save').click();
+  await expect(page.getByText('Entwurf gespeichert')).toBeVisible();
+  const stored = tauri.select(
+    "SELECT value FROM app_settings WHERE key = 'document_position_templates'",
+  );
+  const templates = JSON.parse(String(stored[0].value)) as Array<{
+    name: string;
+    unit_price: number;
+  }>;
+  expect(templates.find((template) => template.name === 'Onepager')?.unit_price).toBe(390);
+
+  // "Leere Position" bleibt als zweiter Weg verfügbar
+  await page.getByTestId('add-line-item').click();
+  await page.getByTestId('add-line-item-empty').click();
+  await expect(page.getByLabel('Position 2: Beschreibung')).toHaveValue('');
+});
+
 test('Standard-Einleitungstexte: Konfigurator belegt neue Dokumente vor, Variablen werden ersetzt', async ({
   page,
   tauri,

@@ -104,6 +104,29 @@ Aufzählungspunkt, deaktivierte Punkte werden durchgestrichen dargestellt.
 Dadurch ist das Nutzer-Beispiel („Professionelles Fotoshooting" abschalten,
 ohne den Text zu löschen) an beiden Orten identisch bedienbar.
 
+## EK2-11: Positionsbeschreibung wird Textarea (mehrzeilig)
+
+Das Beschreibungsfeld der Positionsliste war ein einzeiliges `<input>` –
+Browser verwerfen dort Zeilenumbrüche. Damit wäre der Titel/Beschreibungs-
+Split der Vorlagen (EK2-07/EB-03) beim ersten Editieren der Zeile verloren
+gegangen und mehrzeilige Positionen wären im Editor gar nicht erfassbar.
+Das Feld ist jetzt eine automatisch wachsende Textarea (eine Zeile hoch im
+Leerzustand); Enter erzeugt bewusst eine neue Beschreibungszeile statt
+eine neue Position.
+
+## EK2-12: Editor-Buttons ersetzt, betroffene E2E-Tests angepasst
+
+„Als meinen Standard speichern" und „Auf Standard zurücksetzen" sind gemäß
+Spec 4 ersatzlos durch „Standards verwalten" ersetzt (Deep-Link in den
+Konfigurator, Abschnitt Bausteine, passender Dokumenttyp). Die Service-
+Funktion `saveDefaultContentBlocksForType` bleibt bestehen – sie ist jetzt
+der Speicherweg des Konfigurators. Der Addendum-1-E2E-Test der alten
+Buttons wurde auf den Konfigurator-Weg umgeschrieben – wie bei EB-07 kein
+„Fix am Test vorbei", sondern eine von der neueren Spec gewollte
+Verhaltensänderung. Gleiches gilt für „Position hinzufügen": der Button
+öffnet jetzt die Vorlagen-Auswahl, die Test-Helfer klicken zusätzlich
+„Leere Position".
+
 ## EK2-07: Positionsvorlage → Position: Titel wird erste Beschreibungszeile
 
 `line_items` hat weiterhin nur EIN Beschreibungsfeld (kein Schema-Umbau).

@@ -170,7 +170,9 @@ async function fillAndIssue(page: Page, options: { serviceDate?: boolean } = {})
   if (options.serviceDate !== false) {
     await page.getByTestId('document-service-date').fill('Juli 2026');
   }
+  // Seit Addendum 2 öffnet "Position hinzufügen" die Vorlagen-Auswahl
   await page.getByTestId('add-line-item').click();
+  await page.getByTestId('add-line-item-empty').click();
   await page.getByLabel('Position 1: Beschreibung').fill('Website-Erstellung');
   await page.getByLabel('Position 1: Einzelpreis').fill('1200');
   await page.getByTestId('document-save').click();

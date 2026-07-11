@@ -78,7 +78,9 @@ async function createDraftViaUI(page: Page, type: 'quote' | 'invoice'): Promise<
 }
 
 async function addLineItem(page: Page, description: string, price: string): Promise<void> {
+  // Seit Addendum 2 öffnet "Position hinzufügen" die Vorlagen-Auswahl
   await page.getByTestId('add-line-item').click();
+  await page.getByTestId('add-line-item-empty').click();
   await page.getByLabel('Position 1: Beschreibung').fill(description);
   await page.getByLabel('Position 1: Einzelpreis').fill(price);
 }
@@ -302,21 +304,31 @@ test('validity_signature: nur bei Angeboten, mit Unterschriftslinien und Gültig
 });
 
 // ------------------------------------------------------------
-// Nutzer-Standards pro Typ
+// Nutzer-Standards pro Typ (seit Addendum 2 über den Konfigurator)
 // ------------------------------------------------------------
 
-test('Als Standard speichern / Zurücksetzen wirken pro Dokumenttyp', async ({ page, tauri }) => {
+test('Nutzer-Standards wirken pro Dokumenttyp; der Editor verweist auf den Konfigurator', async ({
+  page,
+  tauri,
+}) => {
   await bootApp(page);
   seedIssuerSettings(tauri);
   seedClient(tauri);
 
-  // Angebots-Standard anpassen und speichern
+  // Editor: "Standards verwalten" öffnet den Konfigurator im Bausteine-Abschnitt
   await createDraftViaUI(page, 'quote');
+  await page.getByTestId('blocks-manage-defaults').click();
+  await expect(page.getByTestId('document-configurator')).toBeVisible();
+  await expect(page.getByTestId('configurator-blocks')).toBeVisible();
+  await expect(page).toHaveURL(/section=blocks/);
+  await expect(page).toHaveURL(/type=quote/);
+
+  // Angebots-Standard im Konfigurator anpassen und speichern
   await page.getByTestId('block-toggle-included').click();
   await page.getByTestId('block-expand-process').click();
   await page.getByTestId('block-title-process').fill('Projektablauf');
-  await page.getByTestId('blocks-save-default').click();
-  await expect(page.getByText('Bausteine als Standard für Angebote gespeichert')).toBeVisible();
+  await page.getByTestId('configurator-blocks-save').click();
+  await expect(page.getByText(/Baustein-Standards für Angebote gespeichert/)).toBeVisible();
 
   const stored = tauri.select(
     "SELECT value FROM app_settings WHERE key = 'document_default_blocks_quote'",
@@ -328,14 +340,6 @@ test('Als Standard speichern / Zurücksetzen wirken pro Dokumenttyp', async ({ p
   await createDraftViaUI(page, 'quote');
   await expect(page.getByTestId('block-row-process')).toContainText('Projektablauf');
   await expect(page.getByTestId('doc-block-included')).toHaveCount(0);
-
-  // Lokale Änderung … und Zurücksetzen lädt den gespeicherten Standard erneut
-  await page.getByTestId('block-expand-process').click();
-  await page.getByTestId('block-title-process').fill('Ganz anders');
-  await expect(page.getByTestId('block-row-process')).toContainText('Ganz anders');
-  await page.getByTestId('blocks-reset-default').click();
-  await expect(page.getByText('Bausteine auf Standard zurückgesetzt')).toBeVisible();
-  await expect(page.getByTestId('block-row-process')).toContainText('Projektablauf');
 
   // Rechnungen bleiben unberührt: eigener Typ-Standard (Konstanten)
   await createDraftViaUI(page, 'invoice');

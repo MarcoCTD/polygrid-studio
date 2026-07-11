@@ -8,7 +8,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { Controller, useForm, useWatch } from 'react-hook-form';
-import { ArrowLeft, CloudUpload, FolderOpen, Printer, TriangleAlert } from 'lucide-react';
+import {
+  ArrowLeft,
+  CloudUpload,
+  FolderOpen,
+  Printer,
+  SlidersHorizontal,
+  TriangleAlert,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,14 +50,12 @@ import {
 import {
   composeDocumentSnapshot,
   confirmOneDrivePdfSaved,
-  getDefaultContentBlocksForType,
   getDocumentById,
   getMissingIssueRequirements,
   loadInvoiceSettings,
   openOneDriveExportFolder,
   prepareOneDriveExportTarget,
   resolveDocumentAccentColor,
-  saveDefaultContentBlocksForType,
   updateDocument,
   DOCUMENT_NUMBER_PREFIXES,
   type InvoiceSettings,
@@ -329,30 +334,16 @@ export function DocumentEditorPage() {
     }
   }
 
-  /** Speichert die aktuelle Baustein-Konfiguration als Vorbelegung des Typs (Spec 3.3). */
-  async function handleSaveBlocksAsDefault() {
+  /**
+   * Die Baustein-Standards pflegt seit Addendum 2 der Konfigurator (Spec 4):
+   * "Standards verwalten" öffnet ihn direkt im passenden Abschnitt und Typ.
+   */
+  function openBlockDefaults() {
     if (!document) return;
-    try {
-      const blocks = saveContentBlocks(form.getValues().content_blocks);
-      await saveDefaultContentBlocksForType(document.type, blocks);
-      toast.success(
-        `Bausteine als Standard für ${DOCUMENT_TYPE_LABELS[document.type]}e gespeichert`,
-      );
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Speichern fehlgeschlagen');
-    }
-  }
-
-  /** Lädt den Nutzer-Standard (bzw. die Konstanten) erneut in das Formular. */
-  async function handleResetBlocksToDefault() {
-    if (!document) return;
-    try {
-      const defaults = await getDefaultContentBlocksForType(document.type);
-      form.setValue('content_blocks', defaults, { shouldDirty: true });
-      toast.success('Bausteine auf Standard zurückgesetzt');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Zurücksetzen fehlgeschlagen');
-    }
+    void navigate({
+      to: '/documents/templates',
+      search: { section: 'blocks', type: document.type },
+    });
   }
 
   function handlePrint() {
@@ -577,32 +568,21 @@ export function DocumentEditorPage() {
               />
             </label>
 
-            {/* Bausteine (Addendum, Spec 3.4) */}
+            {/* Bausteine (Addendum, Spec 3.4; Standards seit Addendum 2 im Konfigurator) */}
             <div className="space-y-1.5 text-sm">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium">Bausteine</span>
-                <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    data-testid="blocks-save-default"
-                    onClick={() => void handleSaveBlocksAsDefault()}
-                  >
-                    Als meinen Standard speichern
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    data-testid="blocks-reset-default"
-                    onClick={() => void handleResetBlocksToDefault()}
-                  >
-                    Auf Standard zurücksetzen
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 px-2 text-xs"
+                  data-testid="blocks-manage-defaults"
+                  onClick={openBlockDefaults}
+                >
+                  <SlidersHorizontal className="size-3.5" />
+                  Standards verwalten
+                </Button>
               </div>
               <Controller
                 control={form.control}
