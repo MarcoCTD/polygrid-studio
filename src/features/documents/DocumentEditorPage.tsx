@@ -40,8 +40,10 @@ import {
   type LineItem,
 } from './schemas';
 import {
+  buildDocumentVariableValues,
   composeDocumentSnapshot,
   confirmOneDrivePdfSaved,
+  findUnresolvedDocumentVariables,
   getDocumentById,
   getMissingIssueRequirements,
   loadInvoiceSettings,
@@ -177,11 +179,22 @@ export function DocumentEditorPage() {
     [projects, watched.client_id],
   );
 
+  /** Gleiche Wertetabelle wie das Ausstellen (buildDocumentVariableValues). */
+  const variableValues = useMemo(() => {
+    if (!settings) return null;
+    const project = clientProjects.find((candidate) => candidate.id === watched.project_id) ?? null;
+    return buildDocumentVariableValues({
+      issuer: settings.issuer,
+      clientName: selectedClient?.name ?? null,
+      projectName: project?.name ?? null,
+      issueDateFormatted: formatGermanDateFromISO(toISODate(new Date())),
+    });
+  }, [settings, clientProjects, watched.project_id, selectedClient]);
+
   /** Live-Vorschau eines Drafts – gleicher Kompositionsweg wie das Ausstellen. */
   const previewSnapshot = useMemo(() => {
-    if (!document || !settings || !isDraft) return null;
+    if (!document || !settings || !isDraft || !variableValues) return null;
     const issueDate = toISODate(new Date());
-    const project = clientProjects.find((candidate) => candidate.id === watched.project_id) ?? null;
     try {
       return composeDocumentSnapshot({
         type: document.type,
@@ -207,18 +220,22 @@ export function DocumentEditorPage() {
         accent_color: resolveDocumentAccentColor(settings),
         logo: settings.logo || null,
         related_document_number: relatedNumber,
-        variable_values: {
-          kundenname: selectedClient?.name ?? null,
-          projektname: project?.name ?? null,
-          firmenname: settings.issuer.company_name,
-          datum: formatGermanDateFromISO(issueDate),
-        },
+        variable_values: variableValues,
       });
     } catch (error) {
       console.error('[Documents] Vorschau konnte nicht erzeugt werden', error);
       return null;
     }
-  }, [document, settings, isDraft, watched, selectedClient, clientProjects, relatedNumber]);
+  }, [document, settings, isDraft, watched, selectedClient, relatedNumber, variableValues]);
+
+  /** Variablen, die mangels Wert wörtlich stehen bleiben würden (Auftrag 1b). */
+  const unresolvedVariables = useMemo(() => {
+    if (!isDraft || !variableValues) return [];
+    return findUnresolvedDocumentVariables(
+      [watched.intro_text, watched.outro_text],
+      variableValues,
+    );
+  }, [isDraft, variableValues, watched.intro_text, watched.outro_text]);
 
   /** Fehlende Pflichtangaben live (gleiche Logik wie das Ausstellen-Gate). */
   const missingRequirements = useMemo(() => {
@@ -233,6 +250,12 @@ export function DocumentEditorPage() {
       selectedClient ? { name: selectedClient.name, address: selectedClient.address } : null,
     );
   }, [document, settings, isDraft, watched.line_items, watched.service_date, selectedClient]);
+
+  /** Gate fürs Ausstellen: Pflichtangaben plus unaufgelöste Variablen. */
+  const issueBlockers = useMemo(() => {
+    if (unresolvedVariables.length === 0) return missingRequirements;
+    return [...missingRequirements, `Variablen ohne Wert: ${unresolvedVariables.join(', ')}`];
+  }, [missingRequirements, unresolvedVariables]);
 
   async function handleSave(values: DocumentFormValues): Promise<BusinessDocument | null> {
     if (!document) return null;
@@ -369,7 +392,7 @@ export function DocumentEditorPage() {
           ) : null}
           <DocumentActions
             document={document}
-            missingRequirements={missingRequirements}
+            missingRequirements={issueBlockers}
             onBeforeIssue={async () => {
               // Ausstellen arbeitet auf dem gespeicherten Stand.
               const values = form.getValues();
@@ -500,6 +523,19 @@ export function DocumentEditorPage() {
                 )}
               />
             </div>
+
+            {unresolvedVariables.length > 0 ? (
+              <div
+                className="flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+                data-testid="document-unresolved-variables"
+              >
+                <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+                <p>
+                  Variablen ohne Wert: <strong>{unresolvedVariables.join(', ')}</strong> – in den
+                  Einstellungen vervollständigen. Ohne Wert bleibt das Ausstellen gesperrt.
+                </p>
+              </div>
+            ) : null}
 
             {missingRequirements.length > 0 ? (
               <div

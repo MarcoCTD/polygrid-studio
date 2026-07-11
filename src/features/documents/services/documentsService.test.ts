@@ -392,6 +392,48 @@ describe('Snapshot und Unveränderbarkeit (Spec 2.2)', () => {
     expect(reloaded?.snapshot?.issuer.company_name).toBe('PolyGrid Studio');
   });
 
+  it('ersetzt {{iban}} und {{bic}} im Schlusstext beim Ausstellen (Snapshot)', async () => {
+    const draft = await createInvoiceDraft({
+      outro_text: 'Zahlbar per Überweisung: IBAN {{iban}}, BIC {{bic}}.',
+    });
+    const issued = await issueDocument(draft.id, new Date(2026, 6, 10));
+
+    expect(issued.snapshot?.outro_text).toBe(
+      'Zahlbar per Überweisung: IBAN DE02120300000000202051, BIC BYLADEM1001.',
+    );
+    expect(JSON.stringify(issued.snapshot)).not.toContain('{{');
+  });
+
+  it('blockiert das Ausstellen, wenn Variablen ohne Wert im Baustein stehen', async () => {
+    setSettingRow('invoice_iban', '');
+    setSettingRow('invoice_bic', '');
+    const draft = await createInvoiceDraft({
+      outro_text: 'Zahlungsbedingungen: IBAN {{iban}}, BIC {{bic}}.',
+    });
+
+    await expect(issueDocument(draft.id, new Date(2026, 6, 10))).rejects.toThrow(
+      /Variablen ohne Wert: iban, bic/,
+    );
+
+    // Draft bleibt Draft, keine Nummer verbraucht
+    const rows = select('SELECT status, number FROM documents WHERE id = $1', [draft.id]);
+    expect(rows[0].status).toBe('draft');
+    expect(rows[0].number).toBeNull();
+  });
+
+  it('blockiert auch Angebote mit unbekannten Variablen (nie rohe {{...}})', async () => {
+    const quote = await createDocument({
+      type: 'quote',
+      client_id: CLIENT_ID,
+      line_items: LINE_ITEMS,
+      intro_text: 'Lieferung in {{lieferzeit}}.',
+    });
+
+    await expect(issueDocument(quote.id, new Date(2026, 6, 10))).rejects.toThrow(
+      /Variablen ohne Wert: lieferzeit/,
+    );
+  });
+
   it('lehnt inhaltliche Updates auf ausgestellten Dokumenten ab', async () => {
     const draft = await createInvoiceDraft();
     await issueDocument(draft.id, new Date(2026, 6, 10));

@@ -33,7 +33,11 @@ import {
   type SnapshotIssuer,
   type UpdateDocumentInput,
 } from '../schemas';
-import { composeDocumentSnapshot } from './composeSnapshot';
+import {
+  buildDocumentVariableValues,
+  composeDocumentSnapshot,
+  findUnresolvedDocumentVariables,
+} from './composeSnapshot';
 import { generateDocumentNumber } from './documentNumber';
 import {
   addDaysISO as addDays,
@@ -485,12 +489,24 @@ async function issueDocumentExclusive(id: string, nowDate: Date): Promise<Busine
       document.type === 'quote' ? addDays(issueDate, settings.quote_validity_days) : null;
 
     const projectName = await loadProjectName(document.project_id);
-    const variableValues: Record<string, string | null> = {
-      kundenname: client.name,
-      projektname: projectName,
-      firmenname: settings.issuer.company_name,
-      datum: formatGermanDate(issueDate),
-    };
+    const variableValues = buildDocumentVariableValues({
+      issuer: settings.issuer,
+      clientName: client.name,
+      projectName,
+      issueDateFormatted: formatGermanDate(issueDate),
+    });
+
+    // Niemals rohe {{variablen}} in einem ausgestellten Dokument (Auftrag 1b):
+    // Variablen ohne Wert blockieren das Ausstellen, statt wörtlich einzufrieren.
+    const unresolvedVariables = findUnresolvedDocumentVariables(
+      [document.intro_text, document.outro_text],
+      variableValues,
+    );
+    if (unresolvedVariables.length > 0) {
+      throw new Error(
+        `Variablen ohne Wert: ${unresolvedVariables.join(', ')} – in den Einstellungen vervollständigen.`,
+      );
+    }
 
     const relatedNumber = document.related_document_id
       ? ((await getDocumentById(document.related_document_id))?.number ?? null)
@@ -769,7 +785,12 @@ async function cancelInvoiceExclusive(
       accent_color: resolveDocumentAccentColor(settings),
       logo: settings.logo || null,
       related_document_number: original.number,
-      variable_values: {},
+      variable_values: buildDocumentVariableValues({
+        issuer: settings.issuer,
+        clientName: original.snapshot.recipient.name,
+        projectName: null,
+        issueDateFormatted: formatGermanDate(issueDate),
+      }),
     });
 
     const stornoId = crypto.randomUUID();

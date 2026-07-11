@@ -21,7 +21,8 @@ const VARIABLE_REGEX = /\{\{([^}]+)\}\}/g;
 
 /**
  * Ersetzt {{variablen}} (Registry-Syntax, Modul 07). Unbekannte oder leere
- * Variablen bleiben sichtbar stehen, damit Lücken im Dokument auffallen.
+ * Variablen bleiben sichtbar stehen, damit Lücken im Dokument auffallen –
+ * das Ausstellen wird dann über findUnresolvedDocumentVariables blockiert.
  */
 export function resolveDocumentVariables(
   text: string | null,
@@ -33,6 +34,61 @@ export function resolveDocumentVariables(
     const value = values[name];
     return value === undefined || value === null || value === '' ? match : value;
   });
+}
+
+export interface DocumentVariableContext {
+  issuer: SnapshotIssuer;
+  clientName: string | null;
+  projectName: string | null;
+  /** Ausstellungsdatum bereits im deutschen Format (TT.MM.JJJJ). */
+  issueDateFormatted: string;
+}
+
+/**
+ * Zentrale Wertetabelle für {{variablen}} in Dokument-Bausteinen (Einleitungs-
+ * und Schlusstext). Ausstellen, Storno und Editor-Vorschau bauen ihre Werte
+ * ausschließlich hierüber, damit kein Weg Variablen "vergisst" (z.B. iban/bic
+ * in Zahlungsbedingungen).
+ */
+export function buildDocumentVariableValues(
+  context: DocumentVariableContext,
+): Record<string, string | null> {
+  return {
+    kundenname: context.clientName,
+    projektname: context.projectName,
+    firmenname: context.issuer.company_name,
+    datum: context.issueDateFormatted,
+    iban: context.issuer.iban,
+    bic: context.issuer.bic,
+    bank: context.issuer.bank_name,
+  };
+}
+
+/**
+ * Variablennamen in den Texten, die mangels Wert wörtlich stehen bleiben
+ * würden (gleiche Bleib-Bedingung wie resolveDocumentVariables). Reihenfolge
+ * des ersten Auftretens, ohne Duplikate.
+ */
+export function findUnresolvedDocumentVariables(
+  texts: ReadonlyArray<string | null | undefined>,
+  values: Record<string, string | null>,
+): string[] {
+  const unresolved: string[] = [];
+  for (const text of texts) {
+    if (!text) continue;
+    for (const match of text.matchAll(VARIABLE_REGEX)) {
+      const name = (match[1] ?? '').trim().toLowerCase();
+      if (!name) continue;
+      const value = values[name];
+      if (
+        (value === undefined || value === null || value === '') &&
+        !unresolved.includes(name)
+      ) {
+        unresolved.push(name);
+      }
+    }
+  }
+  return unresolved;
 }
 
 export interface ComposeSnapshotArgs {
@@ -51,7 +107,7 @@ export interface ComposeSnapshotArgs {
   accent_color: string;
   logo: string | null;
   related_document_number: string | null;
-  /** Werte für {{kundenname}}, {{projektname}}, {{firmenname}}, {{datum}}. */
+  /** Wertetabelle aus buildDocumentVariableValues (kundenname, iban, bic, …). */
   variable_values: Record<string, string | null>;
 }
 

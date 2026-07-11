@@ -20,9 +20,12 @@ export {
   type InvoiceSettings,
 } from './documentsService';
 export {
+  buildDocumentVariableValues,
   composeDocumentSnapshot,
+  findUnresolvedDocumentVariables,
   resolveDocumentVariables,
   type ComposeSnapshotArgs,
+  type DocumentVariableContext,
 } from './composeSnapshot';
 export {
   confirmOneDrivePdfSaved,
