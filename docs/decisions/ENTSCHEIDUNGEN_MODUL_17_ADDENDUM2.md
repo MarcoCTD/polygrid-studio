@@ -76,6 +76,34 @@ bleibt leer), Storno und „Abrechnen mit Rechnung" behalten ihre eigenen
 Texte, und nur wirklich NEUE Dokumente (Modal, Command-Palette) erhalten die
 Vorbelegung. Variablen werden wie bisher erst beim Ausstellen aufgelöst.
 
+## EK2-08: Konfigurator als eigene Route /documents/templates
+
+„Eigener Unterbereich im Dokumente-Tab … als eigene Ansicht (kein Modal)"
+ist als vollwertige Route `/documents/templates` umgesetzt (statischer Pfad
+gewinnt beim TanStack-Router-Ranking über `/documents/$documentId`). Die
+Abschnitte laufen über den Search-Param `section` (positions/blocks/texts),
+der Dokumenttyp des Bausteine-Abschnitts über `type` – damit kann der Editor
+per „Standards verwalten" direkt in den passenden Abschnitt verlinken
+(Spec 4) und die Ansicht ist per URL adressierbar (Muster: Websites-Tabs).
+
+## EK2-09: Speichern im Konfigurator – Positionen sofort, Bausteine/Texte explizit
+
+Positionsvorlagen persistieren pro Aktion (Dialog-Speichern, Duplizieren,
+Löschen mit Bestätigungsdialog – Sicherheit by Default). Bausteine und
+Einleitungstexte haben einen expliziten Speichern-Button je Abschnitt bzw.
+Typ: Das Settings-Auto-Save-Muster (Debounce pro Key) passt nicht zu einem
+komplexen Array, bei dem Zwischenzustände (halb umsortiert, leerer Titel)
+nicht als Standard landen sollen. Beim Speichern werden Titel/Stichpunkte
+getrimmt und leere Stichpunkte entfernt (gleiches Verhalten wie der Editor).
+
+## EK2-10: Stichpunkt-Checkboxen im geteilten ContentBlocksEditor
+
+Konfigurator (Default-Flags) und Dokument-Editor (Override pro Dokument)
+nutzen dieselbe Komponente – die Checkbox pro Stichpunkt ersetzt den
+Aufzählungspunkt, deaktivierte Punkte werden durchgestrichen dargestellt.
+Dadurch ist das Nutzer-Beispiel („Professionelles Fotoshooting" abschalten,
+ohne den Text zu löschen) an beiden Orten identisch bedienbar.
+
 ## EK2-07: Positionsvorlage → Position: Titel wird erste Beschreibungszeile
 
 `line_items` hat weiterhin nur EIN Beschreibungsfeld (kein Schema-Umbau).

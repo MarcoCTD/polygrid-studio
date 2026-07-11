@@ -3,6 +3,8 @@ export {
   convertQuoteToInvoice,
   createDocument,
   getDefaultContentBlocksForType,
+  getDefaultDocumentTexts,
+  saveDefaultDocumentTexts,
   getDocumentById,
   getDocuments,
   getMissingIssueRequirements,

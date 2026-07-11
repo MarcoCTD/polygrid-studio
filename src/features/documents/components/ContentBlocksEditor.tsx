@@ -217,10 +217,22 @@ export function ContentBlocksEditor({ value, onChange, documentType }: ContentBl
                       const focusKey = `${block.id}:${itemIndex}`;
                       return (
                         <div key={itemIndex} className="flex items-center gap-1.5">
-                          <span className="text-text-secondary">•</span>
+                          {/* Checkbox pro Stichpunkt (Addendum 2, Spec 2.3):
+                              abschalten ohne zu löschen */}
+                          <Checkbox
+                            checked={item.enabled}
+                            aria-label={`${block.title}: Punkt ${itemIndex + 1} aktivieren`}
+                            data-testid={`block-item-toggle-${block.kind}-${itemIndex}`}
+                            onCheckedChange={(checked) =>
+                              updateItem(block, itemIndex, { enabled: checked === true })
+                            }
+                          />
                           <Input
                             value={item.text}
                             autoFocus={pendingFocus === focusKey}
+                            className={
+                              item.enabled ? undefined : 'text-text-secondary line-through'
+                            }
                             aria-label={`${block.title}: Punkt ${itemIndex + 1}`}
                             data-testid={`block-item-${block.kind}-${itemIndex}`}
                             onFocus={() => {

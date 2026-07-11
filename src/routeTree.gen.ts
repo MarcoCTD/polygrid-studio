@@ -19,6 +19,7 @@ import { AnalyticsPage } from '@/features/analytics';
 import { FinancePage } from '@/features/finance';
 import { WebsitesPage } from '@/features/websites';
 import { DocumentEditorPage } from '@/features/documents';
+import { DocumentConfiguratorPage, validateConfiguratorSearch } from '@/features/documents';
 import { AIAssistantPage } from '@/features/ai-assistant';
 import { SettingsPage } from '@/features/settings';
 
@@ -113,6 +114,14 @@ const websitesRoute = createRoute({
   validateSearch: validateWebsitesSearch,
 });
 
+// Statischer Pfad gewinnt beim Routing über den $documentId-Parameter
+const documentConfiguratorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/documents/templates',
+  component: DocumentConfiguratorPage,
+  validateSearch: validateConfiguratorSearch,
+});
+
 const documentEditRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/documents/$documentId',
@@ -154,6 +163,7 @@ export const routeTree = rootRoute.addChildren([
   analyticsRoute,
   financeRoute,
   websitesRoute,
+  documentConfiguratorRoute,
   documentEditRoute,
   aiRoute,
   settingsRoute,

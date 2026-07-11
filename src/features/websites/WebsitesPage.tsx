@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearch } from '@tanstack/react-router';
-import { FolderKanban, Plus, RefreshCw, TrendingDown, TrendingUp, Wallet, X } from 'lucide-react';
+import {
+  FolderKanban,
+  Plus,
+  RefreshCw,
+  SlidersHorizontal,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+  X,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -252,6 +261,17 @@ export function WebsitesPage() {
       </Button>
     ) : activeTab === 'documents' ? (
       <div className="flex items-center gap-2">
+        {/* Konfigurator (Addendum 2, Spec 2.1): eigene Ansicht, kein Modal */}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="gap-2"
+          data-testid="manage-templates-button"
+          onClick={() => void router.navigate({ to: '/documents/templates' })}
+        >
+          <SlidersHorizontal className="size-4" />
+          Vorlagen verwalten
+        </Button>
         <Button
           size="sm"
           variant="outline"
