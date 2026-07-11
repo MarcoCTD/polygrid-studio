@@ -10,18 +10,8 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { ORDER_STATUS_LABELS as STATUS_LABELS } from '../types';
 import type { OrderPlatform, OrderStatus, PaymentStatus } from '../types';
-
-const STATUS_LABELS: Record<OrderStatus, string> = {
-  inquiry: 'Anfrage',
-  ordered: 'Bestellt',
-  paid: 'Bezahlt',
-  in_production: 'Produktion',
-  shipped: 'Versendet',
-  completed: 'Abgeschlossen',
-  issue: 'Problem',
-  cancelled: 'Storniert',
-};
 
 const PAYMENT_LABELS: Record<PaymentStatus, string> = {
   pending: 'Offen',

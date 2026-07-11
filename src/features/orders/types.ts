@@ -16,6 +16,23 @@ export const ShippingStatusEnum = z.enum(['not_shipped', 'shipped', 'delivered',
 export const OrderPlatformEnum = z.enum(['etsy', 'ebay', 'kleinanzeigen', 'direkt', 'website']);
 export const OrderEventTypeEnum = z.enum(['status_change', 'note_added', 'tracking_added']);
 
+export const ORDER_STATUS_LABELS: Record<z.infer<typeof OrderStatusEnum>, string> = {
+  inquiry: 'Anfrage',
+  ordered: 'Bestellt',
+  paid: 'Bezahlt',
+  in_production: 'Produktion',
+  shipped: 'Versendet',
+  completed: 'Abgeschlossen',
+  issue: 'Problem',
+  cancelled: 'Storniert',
+};
+
+/** Statusoptionen in der üblichen Reihenfolge (Badges, Inline-Wechsel). */
+export const ORDER_STATUS_OPTIONS = OrderStatusEnum.options.map((value) => ({
+  value,
+  label: ORDER_STATUS_LABELS[value],
+}));
+
 const uuid = z.string().uuid();
 const nullableUuid = uuid.nullable();
 const nullableText = z.string().trim().nullable();

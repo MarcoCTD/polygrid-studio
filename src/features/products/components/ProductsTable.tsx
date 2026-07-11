@@ -11,15 +11,19 @@ import {
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useNavigate } from '@tanstack/react-router';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
-import type { Product } from '../schema';
+import { InlineStatusBadge } from '@/components/shared';
+import { statusEnum, type Product, type Status } from '../schema';
+import { updateProduct } from '../db';
 import { StatusBadge } from './StatusBadge';
+import { LicenseWarningDialog } from './LicenseWarningDialog';
 import { MarginCell } from './MarginCell';
 import { PlatformIcons } from './PlatformIcons';
 import { formatRelativeDate, formatEUR } from '../utils';
 import { useProductsUIStore, type ColumnConfig } from '../productsUiStore';
-import { LICENSE_RISK_LABELS } from '../labels';
+import { LICENSE_RISK_LABELS, STATUS_LABELS } from '../labels';
 
 /** Produktzeile inkl. Verkaufszahl aus dem salesStatsService (Modul 15). */
 export type ProductWithSales = Product & { units_sold?: number };
@@ -40,12 +44,18 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
 // Column definitions — all possible columns
 // ============================================================
 
+const STATUS_OPTIONS = statusEnum.options.map((status) => ({
+  value: status,
+  label: STATUS_LABELS[status],
+}));
+
 function createAllColumns(
   selectedIds: Set<string>,
   toggleSelected: (id: string) => void,
   selectAll: (ids: string[]) => void,
   clearSelection: () => void,
   allProductIds: string[],
+  onStatusSelect: (product: ProductWithSales, status: Status) => Promise<void>,
 ): Record<string, ColumnDef<ProductWithSales, unknown>> {
   const selectColumn = columnHelper.display({
     id: 'select',
@@ -82,8 +92,16 @@ function createAllColumns(
     select: selectColumn,
     status: columnHelper.accessor('status', {
       header: 'Status',
-      size: 100,
-      cell: (info) => <StatusBadge status={info.getValue()} />,
+      size: 120,
+      cell: (info) => (
+        <InlineStatusBadge
+          value={info.getValue()}
+          options={STATUS_OPTIONS}
+          renderBadge={(status) => <StatusBadge status={status} />}
+          onSelect={(status) => onStatusSelect(info.row.original, status)}
+          ariaLabel={`Status von ${info.row.original.name} ändern`}
+        />
+      ),
     }) as ColumnDef<ProductWithSales, unknown>,
     // Name: flex column — no fixed size, grows to fill available space
     name: columnHelper.accessor('name', {
@@ -241,11 +259,14 @@ function colStyle(size: number | undefined): React.CSSProperties {
 interface ProductsTableProps {
   products: ProductWithSales[];
   isLoading: boolean;
+  /** Nach erfolgreichem Inline-Statuswechsel (Liste neu laden). */
+  onChanged: () => void;
 }
 
-export function ProductsTable({ products, isLoading }: ProductsTableProps) {
+export function ProductsTable({ products, isLoading, onChanged }: ProductsTableProps) {
   const navigate = useNavigate();
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [pendingOnlineProduct, setPendingOnlineProduct] = useState<ProductWithSales | null>(null);
 
   const {
     selectedIds,
@@ -260,9 +281,49 @@ export function ProductsTable({ products, isLoading }: ProductsTableProps) {
 
   const allProductIds = useMemo(() => products.map((p) => p.id), [products]);
 
+  /** Persistiert den Statuswechsel über denselben Service-Pfad wie der Editor. */
+  const applyStatus = useCallback(
+    async (product: ProductWithSales, status: Status) => {
+      try {
+        await updateProduct(product.id, { status });
+        toast.success(`Status geändert: ${STATUS_LABELS[status]}`);
+        onChanged();
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : 'Status konnte nicht geändert werden',
+        );
+      }
+    },
+    [onChanged],
+  );
+
+  const handleStatusSelect = useCallback(
+    async (product: ProductWithSales, status: Status) => {
+      // Gleiche Lizenz-Regel wie im Produkt-Editor (OverviewTab.handleStatusChange):
+      // online nur nach Bestätigung bei fehlendem/riskantem/ungeklärtem Risiko.
+      if (status === 'online') {
+        const risk = product.license_risk;
+        if (!risk || risk === 'risky' || risk === 'review_needed') {
+          setPendingOnlineProduct(product);
+          return;
+        }
+      }
+      await applyStatus(product, status);
+    },
+    [applyStatus],
+  );
+
   const allColumns = useMemo(
-    () => createAllColumns(selectedIds, toggleSelected, selectAll, clearSelection, allProductIds),
-    [selectedIds, toggleSelected, selectAll, clearSelection, allProductIds],
+    () =>
+      createAllColumns(
+        selectedIds,
+        toggleSelected,
+        selectAll,
+        clearSelection,
+        allProductIds,
+        handleStatusSelect,
+      ),
+    [selectedIds, toggleSelected, selectAll, clearSelection, allProductIds, handleStatusSelect],
   );
 
   const columns = useMemo(
@@ -405,6 +466,7 @@ export function ProductsTable({ products, isLoading }: ProductsTableProps) {
   }
 
   return (
+    <>
     <div className="flex flex-1 flex-col overflow-hidden rounded-lg border border-border-subtle bg-bg-elevated dark:border-transparent dark:shadow-md">
       {/*
        * Single scroll container that handles BOTH axes:
@@ -508,5 +570,23 @@ export function ProductsTable({ products, isLoading }: ProductsTableProps) {
         </div>
       </div>
     </div>
+
+    {/* Lizenz-Gate auch beim Inline-Wechsel auf online (wie im Editor) */}
+    {pendingOnlineProduct ? (
+      <LicenseWarningDialog
+        open
+        onOpenChange={(open) => {
+          if (!open) setPendingOnlineProduct(null);
+        }}
+        product={pendingOnlineProduct}
+        onConfirm={() => {
+          const product = pendingOnlineProduct;
+          setPendingOnlineProduct(null);
+          if (product) void applyStatus(product, 'online');
+        }}
+        onCancel={() => setPendingOnlineProduct(null)}
+      />
+    ) : null}
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import {
   createColumnHelper,
@@ -11,13 +11,22 @@ import {
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowDown, ArrowUp, ArrowUpDown, ImageIcon } from 'lucide-react';
+import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { InlineStatusBadge } from '@/components/shared';
 import { formatEUR, formatRelativeDate } from '@/features/products/utils';
-import type { ListingListItem } from '../listingsService';
+import { updateListingsStatus, type ListingListItem } from '../listingsService';
+import { LISTING_STATUS_LABELS } from '../constants';
+import { ListingStatusEnum, type ListingStatus } from '../schemas';
 import { resolveImageSrc } from '../utils/resolveImagePath';
 import { ListingStatusBadge } from './ListingStatusBadge';
 import { PlatformStatusBadges } from './PlatformStatusBadges';
+
+const STATUS_OPTIONS = ListingStatusEnum.options.map((status) => ({
+  value: status,
+  label: LISTING_STATUS_LABELS[status],
+}));
 
 const ROW_HEIGHT = 56;
 const TITLE_COL_MIN_WIDTH = 240;
@@ -31,6 +40,8 @@ interface ListingsTableProps {
   onSelectAll: (ids: string[]) => void;
   onClearSelection: () => void;
   onOpenListing: (listing: ListingListItem) => void;
+  /** Nach erfolgreichem Inline-Statuswechsel (Liste neu laden). */
+  onChanged: () => void | Promise<void>;
 }
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
@@ -72,10 +83,27 @@ export function ListingsTable({
   onSelectAll,
   onClearSelection,
   onOpenListing,
+  onChanged,
 }: ListingsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'updated_at', desc: true }]);
   const parentRef = useRef<HTMLDivElement>(null);
   const allListingIds = useMemo(() => listings.map((listing) => listing.id), [listings]);
+
+  const handleStatusSelect = useCallback(
+    async (listing: ListingListItem, status: ListingStatus) => {
+      try {
+        // Gleicher zentraler Pfad wie die Bulk-Aktionen (updateListingsStatus).
+        await updateListingsStatus([listing.id], status);
+        toast.success(`Status geändert: ${LISTING_STATUS_LABELS[status]}`);
+        await onChanged();
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : 'Status konnte nicht geändert werden',
+        );
+      }
+    },
+    [onChanged],
+  );
 
   const columns = useMemo(
     () =>
@@ -112,8 +140,16 @@ export function ListingsTable({
         }),
         columnHelper.accessor('status', {
           header: 'Status',
-          size: 100,
-          cell: (info) => <ListingStatusBadge status={info.getValue()} />,
+          size: 120,
+          cell: (info) => (
+            <InlineStatusBadge
+              value={info.getValue()}
+              options={STATUS_OPTIONS}
+              renderBadge={(status) => <ListingStatusBadge status={status} />}
+              onSelect={(status) => handleStatusSelect(info.row.original, status)}
+              ariaLabel={`Status von ${info.row.original.master_title} ändern`}
+            />
+          ),
         }),
         columnHelper.display({
           id: 'thumbnail',
@@ -201,7 +237,15 @@ export function ListingsTable({
           ),
         }),
       ] as ColumnDef<ListingListItem, unknown>[],
-    [allListingIds, onClearSelection, onOpenListing, onSelectAll, onToggleSelected, selectedIds],
+    [
+      allListingIds,
+      handleStatusSelect,
+      onClearSelection,
+      onOpenListing,
+      onSelectAll,
+      onToggleSelected,
+      selectedIds,
+    ],
   );
 
   // TanStack Table exposes callback-heavy APIs that trigger the React Compiler lint rule.
