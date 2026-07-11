@@ -1,6 +1,12 @@
 # Datenbank-Schema
 
-PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Juli 2026 | Version 1.8
+PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Juli 2026 | Version 1.9
+
+> **Änderungen in v1.9 gegenüber v1.8 (Addendum Modul 17 – PolyGrid-Layout und Bausteine):**
+>
+> - `documents` additiv um `content_blocks` (TEXT JSON) erweitert (Migration `0016_modul_17_addendum_content_blocks`): geordnetes Array an-/abwählbarer Text-Bausteine `{ id, kind, enabled, title, body_type, items, text }`
+> - `documents.layout` um `polygrid` erweitert (neues Default-Layout); `snapshot` friert zusätzlich die aktivierten Bausteine (mit aufgelösten Variablen) sowie Aussteller-Kontakt (E-Mail/Telefon/Website) und Empfänger-E-Mail ein
+> - Neue Settings-Keys: `invoice_email`, `invoice_phone`, `invoice_website` (Kontakt für Layout polygrid), `document_default_blocks_quote`/`document_default_blocks_invoice` (Nutzer-Standard der Bausteine, JSON-Array)
 
 > **Änderungen in v1.8 gegenüber v1.7:**
 >
@@ -501,8 +507,9 @@ Junction-Tabelle für Sammelauszahlungen. Eine Banktransaktion (Plattform-Auszah
 | service_date        | TEXT        | Nein    | Leistungsdatum oder -zeitraum (Freitext, Pflicht beim Ausstellen einer Rechnung)                      |
 | intro_text          | TEXT        | Nein    | Freitext über den Positionen, {{variablen}} erlaubt                                                   |
 | outro_text          | TEXT        | Nein    | Freitext unter den Positionen, {{variablen}} erlaubt                                                  |
-| layout              | TEXT        | Ja      | `modern`, `classic`                                                                                   |
-| snapshot            | TEXT (JSON) | Nein    | Bei Ausstellung eingefrorene Kopie ALLER gerenderten Daten (Aussteller, Empfänger, Positionen, Texte mit aufgelösten Variablen, Farbe, Logo, §19-Satz). Druck/PDF rendert NUR hieraus |
+| layout              | TEXT        | Ja      | `polygrid` (Default seit Addendum), `modern`, `classic`                                               |
+| content_blocks      | TEXT (JSON) | Nein    | Geordnetes Array an-/abwählbarer Text-Bausteine `{ id, kind, enabled, title, body_type: bullets\|paragraph, items, text }`; NULL nur bei Alt-Dokumenten vor Migration 0016 (parst als `[]`) |
+| snapshot            | TEXT (JSON) | Nein    | Bei Ausstellung eingefrorene Kopie ALLER gerenderten Daten (Aussteller inkl. Kontakt, Empfänger inkl. E-Mail, Positionen, Texte und aktivierte Bausteine mit aufgelösten Variablen, Farbe, Logo, §19-Satz). Druck/PDF rendert NUR hieraus |
 | pdf_path            | TEXT        | Nein    | Pfad der exportierten PDF                                                                             |
 | created_at          | TEXT (ISO)  | Ja      |                                                                                                       |
 | updated_at          | TEXT (ISO)  | Ja      |                                                                                                       |
@@ -597,11 +604,13 @@ Diese Keys werden über verschiedene Module hinweg verwendet. Die vollständige 
 - `invoice_owner_name`, `invoice_street`, `invoice_zip`, `invoice_city`: String (Default: `""`) – Aussteller-Anschrift (Firmenname kommt aus `company_name`)
 - `invoice_tax_number`, `invoice_vat_id`: String (Default: `""`) – mindestens eines ist Pflicht beim Ausstellen von Rechnungen
 - `invoice_iban`, `invoice_bic`, `invoice_bank_name`: String (Default: `""`)
+- `invoice_email`, `invoice_phone`, `invoice_website`: String (Default: `""`) – Kontakt für VON-Block und Fußzeile des Layouts polygrid (Addendum)
 - `invoice_payment_terms_days`: Number (Default: 14) – Zahlungsziel für due_date
 - `invoice_quote_validity_days`: Number (Default: 30) – Angebots-Gültigkeit für valid_until
 - `invoice_logo`: String (Default: `""`) – Logo als Base64-Data-URL (Kopie der gewählten Datei, E17-04)
-- `invoice_default_layout`: String (Default: `"modern"`) – `modern` oder `classic`
+- `invoice_default_layout`: String (Default: `"polygrid"` seit Addendum) – `polygrid`, `modern` oder `classic`
 - `invoice_brand_color`: String (Default: `""`) – feste Markenfarbe (Hex); leer = App-Akzentfarbe
+- `document_default_blocks_quote`, `document_default_blocks_invoice`: JSON-Array (kein DEFAULTS-Eintrag; ungesetzt/leer = mitgelieferte Konstanten) – Nutzer-Standard der Bausteine pro Dokumenttyp (Addendum, Spec 3.3)
 
 **Sicherheit & Backup (Modul 11):**
 

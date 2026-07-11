@@ -10,6 +10,7 @@ import {
   DocumentSnapshotSchema,
   KLEINUNTERNEHMER_SATZ,
   calculateDocumentTotal,
+  type ContentBlock,
   type DocumentLayout,
   type DocumentSnapshot,
   type DocumentType,
@@ -39,8 +40,15 @@ export interface ComposeSnapshotArgs {
   type: DocumentType;
   number: string;
   issuer: SnapshotIssuer;
-  recipient: { name: string; contact_person: string | null; address: string | null };
+  recipient: {
+    name: string;
+    contact_person: string | null;
+    address: string | null;
+    email: string | null;
+  };
   line_items: LineItem[];
+  /** Bausteine des Dokuments – eingefroren werden nur die aktivierten. */
+  content_blocks: ContentBlock[];
   issue_date: string;
   due_date: string | null;
   valid_until: string | null;
@@ -51,8 +59,33 @@ export interface ComposeSnapshotArgs {
   accent_color: string;
   logo: string | null;
   related_document_number: string | null;
-  /** Werte für {{kundenname}}, {{projektname}}, {{firmenname}}, {{datum}}. */
+  /**
+   * Werte für {{kundenname}}, {{projektname}}, {{firmenname}}, {{datum}}
+   * sowie {{zahlungsziel_tage}}, {{iban}}, {{bic}}, {{kontoinhaber}},
+   * {{gueltig_bis}} (Addendum, Bausteine).
+   */
   variable_values: Record<string, string | null>;
+}
+
+/**
+ * Nur aktivierte Bausteine, in Reihenfolge, mit aufgelösten Variablen in
+ * Titel, Text und Bullets. validity_signature existiert bei Rechnungen
+ * nicht (Spec 3.2) und wird dort auch defensiv herausgefiltert.
+ */
+function freezeContentBlocks(
+  type: DocumentType,
+  blocks: ContentBlock[],
+  values: Record<string, string | null>,
+): ContentBlock[] {
+  return blocks
+    .filter((block) => block.enabled)
+    .filter((block) => !(type === 'invoice' && block.kind === 'validity_signature'))
+    .map((block) => ({
+      ...block,
+      title: resolveDocumentVariables(block.title, values) ?? block.title,
+      text: resolveDocumentVariables(block.text, values) ?? block.text,
+      items: block.items.map((item) => resolveDocumentVariables(item, values) ?? item),
+    }));
 }
 
 export function composeDocumentSnapshot(args: ComposeSnapshotArgs): DocumentSnapshot {
@@ -72,8 +105,11 @@ export function composeDocumentSnapshot(args: ComposeSnapshotArgs): DocumentSnap
     layout: args.layout,
     accent_color: args.accent_color,
     logo: args.logo || null,
-    // §19-Satz ist bei Rechnungen fix und nicht abwählbar.
-    kleinunternehmer_hinweis: args.type === 'invoice' ? KLEINUNTERNEHMER_SATZ : null,
+    // §19-Satz ist fix und nicht abwählbar. Seit dem Addendum auch auf
+    // Angeboten (wie in der Design-Referenz); eingefrorene Alt-Snapshots
+    // bleiben unverändert (EA-05 in ENTSCHEIDUNGEN_MODUL_17_ADDENDUM.md).
+    kleinunternehmer_hinweis: KLEINUNTERNEHMER_SATZ,
     related_document_number: args.related_document_number,
+    content_blocks: freezeContentBlocks(args.type, args.content_blocks, args.variable_values),
   } satisfies DocumentSnapshot);
 }

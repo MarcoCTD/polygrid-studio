@@ -99,11 +99,16 @@ export const DEFAULTS = {
   invoice_iban: '',
   invoice_bic: '',
   invoice_bank_name: '',
+  // Kontakt für Layout polygrid (Addendum): VON-Block und Fußzeile
+  invoice_email: '',
+  invoice_phone: '',
+  invoice_website: '',
   invoice_payment_terms_days: 14,
   invoice_quote_validity_days: 30,
   // Logo als Data-URL (Kopie der gewählten Datei, siehe ENTSCHEIDUNGEN_MODUL_17 E17-04)
   invoice_logo: '',
-  invoice_default_layout: 'modern',
+  // Seit dem Addendum ist polygrid das Default-Layout (modern/classic bleiben wählbar)
+  invoice_default_layout: 'polygrid',
   // Feste Markenfarbe (Hex); leer = App-Akzentfarbe verwenden
   invoice_brand_color: '',
 } as const;

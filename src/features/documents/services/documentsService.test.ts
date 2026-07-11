@@ -90,6 +90,7 @@ const {
   cancelInvoice,
   convertQuoteToInvoice,
   createDocument,
+  getDefaultContentBlocksForType,
   getDocumentById,
   getDocuments,
   getMissingIssueRequirements,
@@ -97,11 +98,13 @@ const {
   markInvoicePaid,
   markInvoicePaidWithNewOrder,
   markQuoteRejected,
+  saveDefaultContentBlocksForType,
   softDeleteDocument,
   updateDocument,
 } = await import('./documentsService');
 const { resetDocumentNumberGeneratorForTests } = await import('./documentNumber');
 const { KLEINUNTERNEHMER_SATZ } = await import('../schemas');
+const { buildDefaultContentBlocks } = await import('../contentBlocks');
 const { buildEuerYearReport } = await import('@/features/finance/services/euerYear');
 const { resetReceiptNumberGeneratorForTests } =
   await import('@/features/orders/services/receiptNumber');
@@ -343,6 +346,9 @@ describe('Pflichtangaben (Spec 2.3)', () => {
         iban: '',
         bic: '',
         bank_name: '',
+        email: '',
+        phone: '',
+        website: '',
       },
       { name: 'Kunde', address: null },
     );
@@ -587,6 +593,186 @@ describe('Als bezahlt markieren + EÜR (Modul 14)', () => {
     const draft = await createInvoiceDraft();
 
     await expect(markInvoicePaid(draft.id)).rejects.toThrow(/ausgestellte Rechnungen/);
+  });
+});
+
+describe('Bausteine (Addendum Modul 17)', () => {
+  it('neue Dokumente erhalten die Standard-Bausteine ihres Typs', async () => {
+    const quote = await createDocument({ type: 'quote', client_id: CLIENT_ID });
+    const invoice = await createInvoiceDraft();
+
+    // Angebot: included/excluded/cooperation/process/payment_terms/validity_signature an
+    const quoteEnabled = quote.content_blocks
+      .filter((block) => block.enabled)
+      .map((block) => block.kind);
+    expect(quoteEnabled).toEqual([
+      'included',
+      'excluded',
+      'cooperation',
+      'process',
+      'payment_terms',
+      'validity_signature',
+    ]);
+    const optionalOffer = quote.content_blocks.find((block) => block.kind === 'optional_offer');
+    expect(optionalOffer?.enabled).toBe(false);
+
+    // Rechnung: nur payment_terms an, validity_signature existiert nicht
+    const invoiceEnabled = invoice.content_blocks
+      .filter((block) => block.enabled)
+      .map((block) => block.kind);
+    expect(invoiceEnabled).toEqual(['payment_terms']);
+    expect(invoice.content_blocks.some((block) => block.kind === 'validity_signature')).toBe(false);
+  });
+
+  it('friert beim Ausstellen nur aktivierte Bausteine mit aufgelösten Variablen ein', async () => {
+    setSettingRow('invoice_payment_terms_days', 21);
+    const quote = await createDocument({
+      type: 'quote',
+      client_id: CLIENT_ID,
+      line_items: LINE_ITEMS,
+    });
+
+    const issued = await issueDocument(quote.id, new Date(2026, 6, 10));
+    const frozen = issued.snapshot?.content_blocks ?? [];
+
+    // Nur aktivierte Blöcke, optional_offer (Default aus) fehlt
+    expect(frozen.every((block) => block.enabled)).toBe(true);
+    expect(frozen.some((block) => block.kind === 'optional_offer')).toBe(false);
+
+    // payment_terms: IBAN/BIC/Kontoinhaber/Zahlungsziel aus den Settings aufgelöst
+    const payment = frozen.find((block) => block.kind === 'payment_terms');
+    expect(payment?.text).toContain('innerhalb von 21 Tagen');
+    expect(payment?.text).toContain('IBAN: DE02120300000000202051');
+    expect(payment?.text).toContain('BIC: BYLADEM1001');
+    expect(payment?.text).toContain('Kontoinhaber: Marco Kromer');
+    expect(payment?.text).not.toContain('{{');
+
+    // validity_signature: {{gueltig_bis}} = Ausstelldatum + Angebots-Gültigkeit (30 Tage)
+    const validity = frozen.find((block) => block.kind === 'validity_signature');
+    expect(validity?.text).toContain('bis zum 09.08.2026 gültig');
+  });
+
+  it('nachträgliche Änderung der Standard-Bausteine verändert ausgestellte Dokumente nicht', async () => {
+    const quote = await createDocument({
+      type: 'quote',
+      client_id: CLIENT_ID,
+      line_items: LINE_ITEMS,
+    });
+    const issued = await issueDocument(quote.id, new Date(2026, 6, 10));
+    const frozenBefore = issued.snapshot?.content_blocks;
+    expect(frozenBefore?.length).toBeGreaterThan(0);
+
+    // Nutzer-Standard NACH dem Ausstellen komplett umkrempeln
+    const manipulated = buildDefaultContentBlocks('quote').map((block) => ({
+      ...block,
+      title: 'GEÄNDERT',
+      text: 'GEÄNDERT',
+      items: ['GEÄNDERT'],
+    }));
+    await saveDefaultContentBlocksForType('quote', manipulated);
+    // Auch die Settings-Variablenquellen ändern
+    setSettingRow('invoice_iban', 'DE99999999999999999999');
+    setSettingRow('invoice_payment_terms_days', 99);
+
+    const reloaded = await getDocumentById(issued.id);
+    expect(reloaded?.snapshot?.content_blocks).toEqual(frozenBefore);
+    const payment = reloaded?.snapshot?.content_blocks.find(
+      (block) => block.kind === 'payment_terms',
+    );
+    expect(payment?.text).toContain('DE02120300000000202051');
+    expect(payment?.text).not.toContain('DE99999999999999999999');
+
+    // Neue Dokumente nutzen dagegen den geänderten Standard
+    const next = await createDocument({ type: 'quote', client_id: CLIENT_ID });
+    expect(next.content_blocks[0]?.title).toBe('GEÄNDERT');
+  });
+
+  it('Nutzer-Standard aus app_settings überschreibt die Konstanten, defekte Werte fallen zurück', async () => {
+    const custom = buildDefaultContentBlocks('invoice').map((block) => ({
+      ...block,
+      enabled: block.kind === 'payment_terms' || block.kind === 'included',
+    }));
+    await saveDefaultContentBlocksForType('invoice', custom);
+
+    const withDefault = await getDefaultContentBlocksForType('invoice');
+    expect(withDefault.filter((block) => block.enabled).map((block) => block.kind)).toEqual([
+      'included',
+      'payment_terms',
+    ]);
+
+    // Defekter Settings-Wert → Konstanten
+    setSettingRow('document_default_blocks_invoice', { kaputt: true });
+    const fallback = await getDefaultContentBlocksForType('invoice');
+    expect(fallback.map((block) => block.kind)).toEqual(
+      buildDefaultContentBlocks('invoice').map((block) => block.kind),
+    );
+  });
+
+  it('Umwandlung Angebot→Rechnung lädt Rechnungs-Defaults statt Angebots-Bausteine (Spec 3.5)', async () => {
+    const quote = await createDocument({
+      type: 'quote',
+      client_id: CLIENT_ID,
+      line_items: LINE_ITEMS,
+    });
+    // Angebots-Bausteine individuell anpassen – dürfen NICHT übernommen werden
+    await updateDocument(quote.id, {
+      content_blocks: quote.content_blocks.map((block) => ({
+        ...block,
+        title: `Individuell: ${block.title}`,
+      })),
+    });
+    await issueDocument(quote.id, new Date(2026, 6, 10));
+
+    const { invoice } = await convertQuoteToInvoice(quote.id);
+
+    expect(invoice.content_blocks.some((block) => block.title.startsWith('Individuell:'))).toBe(
+      false,
+    );
+    expect(
+      invoice.content_blocks.filter((block) => block.enabled).map((block) => block.kind),
+    ).toEqual(['payment_terms']);
+    expect(invoice.content_blocks.some((block) => block.kind === 'validity_signature')).toBe(false);
+  });
+
+  it('validity_signature wird bei Rechnungen auch defensiv nie eingefroren', async () => {
+    const draft = await createInvoiceDraft();
+    // Manipulierter Draft mit einem (eigentlich unzulässigen) Unterschrifts-Block
+    await updateDocument(draft.id, {
+      content_blocks: [
+        ...draft.content_blocks,
+        {
+          id: 'sig-1',
+          kind: 'validity_signature',
+          enabled: true,
+          title: 'Unterschrift',
+          body_type: 'paragraph',
+          items: [],
+          text: 'Sollte nie erscheinen',
+        },
+      ],
+    });
+
+    const issued = await issueDocument(draft.id, new Date(2026, 6, 10));
+    expect(
+      issued.snapshot?.content_blocks.some((block) => block.kind === 'validity_signature'),
+    ).toBe(false);
+  });
+
+  it('Alt-Dokumente ohne content_blocks-Spalte parsen als leere Liste', async () => {
+    const draft = await createInvoiceDraft();
+    execute('UPDATE documents SET content_blocks = NULL WHERE id = $1', [draft.id]);
+
+    const reloaded = await getDocumentById(draft.id);
+    expect(reloaded?.content_blocks).toEqual([]);
+  });
+
+  it('Storno übernimmt keine Bausteine (EA-07)', async () => {
+    const draft = await createInvoiceDraft();
+    const issued = await issueDocument(draft.id, new Date(2026, 6, 10));
+
+    const { storno } = await cancelInvoice(issued.id, new Date(2026, 6, 12));
+    expect(storno.content_blocks).toEqual([]);
+    expect(storno.snapshot?.content_blocks).toEqual([]);
   });
 });
 

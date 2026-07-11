@@ -76,6 +76,35 @@ export const STANDARD_VARIABLES: StandardVariable[] = [
     description: 'Name des Website-Projekts (in Dokumenten automatisch befüllt)',
   },
   {
+    name: 'zahlungsziel_tage',
+    label: 'Zahlungsziel (Tage)',
+    description: 'Zahlungsziel in Tagen aus den Rechnungsstellungs-Einstellungen',
+    source: { type: 'setting', settingKey: 'invoice_payment_terms_days' },
+  },
+  {
+    name: 'iban',
+    label: 'IBAN',
+    description: 'IBAN aus den Rechnungsstellungs-Einstellungen',
+    source: { type: 'setting', settingKey: 'invoice_iban' },
+  },
+  {
+    name: 'bic',
+    label: 'BIC',
+    description: 'BIC aus den Rechnungsstellungs-Einstellungen',
+    source: { type: 'setting', settingKey: 'invoice_bic' },
+  },
+  {
+    name: 'kontoinhaber',
+    label: 'Kontoinhaber',
+    description: 'Inhabername aus den Rechnungsstellungs-Einstellungen',
+    source: { type: 'setting', settingKey: 'invoice_owner_name' },
+  },
+  {
+    name: 'gueltig_bis',
+    label: 'Gültig bis',
+    description: 'Gültig-bis-Datum des Angebots (in Dokumenten automatisch befüllt)',
+  },
+  {
     name: 'lieferzeit',
     label: 'Lieferzeit',
     description: 'Voraussichtliche Lieferzeit, z.B. „3–5 Werktage“',

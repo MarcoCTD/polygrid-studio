@@ -13,17 +13,21 @@
  *   Nummer und Referenz auf das Original; das Original wird nur im Status
  *   auf cancelled gesetzt, sein Snapshot bleibt unverändert.
  */
-import { getDatabase } from '@/services/database';
+import { getDatabase, getSetting, setSetting } from '@/services/database';
 import { getSettingWithDefault } from '@/services/settings';
 import { createOrder, getOrderById, updateOrder } from '@/features/orders/services';
 import type { Order } from '@/features/orders/types';
 import { ACCENT_PRESETS, type AccentPresetKey } from '@/utils/colors';
 import {
+  ContentBlockListSchema,
+  DocumentLayoutEnum,
   DocumentSchema,
   NewDocumentSchema,
   UpdateDocumentSchema,
   calculateDocumentTotal,
   type BusinessDocument,
+  type ContentBlock,
+  type DocumentLayout,
   type DocumentListItem,
   type DocumentSnapshot,
   type DocumentStatus,
@@ -33,6 +37,7 @@ import {
   type SnapshotIssuer,
   type UpdateDocumentInput,
 } from '../schemas';
+import { DOCUMENT_DEFAULT_BLOCKS_SETTING_KEYS, buildDefaultContentBlocks } from '../contentBlocks';
 import { composeDocumentSnapshot } from './composeSnapshot';
 import { generateDocumentNumber } from './documentNumber';
 import {
@@ -80,6 +85,7 @@ function rowToDocument(row: Row): BusinessDocument {
     intro_text: row.intro_text ?? null,
     outro_text: row.outro_text ?? null,
     layout: row.layout,
+    content_blocks: parseJsonColumn<ContentBlock[]>(row.content_blocks, []),
     snapshot: parseJsonColumn<DocumentSnapshot | null>(row.snapshot, null),
     pdf_path: row.pdf_path ?? null,
     created_at: row.created_at,
@@ -113,6 +119,9 @@ export async function loadInvoiceSettings(): Promise<InvoiceSettings> {
     iban,
     bic,
     bankName,
+    email,
+    phone,
+    website,
     paymentTermsDays,
     quoteValidityDays,
     logo,
@@ -130,6 +139,9 @@ export async function loadInvoiceSettings(): Promise<InvoiceSettings> {
     getSettingWithDefault('invoice_iban'),
     getSettingWithDefault('invoice_bic'),
     getSettingWithDefault('invoice_bank_name'),
+    getSettingWithDefault('invoice_email'),
+    getSettingWithDefault('invoice_phone'),
+    getSettingWithDefault('invoice_website'),
     getSettingWithDefault('invoice_payment_terms_days'),
     getSettingWithDefault('invoice_quote_validity_days'),
     getSettingWithDefault('invoice_logo'),
@@ -150,6 +162,9 @@ export async function loadInvoiceSettings(): Promise<InvoiceSettings> {
       iban: String(iban ?? '').trim(),
       bic: String(bic ?? '').trim(),
       bank_name: String(bankName ?? '').trim(),
+      email: String(email ?? '').trim(),
+      phone: String(phone ?? '').trim(),
+      website: String(website ?? '').trim(),
     },
     payment_terms_days: Number(paymentTermsDays) || 14,
     quote_validity_days: Number(quoteValidityDays) || 30,
@@ -158,6 +173,12 @@ export async function loadInvoiceSettings(): Promise<InvoiceSettings> {
     default_layout: String(defaultLayout ?? 'modern'),
     accent_color_key: String(accentColorKey ?? 'sap_blue'),
   };
+}
+
+/** Standard-Layout aus den Settings; Unbekanntes fällt auf das Default-Layout zurück. */
+function parseDocumentLayout(value: string): DocumentLayout {
+  const parsed = DocumentLayoutEnum.safeParse(value);
+  return parsed.success ? parsed.data : 'polygrid';
 }
 
 /** Markenfarbe aus den Einstellungen, sonst die App-Akzentfarbe (Hell-Variante). */
@@ -174,11 +195,12 @@ interface DocumentClient {
   name: string;
   contact_person: string | null;
   address: string | null;
+  email: string | null;
 }
 
 async function loadClient(clientId: string): Promise<DocumentClient | null> {
   const rows = await getDatabase().select<Row[]>(
-    'SELECT id, name, contact_person, address FROM clients WHERE id = $1 LIMIT 1',
+    'SELECT id, name, contact_person, address, email FROM clients WHERE id = $1 LIMIT 1',
     [clientId],
   );
   const row = rows[0];
@@ -188,7 +210,41 @@ async function loadClient(clientId: string): Promise<DocumentClient | null> {
     name: String(row.name ?? ''),
     contact_person: (row.contact_person as string | null) ?? null,
     address: (row.address as string | null) ?? null,
+    email: (row.email as string | null) ?? null,
   };
+}
+
+// ------------------------------------------------------------
+// Standard-Bausteine pro Typ (Addendum, Spec 3.2/3.3)
+// ------------------------------------------------------------
+/**
+ * Nutzer-Standard aus app_settings (document_default_blocks_quote/_invoice),
+ * sonst die mitgelieferten Konstanten. Defekte gespeicherte Werte fallen
+ * still auf die Konstanten zurück – ein neues Dokument darf nie scheitern.
+ */
+export async function getDefaultContentBlocksForType(type: DocumentType): Promise<ContentBlock[]> {
+  try {
+    const stored = await getSetting<unknown>(DOCUMENT_DEFAULT_BLOCKS_SETTING_KEYS[type]);
+    if (Array.isArray(stored) && stored.length > 0) {
+      return ContentBlockListSchema.parse(stored);
+    }
+  } catch (error) {
+    console.error('[Documents] Nutzer-Standard-Bausteine unlesbar, nutze Konstanten', error);
+  }
+  return buildDefaultContentBlocks(type);
+}
+
+/** Speichert die aktuelle Baustein-Konfiguration als Nutzer-Standard (Spec 3.3). */
+export async function saveDefaultContentBlocksForType(
+  type: DocumentType,
+  blocks: ContentBlock[],
+): Promise<void> {
+  try {
+    const parsed = ContentBlockListSchema.parse(blocks);
+    await setSetting(DOCUMENT_DEFAULT_BLOCKS_SETTING_KEYS[type], parsed);
+  } catch (error) {
+    throw new Error(`Standard-Bausteine konnten nicht gespeichert werden: ${errorText(error)}`);
+  }
 }
 
 async function loadProjectName(projectId: string | null): Promise<string | null> {
@@ -260,15 +316,20 @@ export async function createDocument(data: NewDocumentInput): Promise<BusinessDo
     const id = crypto.randomUUID();
     const timestamp = now();
     const lineItems = input.line_items ?? [];
-    const layout = input.layout ?? (settings.default_layout === 'classic' ? 'classic' : 'modern');
+    const layout = input.layout ?? parseDocumentLayout(settings.default_layout);
+    // Ohne explizite Bausteine: Nutzer-Standard bzw. Konstanten des Typs.
+    // Deshalb lädt auch die Umwandlung Angebot→Rechnung die RECHNUNGS-Defaults
+    // statt der Angebots-Bausteine (Spec 3.5).
+    const contentBlocks =
+      input.content_blocks ?? (await getDefaultContentBlocksForType(input.type));
 
     await db.execute(
       `INSERT INTO documents (
         id, type, number, status, client_id, project_id, order_id,
         related_document_id, line_items, total, issue_date, due_date,
         valid_until, service_date, intro_text, outro_text, layout,
-        snapshot, pdf_path, created_at, updated_at, deleted_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
+        content_blocks, snapshot, pdf_path, created_at, updated_at, deleted_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
       [
         id,
         input.type,
@@ -287,6 +348,7 @@ export async function createDocument(data: NewDocumentInput): Promise<BusinessDo
         input.intro_text ?? null,
         input.outro_text ?? null,
         layout,
+        JSON.stringify(contentBlocks),
         null,
         null,
         timestamp,
@@ -339,6 +401,11 @@ export async function updateDocument(
       setClauses.push(`line_items = $${params.length}`);
       params.push(calculateDocumentTotal(input.line_items));
       setClauses.push(`total = $${params.length}`);
+    }
+
+    if (input.content_blocks !== undefined) {
+      params.push(JSON.stringify(input.content_blocks));
+      setClauses.push(`content_blocks = $${params.length}`);
     }
 
     if (setClauses.length > 1) {
@@ -490,6 +557,12 @@ async function issueDocumentExclusive(id: string, nowDate: Date): Promise<Busine
       projektname: projectName,
       firmenname: settings.issuer.company_name,
       datum: formatGermanDate(issueDate),
+      // Addendum: Bausteine-Variablen aus den Rechnungsstellungs-Settings
+      zahlungsziel_tage: String(settings.payment_terms_days),
+      iban: settings.issuer.iban || null,
+      bic: settings.issuer.bic || null,
+      kontoinhaber: settings.issuer.owner_name || settings.issuer.company_name || null,
+      gueltig_bis: validUntil ? formatGermanDate(validUntil) : null,
     };
 
     const relatedNumber = document.related_document_id
@@ -504,8 +577,10 @@ async function issueDocumentExclusive(id: string, nowDate: Date): Promise<Busine
         name: client.name,
         contact_person: client.contact_person,
         address: client.address,
+        email: client.email,
       },
       line_items: document.line_items,
+      content_blocks: document.content_blocks,
       issue_date: issueDate,
       due_date: dueDate,
       valid_until: validUntil,
@@ -753,12 +828,15 @@ async function cancelInvoiceExclusive(
 
     // Empfänger aus dem Original-Snapshot: Das Storno gehört kaufmännisch
     // zum Original und darf spätere Kundenänderungen nicht aufnehmen.
+    // Bausteine übernimmt das Storno bewusst NICHT (EA-07): eine Gegenrechnung
+    // braucht weder Zahlungsbedingungen noch Leistungsbeschreibungs-Blöcke.
     const snapshot = composeDocumentSnapshot({
       type: 'invoice',
       number,
       issuer: settings.issuer,
       recipient: original.snapshot.recipient,
       line_items: stornoItems,
+      content_blocks: [],
       issue_date: issueDate,
       due_date: null,
       valid_until: null,
@@ -779,8 +857,8 @@ async function cancelInvoiceExclusive(
         id, type, number, status, client_id, project_id, order_id,
         related_document_id, line_items, total, issue_date, due_date,
         valid_until, service_date, intro_text, outro_text, layout,
-        snapshot, pdf_path, created_at, updated_at, deleted_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
+        content_blocks, snapshot, pdf_path, created_at, updated_at, deleted_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
       [
         stornoId,
         'invoice',
@@ -799,6 +877,7 @@ async function cancelInvoiceExclusive(
         introText,
         null,
         original.layout,
+        JSON.stringify([]),
         JSON.stringify(snapshot),
         null,
         timestamp,

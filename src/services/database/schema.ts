@@ -712,6 +712,19 @@ export const documents = sqliteTable(
     intro_text: text('intro_text'),
     outro_text: text('outro_text'),
     layout: text('layout').notNull(),
+    // Text-Bausteine (Addendum Modul 17): geordnetes Array an-/abwählbarer
+    // Blöcke; NULL nur bei Alt-Dokumenten vor der Migration 0016.
+    content_blocks: text('content_blocks', { mode: 'json' }).$type<
+      {
+        id: string;
+        kind: string;
+        enabled: boolean;
+        title: string;
+        body_type: 'bullets' | 'paragraph';
+        items: string[];
+        text: string;
+      }[]
+    >(),
     // Bei Ausstellung eingefrorene Kopie ALLER gerenderten Daten (inkl. Stammdaten
     // und Kundenadresse). Druck/PDF rendert ausschließlich hieraus.
     snapshot: text('snapshot', { mode: 'json' }).$type<Record<string, unknown>>(),

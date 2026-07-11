@@ -28,10 +28,45 @@ export const DocumentStatusEnum = z.enum([
   'cancelled',
 ]);
 
-export const DocumentLayoutEnum = z.enum(['modern', 'classic']);
+/** polygrid ist seit dem Addendum das Default-Layout; modern/classic bleiben wählbar. */
+export const DocumentLayoutEnum = z.enum(['polygrid', 'modern', 'classic']);
 
 /** Pflichtsatz §19 UStG – fix, nicht abwählbar, steht auf jeder Rechnung. */
 export const KLEINUNTERNEHMER_SATZ = 'Gemäß §19 UStG wird keine Umsatzsteuer berechnet.';
+
+// ------------------------------------------------------------
+// Text-Bausteine (Addendum Modul 17)
+// ------------------------------------------------------------
+export const ContentBlockKindEnum = z.enum([
+  'included',
+  'excluded',
+  'cooperation',
+  'process',
+  'payment_terms',
+  'optional_offer',
+  'validity_signature',
+  'custom',
+]);
+
+export const ContentBlockBodyTypeEnum = z.enum(['bullets', 'paragraph']);
+
+/**
+ * Ein Baustein: pro Dokument an-/abwählbar (enabled), editierbar und
+ * umsortierbar (Array-Reihenfolge). body_type entscheidet, ob items
+ * (Bullet-Liste) oder text (Absatz) gerendert wird – das jeweils andere
+ * Feld bleibt leer mit Default.
+ */
+export const ContentBlockSchema = z.object({
+  id: z.string().min(1),
+  kind: ContentBlockKindEnum,
+  enabled: z.boolean(),
+  title: z.string(),
+  body_type: ContentBlockBodyTypeEnum,
+  items: z.array(z.string()).default([]),
+  text: z.string().default(''),
+});
+
+export const ContentBlockListSchema = z.array(ContentBlockSchema);
 
 const uuid = z.string().uuid();
 const nullableText = z.string().trim().nullable();
@@ -75,12 +110,19 @@ export const SnapshotIssuerSchema = z.object({
   iban: z.string(),
   bic: z.string(),
   bank_name: z.string(),
+  // Addendum (Layout polygrid: VON-Block und Fußzeile). Defaults, damit
+  // vor dem Addendum eingefrorene Snapshots weiter parsen.
+  email: z.string().default(''),
+  phone: z.string().default(''),
+  website: z.string().default(''),
 });
 
 export const SnapshotRecipientSchema = z.object({
   name: z.string(),
   contact_person: z.string().nullable(),
   address: z.string().nullable(),
+  // Addendum (Layout polygrid: AN-Block). Default für Alt-Snapshots.
+  email: z.string().nullable().default(null),
 });
 
 export const DocumentSnapshotSchema = z.object({
@@ -106,6 +148,12 @@ export const DocumentSnapshotSchema = z.object({
   kleinunternehmer_hinweis: z.string().nullable(),
   /** Referenznummer des verknüpften Dokuments (Storno → Original, Rechnung → Angebot). */
   related_document_number: z.string().nullable(),
+  /**
+   * Eingefrorene Bausteine (Addendum): nur die beim Ausstellen aktivierten
+   * Blöcke, in Reihenfolge, mit bereits aufgelösten {{variablen}}.
+   * Default [], damit Alt-Snapshots weiter parsen.
+   */
+  content_blocks: ContentBlockListSchema.default([]),
 });
 
 // ------------------------------------------------------------
@@ -129,6 +177,8 @@ export const DocumentSchema = z.object({
   intro_text: nullableText,
   outro_text: nullableText,
   layout: DocumentLayoutEnum,
+  /** Bausteine des Dokuments (auch abgewählte); [] bei Alt-Dokumenten. */
+  content_blocks: ContentBlockListSchema,
   snapshot: DocumentSnapshotSchema.nullable(),
   pdf_path: nullableText,
   created_at: z.string().min(1),
@@ -146,6 +196,8 @@ export const NewDocumentSchema = z.object({
   intro_text: optionalNullableText,
   outro_text: optionalNullableText,
   layout: DocumentLayoutEnum.optional(),
+  /** Ohne Angabe: Standard-Bausteine des Typs (Nutzer-Standard oder Konstanten). */
+  content_blocks: ContentBlockListSchema.optional(),
 });
 
 /**
@@ -161,6 +213,7 @@ export const UpdateDocumentSchema = z.object({
   intro_text: optionalNullableText,
   outro_text: optionalNullableText,
   layout: DocumentLayoutEnum.optional(),
+  content_blocks: ContentBlockListSchema.optional(),
 });
 
 // ------------------------------------------------------------
@@ -169,6 +222,9 @@ export const UpdateDocumentSchema = z.object({
 export type DocumentType = z.infer<typeof DocumentTypeEnum>;
 export type DocumentStatus = z.infer<typeof DocumentStatusEnum>;
 export type DocumentLayout = z.infer<typeof DocumentLayoutEnum>;
+export type ContentBlockKind = z.infer<typeof ContentBlockKindEnum>;
+export type ContentBlockBodyType = z.infer<typeof ContentBlockBodyTypeEnum>;
+export type ContentBlock = z.infer<typeof ContentBlockSchema>;
 export type LineItem = z.infer<typeof LineItemSchema>;
 export type DocumentSnapshot = z.infer<typeof DocumentSnapshotSchema>;
 export type SnapshotIssuer = z.infer<typeof SnapshotIssuerSchema>;
@@ -212,6 +268,7 @@ export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
 };
 
 export const DOCUMENT_LAYOUT_LABELS: Record<DocumentLayout, string> = {
+  polygrid: 'PolyGrid',
   modern: 'Modern',
   classic: 'Klassisch',
 };

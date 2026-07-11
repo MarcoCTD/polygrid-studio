@@ -3,6 +3,7 @@
  * Rendert ausschließlich aus dem Snapshot – keine Livedaten.
  */
 import { DOCUMENT_TYPE_LABELS, lineItemTotal, type DocumentSnapshot } from '../../schemas';
+import { ContentBlocksSection } from './ContentBlocksSection';
 import { formatDocumentDate, formatDocumentEUR, formatDocumentQuantity } from './format';
 
 export function ModernLayout({ snapshot }: { snapshot: DocumentSnapshot }) {
@@ -201,6 +202,9 @@ export function ModernLayout({ snapshot }: { snapshot: DocumentSnapshot }) {
           </p>
         ) : null}
       </div>
+
+      {/* Bausteine (Addendum) – leer bei Alt-Snapshots, Layout sonst unverändert */}
+      <ContentBlocksSection snapshot={snapshot} titleColor={accent} />
 
       {/* Fußzeile: Kontakt / Bank / Steuer */}
       <div

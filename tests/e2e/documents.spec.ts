@@ -236,10 +236,12 @@ test('Rechnung: Draft anlegen, bearbeiten, ausstellen – Nummer, Snapshot und �
     'Gemäß §19 UStG wird keine Umsatzsteuer berechnet.',
   );
 
-  // Formular ist nach dem Ausstellen weg (unveränderbar), Blatt rendert aus dem Snapshot
+  // Formular ist nach dem Ausstellen weg (unveränderbar), Blatt rendert aus dem Snapshot.
+  // Default-Layout polygrid: Typ groß im Kopf, Nummer in den Metazeilen.
   await expect(page.getByTestId('document-save')).toHaveCount(0);
   await expect(page.getByTestId('line-items-editor')).toHaveCount(0);
-  await expect(page.getByTestId('doc-title')).toContainText(`Rechnung R-${CURRENT_YEAR}-001`);
+  await expect(page.getByTestId('doc-title')).toContainText('Rechnung');
+  await expect(page.getByTestId('doc-meta')).toContainText(`R-${CURRENT_YEAR}-001`);
 });
 
 test('Pflichtangaben-Gate: Ausstellen ist deaktiviert und listet fehlende Angaben', async ({
