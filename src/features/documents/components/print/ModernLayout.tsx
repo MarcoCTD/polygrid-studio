@@ -37,65 +37,79 @@ export function ModernLayout({ snapshot }: { snapshot: DocumentSnapshot }) {
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif" }}>
-      {/* Briefkopf */}
+      {/* Briefkopf: links EIN Markenelement (Logo, sonst Firmenname als Text),
+          rechts ausschließlich Dokumenttyp + Metazeilen (Auftrag 1a). */}
       <div
         className="pg-doc-avoid-break"
+        data-testid="doc-header"
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
+          gap: '10mm',
           paddingBottom: '6mm',
           borderBottom: `2px solid ${accent}`,
         }}
       >
-        <div>
-          <div style={{ fontSize: '16pt', fontWeight: 700, letterSpacing: '-0.02em' }}>
-            {issuerName}
-          </div>
-          {snapshot.issuer.owner_name && snapshot.issuer.company_name ? (
-            <div style={{ fontSize: '9pt', color: '#555' }}>{snapshot.issuer.owner_name}</div>
-          ) : null}
-        </div>
         {snapshot.logo ? (
           <img
             src={snapshot.logo}
             alt="Logo"
-            style={{ maxHeight: '18mm', maxWidth: '50mm', objectFit: 'contain' }}
+            data-testid="doc-header-logo"
+            style={{
+              height: '12mm',
+              maxWidth: '70mm',
+              objectFit: 'contain',
+              objectPosition: 'left top',
+            }}
           />
-        ) : null}
+        ) : (
+          <div data-testid="doc-header-brand">
+            <div style={{ fontSize: '16pt', fontWeight: 700, letterSpacing: '-0.02em' }}>
+              {issuerName}
+            </div>
+            {snapshot.issuer.owner_name && snapshot.issuer.company_name ? (
+              <div style={{ fontSize: '9pt', color: '#555' }}>{snapshot.issuer.owner_name}</div>
+            ) : null}
+          </div>
+        )}
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: '13pt', fontWeight: 700, color: accent }}>{title}</div>
+          <table
+            style={{ fontSize: '9pt', marginTop: '2mm', marginLeft: 'auto' }}
+            data-testid="doc-header-meta"
+          >
+            <tbody>
+              {metaRows.map((row) => (
+                <tr key={row.label}>
+                  <td
+                    style={{
+                      color: '#666',
+                      paddingRight: '4mm',
+                      whiteSpace: 'nowrap',
+                      textAlign: 'left',
+                    }}
+                  >
+                    {row.label}
+                  </td>
+                  <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    {row.value}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Empfänger + Metadaten */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: '10mm',
-          marginTop: '10mm',
-        }}
-      >
-        <div style={{ maxWidth: '90mm' }}>
-          <div style={{ fontSize: '7pt', color: '#888', marginBottom: '2mm' }}>{senderLine}</div>
-          <div style={{ whiteSpace: 'pre-line' }} data-testid="doc-recipient">
-            <strong>{snapshot.recipient.name}</strong>
-            {snapshot.recipient.contact_person ? `\n${snapshot.recipient.contact_person}` : ''}
-            {snapshot.recipient.address ? `\n${snapshot.recipient.address}` : ''}
-          </div>
+      {/* Empfänger */}
+      <div style={{ marginTop: '10mm', maxWidth: '90mm' }}>
+        <div style={{ fontSize: '7pt', color: '#888', marginBottom: '2mm' }}>{senderLine}</div>
+        <div style={{ whiteSpace: 'pre-line' }} data-testid="doc-recipient">
+          <strong>{snapshot.recipient.name}</strong>
+          {snapshot.recipient.contact_person ? `\n${snapshot.recipient.contact_person}` : ''}
+          {snapshot.recipient.address ? `\n${snapshot.recipient.address}` : ''}
         </div>
-        <table style={{ fontSize: '9.5pt', alignSelf: 'flex-end' }}>
-          <tbody>
-            {metaRows.map((row) => (
-              <tr key={row.label}>
-                <td style={{ color: '#666', paddingRight: '6mm', whiteSpace: 'nowrap' }}>
-                  {row.label}
-                </td>
-                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                  {row.value}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
 
       {/* Titel */}

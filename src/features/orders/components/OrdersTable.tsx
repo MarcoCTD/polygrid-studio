@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -27,15 +27,27 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { InlineStatusBadge } from '@/components/shared';
 import { formatEUR, formatRelativeDate } from '@/features/products/utils';
-import { softDeleteOrder } from '../services';
-import type { OrderListItem } from '../types';
+import { softDeleteOrder, updateOrder } from '../services';
+import { ORDER_STATUS_OPTIONS, type OrderListItem, type OrderStatus } from '../types';
 import {
   OrderPlatformIcon,
   OrderStatusBadge,
   PaymentStatusBadge,
   TaxLockedIcon,
 } from './OrderBadges';
+
+/**
+ * Tax-Lock wie im Detail-Panel: gesperrte Aufträge dürfen nur noch
+ * storniert werden, stornierte gar nicht mehr wechseln.
+ */
+function inlineStatusOptions(order: OrderListItem): { value: OrderStatus; label: string }[] {
+  if (!order.tax_locked) return ORDER_STATUS_OPTIONS;
+  return ORDER_STATUS_OPTIONS.filter(
+    (option) => option.value === order.status || option.value === 'cancelled',
+  );
+}
 
 interface OrdersTableProps {
   orders: OrderListItem[];
@@ -49,6 +61,24 @@ export function OrdersTable({ orders, isLoading, onOpenOrder, onChanged }: Order
   const [orderToDelete, setOrderToDelete] = useState<OrderListItem | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const handleStatusSelect = useCallback(
+    async (order: OrderListItem, status: OrderStatus) => {
+      try {
+        // Zentraler Service-Pfad: updateOrder feuert die Playbook-Engine.
+        await updateOrder(order.id, { status });
+        toast.success(
+          `Status geändert: ${ORDER_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status}`,
+        );
+        onChanged();
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : 'Status konnte nicht geändert werden',
+        );
+      }
+    },
+    [onChanged],
+  );
+
   const columns = useMemo<ColumnDef<OrderListItem>[]>(
     () => [
       {
@@ -59,7 +89,15 @@ export function OrdersTable({ orders, isLoading, onOpenOrder, onChanged }: Order
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => <OrderStatusBadge status={row.original.status} />,
+        cell: ({ row }) => (
+          <InlineStatusBadge
+            value={row.original.status}
+            options={inlineStatusOptions(row.original)}
+            renderBadge={(status) => <OrderStatusBadge status={status} />}
+            onSelect={(status) => handleStatusSelect(row.original, status)}
+            ariaLabel={`Status von ${row.original.receipt_number} ändern`}
+          />
+        ),
       },
       {
         accessorKey: 'platform',
@@ -133,7 +171,7 @@ export function OrdersTable({ orders, isLoading, onOpenOrder, onChanged }: Order
         ),
       },
     ],
-    [onOpenOrder],
+    [onOpenOrder, handleStatusSelect],
   );
 
   // TanStack Table exposes callback-heavy APIs that trigger the React Compiler lint rule.

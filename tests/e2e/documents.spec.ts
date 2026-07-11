@@ -469,6 +469,172 @@ test('Bezahlt ohne verknüpften Auftrag: Hinweis-Dialog erzeugt Website-Auftrag'
 });
 
 // ------------------------------------------------------------
+// Dokument-Kopf und Variablenersetzung (Auftrag 1)
+// ------------------------------------------------------------
+
+/** 1x1-PNG als Data-URL – reicht als konfiguriertes Logo. */
+const LOGO_DATA_URL =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+test('Kopf mit Logo: Logo links als einziges Markenelement, rechts Dokumenttyp + Metazeilen – auch im Snapshot', async ({
+  page,
+  tauri,
+}) => {
+  await bootApp(page);
+  seedIssuerSettings(tauri);
+  setSetting(tauri, 'invoice_logo', LOGO_DATA_URL);
+  seedClient(tauri);
+
+  await createDraftViaUI(page, 'invoice');
+  // Kopf-Umbau der Fix-Session lebt im modern-Layout; polygrid (Default) wird
+  // separat in documents-konfigurator.spec.ts geprüft.
+  await page.getByTestId('layout-modern').click();
+
+  // Links: nur das Logo, kein Firmenname-Text im Kopf
+  const header = page.getByTestId('doc-header');
+  await expect(page.getByTestId('doc-header-logo')).toBeVisible();
+  await expect(page.getByTestId('doc-header-brand')).toHaveCount(0);
+  await expect(header).not.toContainText('PolyGrid Studio');
+
+  // Rechts: Dokumenttyp mit Metazeilen, genau EIN Logo im gesamten Blatt
+  await expect(header).toContainText('Rechnung');
+  await expect(page.getByTestId('doc-header-meta')).toContainText('Datum');
+  await expect(page.getByTestId('doc-header-meta')).toContainText('Fällig am');
+  await expect(page.getByTestId('document-sheet').locator('img[alt="Logo"]')).toHaveCount(1);
+
+  await fillAndIssue(page);
+
+  // Snapshot-Fall: ausgestelltes Dokument rendert denselben Kopf aus dem Snapshot
+  await expect(page.getByTestId('doc-header-logo')).toBeVisible();
+  await expect(page.getByTestId('doc-header')).not.toContainText('PolyGrid Studio');
+  await expect(page.getByTestId('document-sheet').locator('img[alt="Logo"]')).toHaveCount(1);
+
+  const rows = tauri.select('SELECT snapshot FROM documents');
+  const snapshot = JSON.parse(String(rows[0].snapshot)) as Record<string, unknown>;
+  expect(snapshot.logo).toBe(LOGO_DATA_URL);
+});
+
+test('Kopf ohne Logo: Firmenname als Text links (Fallback), Metazeilen rechts', async ({
+  page,
+  tauri,
+}) => {
+  await bootApp(page);
+  seedIssuerSettings(tauri);
+  seedClient(tauri);
+
+  await createDraftViaUI(page, 'quote');
+  await page.getByTestId('layout-modern').click();
+
+  const header = page.getByTestId('doc-header');
+  await expect(page.getByTestId('doc-header-brand')).toContainText('PolyGrid Studio');
+  await expect(page.getByTestId('doc-header-logo')).toHaveCount(0);
+  await expect(header).toContainText('Angebot');
+  await expect(page.getByTestId('doc-header-meta')).toContainText('Gültig bis');
+});
+
+test('Zahlungsbedingungen: {{iban}} und {{bic}} werden in Vorschau und Snapshot ersetzt', async ({
+  page,
+  tauri,
+}) => {
+  await bootApp(page);
+  seedIssuerSettings(tauri);
+  seedClient(tauri);
+
+  await createDraftViaUI(page, 'invoice');
+  await page
+    .getByTestId('document-outro')
+    .fill('Zahlbar per Überweisung: IBAN {{iban}}, BIC {{bic}}.');
+
+  // Live-Vorschau ersetzt sofort – keine rohen Variablen
+  await expect(page.getByTestId('doc-outro')).toContainText('DE02120300000000202051');
+  await expect(page.getByTestId('doc-outro')).toContainText('BYLADEM1001');
+  await expect(page.getByTestId('doc-outro')).not.toContainText('{{');
+
+  await fillAndIssue(page);
+
+  // Snapshot-Fall: eingefrorener Schlusstext enthält die echten Werte
+  const rows = tauri.select('SELECT snapshot FROM documents');
+  const snapshot = JSON.parse(String(rows[0].snapshot)) as Record<string, unknown>;
+  expect(snapshot.outro_text).toBe(
+    'Zahlbar per Überweisung: IBAN DE02120300000000202051, BIC BYLADEM1001.',
+  );
+  await expect(page.getByTestId('doc-outro')).not.toContainText('{{');
+});
+
+test('Variablen ohne Wert: sichtbare Warnung, Ausstellen gesperrt, nach Pflege der Settings frei', async ({
+  page,
+  tauri,
+}) => {
+  await bootApp(page);
+  seedIssuerSettings(tauri);
+  setSetting(tauri, 'invoice_iban', '');
+  setSetting(tauri, 'invoice_bic', '');
+  seedClient(tauri);
+
+  await createDraftViaUI(page, 'invoice');
+  await page.getByTestId('document-service-date').fill('Juli 2026');
+  await page.getByTestId('add-line-item').click();
+  await page.getByTestId('add-line-item-empty').click();
+  await page.getByLabel('Position 1: Beschreibung').fill('Website-Erstellung');
+  await page.getByLabel('Position 1: Einzelpreis').fill('1200');
+  await page
+    .getByTestId('document-outro')
+    .fill('Zahlungsbedingungen: IBAN {{iban}}, BIC {{bic}}.');
+  await page.getByTestId('document-save').click();
+  await expect(page.getByText('Entwurf gespeichert')).toBeVisible();
+
+  // Warnung sichtbar, Ausstellen-Button gesperrt, Variablen bleiben in der Vorschau roh
+  const warning = page.getByTestId('document-unresolved-variables');
+  await expect(warning).toBeVisible();
+  await expect(warning).toContainText('Variablen ohne Wert: iban, bic');
+  await expect(warning).toContainText('in den Einstellungen vervollständigen');
+  await expect(page.getByTestId('document-issue')).toBeDisabled();
+  await expect(page.getByTestId('doc-outro')).toContainText('{{iban}}');
+
+  // Settings nachpflegen → Warnung verschwindet, Ausstellen wird frei
+  setSetting(tauri, 'invoice_iban', 'DE02120300000000202051');
+  setSetting(tauri, 'invoice_bic', 'BYLADEM1001');
+  await page.reload();
+  await expect(page.getByTestId('document-editor-title')).toContainText('Rechnung (Entwurf)');
+  await expect(page.getByTestId('document-unresolved-variables')).toHaveCount(0);
+  await expect(page.getByTestId('document-issue')).toBeEnabled();
+});
+
+// ------------------------------------------------------------
+// Positionseditor (Auftrag 2)
+// ------------------------------------------------------------
+
+test('Positionseditor: Beschreibung als breite, mehrzeilige Textarea – kein gequetschtes Feld', async ({
+  page,
+  tauri,
+}) => {
+  await bootApp(page);
+  seedIssuerSettings(tauri);
+  seedClient(tauri);
+
+  await createDraftViaUI(page, 'invoice');
+  await page.getByTestId('add-line-item').click();
+  await page.getByTestId('add-line-item-empty').click();
+
+  // Volle Breite statt gequetschter Spalte (Regression: ~20px im 420px-Panel)
+  const description = page.getByLabel('Position 1: Beschreibung');
+  const box = await description.boundingBox();
+  expect(box?.width ?? 0).toBeGreaterThan(250);
+
+  // Mehrzeilige Beschreibung landet mit Umbruch in der Vorschau (pre-line)
+  await description.fill('Website-Erstellung\nInklusive Responsive-Design');
+  await page.getByLabel('Position 1: Einzelpreis').fill('1200');
+  await expect(page.getByTestId('doc-positions')).toContainText('Inklusive Responsive-Design');
+  await expect(page.getByTestId('line-items-total')).toContainText('1.200,00');
+
+  // Speichern erhält den mehrzeiligen Text
+  await page.getByTestId('document-service-date').fill('Juli 2026');
+  await page.getByTestId('document-save').click();
+  await expect(page.getByText('Entwurf gespeichert')).toBeVisible();
+  await expect(description).toHaveValue('Website-Erstellung\nInklusive Responsive-Design');
+});
+
+// ------------------------------------------------------------
 // Layouts und Seitenumbruch
 // ------------------------------------------------------------
 

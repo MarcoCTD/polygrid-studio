@@ -7,6 +7,11 @@
  * "Aus Vorlage" (durchsuchbare Liste mit Name und Preis) oder "Leere
  * Position". Die Vorlage übernimmt Titel, Beschreibung, Preis und Menge;
  * danach frei editierbar – nur im Dokument, nie zurück auf die Vorlage.
+ *
+ * Layout pro Position als Block statt Spalten-Grid (Fix-Session): die
+ * Beschreibung ist eine auto-wachsende Textarea über die volle Panelbreite
+ * (erste Zeile = Positionstitel, EB-03), Menge/Einzelpreis/Summe stehen
+ * kompakt darunter und brechen bei schmalem Panel sauber um.
  */
 import { useEffect, useState } from 'react';
 import { useFieldArray, useWatch, type Control, type UseFormRegister } from 'react-hook-form';
@@ -30,6 +35,13 @@ interface LineItemsEditorProps {
 function toSafeNumber(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+/** Textarea wächst mit dem Inhalt (min. 2 Zeilen über min-h). */
+function autoGrow(element: HTMLTextAreaElement | null): void {
+  if (!element) return;
+  element.style.height = 'auto';
+  element.style.height = `${element.scrollHeight}px`;
 }
 
 export function LineItemsEditor({ control, register, disabled }: LineItemsEditorProps) {
@@ -84,14 +96,6 @@ export function LineItemsEditor({ control, register, disabled }: LineItemsEditor
 
   return (
     <div className="space-y-2" data-testid="line-items-editor">
-      <div className="grid grid-cols-[1fr_72px_96px_84px_88px] items-center gap-2 text-xs font-medium uppercase tracking-wide text-text-secondary">
-        <span>Beschreibung</span>
-        <span className="text-right">Menge</span>
-        <span className="text-right">Einzelpreis</span>
-        <span className="text-right">Summe</span>
-        <span />
-      </div>
-
       {fields.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border px-3 py-4 text-sm text-text-secondary">
           Noch keine Positionen. Mindestens eine Position ist Pflicht.
@@ -100,74 +104,98 @@ export function LineItemsEditor({ control, register, disabled }: LineItemsEditor
 
       {fields.map((field, index) => {
         const item = sanitizedItems[index] ?? { description: '', quantity: 0, unit_price: 0 };
+        const { ref: descriptionRef, ...descriptionField } = register(
+          `line_items.${index}.description`,
+        );
         return (
           <div
             key={field.id}
-            className="grid grid-cols-[1fr_72px_96px_84px_88px] items-start gap-2"
+            className="space-y-2 rounded-lg border border-border p-2.5"
             data-testid={`line-item-row-${index}`}
           >
-            {/* Textarea statt Input: die erste Zeile ist der Positionstitel
-                (EB-03), Vorlagen übernehmen Titel + Beschreibung mehrzeilig –
-                ein <input> würde die Zeilenumbrüche verwerfen. */}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-text-secondary">
+                Pos. {index + 1}
+              </span>
+              <div className="flex gap-0.5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  title="Nach oben"
+                  disabled={disabled || index === 0}
+                  onClick={() => swap(index, index - 1)}
+                >
+                  <ArrowUp className="size-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  title="Nach unten"
+                  disabled={disabled || index === fields.length - 1}
+                  onClick={() => swap(index, index + 1)}
+                >
+                  <ArrowDown className="size-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  title="Position entfernen"
+                  disabled={disabled}
+                  onClick={() => remove(index)}
+                >
+                  <Trash2 className="size-4 text-danger" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Textarea statt Input: erste Zeile = Positionstitel (EB-03),
+                Vorlagen übernehmen Titel + Beschreibung mehrzeilig – ein
+                <input> würde die Zeilenumbrüche verwerfen. Volle Breite,
+                auto-wachsend (Fix-Session). */}
             <Textarea
-              rows={1}
+              rows={2}
               placeholder="Beschreibung der Leistung"
               disabled={disabled}
-              className="min-h-8 py-1"
               aria-label={`Position ${index + 1}: Beschreibung`}
-              {...register(`line_items.${index}.description`)}
+              className="min-h-16 w-full resize-none"
+              {...descriptionField}
+              ref={(element) => {
+                descriptionRef(element);
+                autoGrow(element);
+              }}
+              onInput={(event) => autoGrow(event.currentTarget)}
             />
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              className="text-right"
-              disabled={disabled}
-              aria-label={`Position ${index + 1}: Menge`}
-              {...register(`line_items.${index}.quantity`, { valueAsNumber: true })}
-            />
-            <Input
-              type="number"
-              step="0.01"
-              className="text-right"
-              disabled={disabled}
-              aria-label={`Position ${index + 1}: Einzelpreis`}
-              {...register(`line_items.${index}.unit_price`, { valueAsNumber: true })}
-            />
-            <span className="text-right text-sm tabular-nums text-text-primary">
-              {formatDocumentEUR(lineItemTotal({ ...item, description: item.description || '-' }))}
-            </span>
-            <div className="flex justify-end gap-0.5">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                title="Nach oben"
-                disabled={disabled || index === 0}
-                onClick={() => swap(index, index - 1)}
-              >
-                <ArrowUp className="size-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                title="Nach unten"
-                disabled={disabled || index === fields.length - 1}
-                onClick={() => swap(index, index + 1)}
-              >
-                <ArrowDown className="size-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                title="Position entfernen"
-                disabled={disabled}
-                onClick={() => remove(index)}
-              >
-                <Trash2 className="size-4 text-danger" />
-              </Button>
+
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <label className="flex items-center gap-1.5 text-sm">
+                <span className="text-xs text-text-secondary">Menge</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  className="w-20 text-right"
+                  disabled={disabled}
+                  aria-label={`Position ${index + 1}: Menge`}
+                  {...register(`line_items.${index}.quantity`, { valueAsNumber: true })}
+                />
+              </label>
+              <label className="flex items-center gap-1.5 text-sm">
+                <span className="text-xs text-text-secondary">Einzelpreis</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  className="w-28 text-right"
+                  disabled={disabled}
+                  aria-label={`Position ${index + 1}: Einzelpreis`}
+                  {...register(`line_items.${index}.unit_price`, { valueAsNumber: true })}
+                />
+              </label>
+              <span className="ml-auto whitespace-nowrap text-sm tabular-nums text-text-primary">
+                = {formatDocumentEUR(lineItemTotal({ ...item, description: item.description || '-' }))}
+              </span>
             </div>
           </div>
         );

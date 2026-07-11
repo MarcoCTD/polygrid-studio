@@ -225,6 +225,7 @@ export function ListingsPage() {
           onSelectAll={selectAll}
           onClearSelection={clearSelection}
           onOpenListing={handleOpenListing}
+          onChanged={loadListings}
         />
       )}
 

@@ -24,9 +24,13 @@ export {
   type InvoiceSettings,
 } from './documentsService';
 export {
+  buildDocumentVariableValues,
+  collectContentBlockTexts,
   composeDocumentSnapshot,
+  findUnresolvedDocumentVariables,
   resolveDocumentVariables,
   type ComposeSnapshotArgs,
+  type DocumentVariableContext,
 } from './composeSnapshot';
 export {
   DOCUMENT_POSITION_TEMPLATES_SETTING_KEY,

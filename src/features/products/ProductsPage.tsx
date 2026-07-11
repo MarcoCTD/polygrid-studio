@@ -228,7 +228,11 @@ export function ProductsPage() {
         onActionComplete={reloadProducts}
       />
 
-      <ProductsTable products={enrichedProducts} isLoading={isLoading} />
+      <ProductsTable
+        products={enrichedProducts}
+        isLoading={isLoading}
+        onChanged={reloadProducts}
+      />
 
       <NewProductDialog
         open={showNewProduct}

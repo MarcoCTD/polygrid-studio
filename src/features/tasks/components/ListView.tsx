@@ -36,7 +36,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import type { TaskPriority, TaskStatus } from '../schemas';
+import { InlineStatusBadge } from '@/components/shared';
+import { taskStatusEnum, type TaskPriority, type TaskStatus } from '../schemas';
 import { completeTask, getTaskListItems, updateTask, type TaskListItem } from '../services';
 import { isOverdue, parseISODate } from '../utils/dateHelpers';
 import { EntityLink } from './EntityLink';
@@ -76,6 +77,11 @@ const STATUS_CLASSES: Record<TaskStatus, string> = {
   done: 'border-success bg-success-subtle text-success',
   cancelled: 'border-text-muted bg-bg-secondary text-text-muted',
 };
+
+const STATUS_OPTIONS = taskStatusEnum.options.map((status) => ({
+  value: status,
+  label: STATUS_LABELS[status],
+}));
 
 const PRIORITY_LABELS: Record<TaskPriority, string> = {
   urgent: 'Urgent',
@@ -237,6 +243,24 @@ export function ListView({
     [loadTasks, onChanged],
   );
 
+  const handleStatusSelect = useCallback(
+    async (task: TaskListItem, status: TaskStatus) => {
+      try {
+        // Zentraler Service-Pfad: updateTask legt bei done den
+        // Wiederkehr-Nachfolger an (createRecurringSuccessor).
+        await updateTask(task.id, { status });
+        toast.success(`Status geändert: ${STATUS_LABELS[status]}`);
+        await loadTasks();
+        await onChanged?.();
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : 'Status konnte nicht geändert werden',
+        );
+      }
+    },
+    [loadTasks, onChanged],
+  );
+
   const columns = useMemo(
     () =>
       [
@@ -326,11 +350,19 @@ export function ListView({
         }),
         columnHelper.accessor('status', {
           header: 'Status',
-          size: 110,
-          cell: (info) => <StatusBadge status={info.getValue()} />,
+          size: 130,
+          cell: (info) => (
+            <InlineStatusBadge
+              value={info.getValue()}
+              options={STATUS_OPTIONS}
+              renderBadge={(status) => <StatusBadge status={status} />}
+              onSelect={(status) => handleStatusSelect(info.row.original, status)}
+              ariaLabel={`Status von ${info.row.original.title} ändern`}
+            />
+          ),
         }),
       ] as ColumnDef<TaskListItem, unknown>[],
-    [handleToggleDone, onOpenTask],
+    [handleToggleDone, handleStatusSelect, onOpenTask],
   );
 
   // eslint-disable-next-line react-hooks/incompatible-library

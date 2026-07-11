@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -27,10 +27,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { InlineStatusBadge } from '@/components/shared';
 import { formatEUR } from '@/features/products/utils';
-import { softDeleteWebsiteProject } from '../services';
-import type { WebsiteProjectListItem } from '../schemas';
+import { softDeleteWebsiteProject, updateWebsiteProject } from '../services';
+import {
+  WEBSITE_PROJECT_STATUS_LABELS,
+  WebsiteProjectStatusEnum,
+  type WebsiteProjectListItem,
+  type WebsiteProjectStatus,
+} from '../schemas';
 import { ProjectStatusBadge } from './WebsiteBadges';
+
+const PROJECT_STATUS_OPTIONS = WebsiteProjectStatusEnum.options.map((status) => ({
+  value: status,
+  label: WEBSITE_PROJECT_STATUS_LABELS[status],
+}));
 
 const GRID_COLUMNS = 'grid-cols-[1fr_1.4fr_120px_110px_120px_1fr_44px]';
 
@@ -45,6 +56,21 @@ export function ProjectsTab({ projects, isLoading, onOpenProject, onChanged }: P
   const [sorting, setSorting] = useState<SortingState>([]);
   const [projectToDelete, setProjectToDelete] = useState<WebsiteProjectListItem | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleStatusSelect = useCallback(
+    async (project: WebsiteProjectListItem, status: WebsiteProjectStatus) => {
+      try {
+        await updateWebsiteProject(project.id, { status });
+        toast.success(`Status geändert: ${WEBSITE_PROJECT_STATUS_LABELS[status]}`);
+        onChanged();
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : 'Status konnte nicht geändert werden',
+        );
+      }
+    },
+    [onChanged],
+  );
 
   const columns = useMemo<ColumnDef<WebsiteProjectListItem>[]>(
     () => [
@@ -63,7 +89,15 @@ export function ProjectsTab({ projects, isLoading, onOpenProject, onChanged }: P
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => <ProjectStatusBadge status={row.original.status} />,
+        cell: ({ row }) => (
+          <InlineStatusBadge
+            value={row.original.status}
+            options={PROJECT_STATUS_OPTIONS}
+            renderBadge={(status) => <ProjectStatusBadge status={status} />}
+            onSelect={(status) => handleStatusSelect(row.original, status)}
+            ariaLabel={`Status von ${row.original.name} ändern`}
+          />
+        ),
       },
       {
         accessorKey: 'price',
@@ -117,7 +151,7 @@ export function ProjectsTab({ projects, isLoading, onOpenProject, onChanged }: P
         ),
       },
     ],
-    [onOpenProject],
+    [onOpenProject, handleStatusSelect],
   );
 
   // TanStack Table exposes callback-heavy APIs that trigger the React Compiler lint rule.
