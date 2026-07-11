@@ -37,7 +37,12 @@ import {
   type SnapshotIssuer,
   type UpdateDocumentInput,
 } from '../schemas';
-import { DOCUMENT_DEFAULT_BLOCKS_SETTING_KEYS, buildDefaultContentBlocks } from '../contentBlocks';
+import {
+  DOCUMENT_DEFAULT_BLOCKS_SETTING_KEYS,
+  DOCUMENT_DEFAULT_INTRO_SETTING_KEYS,
+  DOCUMENT_DEFAULT_OUTRO_SETTING_KEYS,
+  buildDefaultContentBlocks,
+} from '../contentBlocks';
 import { composeDocumentSnapshot } from './composeSnapshot';
 import { generateDocumentNumber } from './documentNumber';
 import {
@@ -247,6 +252,42 @@ export async function saveDefaultContentBlocksForType(
   }
 }
 
+/**
+ * Standard-Einleitungstexte des Typs (Addendum 2, Spec 2.4): Vorbelegung
+ * neuer Dokumente, im Editor frei änderbar. Leer = keine Vorbelegung.
+ */
+export async function getDefaultDocumentTexts(
+  type: DocumentType,
+): Promise<{ intro_text: string | null; outro_text: string | null }> {
+  try {
+    const [intro, outro] = await Promise.all([
+      getSetting<unknown>(DOCUMENT_DEFAULT_INTRO_SETTING_KEYS[type]),
+      getSetting<unknown>(DOCUMENT_DEFAULT_OUTRO_SETTING_KEYS[type]),
+    ]);
+    return {
+      intro_text: typeof intro === 'string' && intro.trim() ? intro : null,
+      outro_text: typeof outro === 'string' && outro.trim() ? outro : null,
+    };
+  } catch (error) {
+    console.error('[Documents] Standard-Einleitungstexte unlesbar', error);
+    return { intro_text: null, outro_text: null };
+  }
+}
+
+export async function saveDefaultDocumentTexts(
+  type: DocumentType,
+  texts: { intro_text: string; outro_text: string },
+): Promise<void> {
+  try {
+    await setSetting(DOCUMENT_DEFAULT_INTRO_SETTING_KEYS[type], texts.intro_text);
+    await setSetting(DOCUMENT_DEFAULT_OUTRO_SETTING_KEYS[type], texts.outro_text);
+  } catch (error) {
+    throw new Error(
+      `Standard-Einleitungstexte konnten nicht gespeichert werden: ${errorText(error)}`,
+    );
+  }
+}
+
 async function loadProjectName(projectId: string | null): Promise<string | null> {
   if (!projectId) return null;
   const rows = await getDatabase().select<Row[]>(
@@ -322,6 +363,15 @@ export async function createDocument(data: NewDocumentInput): Promise<BusinessDo
     // statt der Angebots-Bausteine (Spec 3.5).
     const contentBlocks =
       input.content_blocks ?? (await getDefaultContentBlocksForType(input.type));
+    // Einleitungstexte (Addendum 2, Spec 2.4): Vorbelegung nur, wenn der
+    // Aufrufer keinen Text mitgibt – explizites null bleibt "kein Text"
+    // (z.B. Umwandlung eines Angebots ohne Einleitung).
+    const defaultTexts =
+      input.intro_text === undefined || input.outro_text === undefined
+        ? await getDefaultDocumentTexts(input.type)
+        : { intro_text: null, outro_text: null };
+    const introText = input.intro_text === undefined ? defaultTexts.intro_text : input.intro_text;
+    const outroText = input.outro_text === undefined ? defaultTexts.outro_text : input.outro_text;
 
     await db.execute(
       `INSERT INTO documents (
@@ -345,8 +395,8 @@ export async function createDocument(data: NewDocumentInput): Promise<BusinessDo
         null,
         null,
         input.service_date ?? null,
-        input.intro_text ?? null,
-        input.outro_text ?? null,
+        introText ?? null,
+        outroText ?? null,
         layout,
         JSON.stringify(contentBlocks),
         null,

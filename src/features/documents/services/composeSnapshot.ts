@@ -71,6 +71,10 @@ export interface ComposeSnapshotArgs {
  * Nur aktivierte Bausteine, in Reihenfolge, mit aufgelösten Variablen in
  * Titel, Text und Bullets. validity_signature existiert bei Rechnungen
  * nicht (Spec 3.2) und wird dort auch defensiv herausgefiltert.
+ *
+ * Stichpunkte (Addendum 2): der Snapshot ist die Render-Kopie (EA-06) –
+ * deaktivierte Punkte werden nicht gerendert und daher nicht eingefroren;
+ * sie bleiben nur am Dokument (content_blocks) erhalten.
  */
 function freezeContentBlocks(
   type: DocumentType,
@@ -84,7 +88,12 @@ function freezeContentBlocks(
       ...block,
       title: resolveDocumentVariables(block.title, values) ?? block.title,
       text: resolveDocumentVariables(block.text, values) ?? block.text,
-      items: block.items.map((item) => resolveDocumentVariables(item, values) ?? item),
+      items: block.items
+        .filter((item) => item.enabled)
+        .map((item) => ({
+          ...item,
+          text: resolveDocumentVariables(item.text, values) ?? item.text,
+        })),
     }));
 }
 

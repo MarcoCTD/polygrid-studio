@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { createCustomContentBlock } from '../contentBlocks';
-import type { ContentBlock, DocumentType } from '../schemas';
+import type { ContentBlock, ContentBlockItem, DocumentType } from '../schemas';
 
 /** Variablen für die Einfügen-Buttons (Registry-Namen, Modul 07 + Addendum). */
 const DOCUMENT_VARIABLES: { name: string; quoteOnly?: boolean }[] = [
@@ -80,16 +80,16 @@ export function ContentBlocksEditor({ value, onChange, documentType }: ContentBl
     onChange(value.filter((block) => block.id !== id));
   }
 
-  function updateItem(block: ContentBlock, index: number, text: string) {
+  function updateItem(block: ContentBlock, index: number, patch: Partial<ContentBlockItem>) {
     const items = [...block.items];
-    items[index] = text;
+    items[index] = { ...items[index], ...patch };
     updateBlock(block.id, { items });
   }
 
   /** Enter fügt einen neuen Punkt direkt darunter ein und fokussiert ihn. */
   function insertItemAfter(block: ContentBlock, index: number) {
     const items = [...block.items];
-    items.splice(index + 1, 0, '');
+    items.splice(index + 1, 0, { text: '', enabled: true });
     updateBlock(block.id, { items });
     setPendingFocus(`${block.id}:${index + 1}`);
   }
@@ -219,14 +219,16 @@ export function ContentBlocksEditor({ value, onChange, documentType }: ContentBl
                         <div key={itemIndex} className="flex items-center gap-1.5">
                           <span className="text-text-secondary">•</span>
                           <Input
-                            value={item}
+                            value={item.text}
                             autoFocus={pendingFocus === focusKey}
                             aria-label={`${block.title}: Punkt ${itemIndex + 1}`}
                             data-testid={`block-item-${block.kind}-${itemIndex}`}
                             onFocus={() => {
                               if (pendingFocus === focusKey) setPendingFocus(null);
                             }}
-                            onChange={(event) => updateItem(block, itemIndex, event.target.value)}
+                            onChange={(event) =>
+                              updateItem(block, itemIndex, { text: event.target.value })
+                            }
                             onKeyDown={(event) => {
                               if (event.key === 'Enter') {
                                 event.preventDefault();

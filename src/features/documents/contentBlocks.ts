@@ -128,7 +128,9 @@ export function buildDefaultContentBlocks(type: DocumentType): ContentBlock[] {
     enabled: template.enabled[type] ?? false,
     title: CONTENT_BLOCK_KIND_LABELS[template.kind],
     body_type: template.body_type,
-    items: [...(template.items ?? [])],
+    // Stichpunkte starten aktiviert; Defaults pro Punkt pflegt der
+    // Konfigurator (Addendum 2, Spec 2.3).
+    items: (template.items ?? []).map((text) => ({ text, enabled: true })),
     text: template.textByType?.[type] ?? template.text ?? '',
   }));
 }
@@ -146,8 +148,23 @@ export function createCustomContentBlock(): ContentBlock {
   };
 }
 
-/** app_settings-Keys für die Nutzer-Standards (Spec 3.3). */
+/**
+ * app_settings-Keys für die Nutzer-Standards (Spec 3.3). Seit Addendum 2
+ * pflegt der Konfigurator diese Keys; alte "Als Standard speichern"-Werte
+ * (items als string[]) werden beim Lesen per Zod-Transform übernommen.
+ */
 export const DOCUMENT_DEFAULT_BLOCKS_SETTING_KEYS: Record<DocumentType, string> = {
   quote: 'document_default_blocks_quote',
   invoice: 'document_default_blocks_invoice',
+};
+
+/** app_settings-Keys der Standard-Einleitungstexte (Addendum 2, Spec 2.4). */
+export const DOCUMENT_DEFAULT_INTRO_SETTING_KEYS: Record<DocumentType, string> = {
+  quote: 'document_default_intro_quote',
+  invoice: 'document_default_intro_invoice',
+};
+
+export const DOCUMENT_DEFAULT_OUTRO_SETTING_KEYS: Record<DocumentType, string> = {
+  quote: 'document_default_outro_quote',
+  invoice: 'document_default_outro_invoice',
 };

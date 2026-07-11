@@ -27,6 +27,14 @@ export {
   type ComposeSnapshotArgs,
 } from './composeSnapshot';
 export {
+  DOCUMENT_POSITION_TEMPLATES_SETTING_KEY,
+  buildSeedPositionTemplates,
+  getPositionTemplates,
+  lineItemFromPositionTemplate,
+  positionTemplatePriceLabel,
+  savePositionTemplates,
+} from './positionTemplates';
+export {
   confirmOneDrivePdfSaved,
   documentNameSlug,
   documentOneDriveSubdirectory,

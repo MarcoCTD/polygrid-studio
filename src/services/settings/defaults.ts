@@ -111,6 +111,12 @@ export const DEFAULTS = {
   invoice_default_layout: 'polygrid',
   // Feste Markenfarbe (Hex); leer = App-Akzentfarbe verwenden
   invoice_brand_color: '',
+  // Standard-Einleitungstexte je Dokumenttyp (Addendum 2, Konfigurator):
+  // Vorbelegung neuer Dokumente, Variablen ({{kundenname}}, …) erlaubt
+  document_default_intro_quote: '',
+  document_default_outro_quote: '',
+  document_default_intro_invoice: '',
+  document_default_outro_invoice: '',
 } as const;
 
 export type SettingKey = keyof typeof DEFAULTS;

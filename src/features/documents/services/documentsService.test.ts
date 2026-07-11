@@ -91,6 +91,7 @@ const {
   convertQuoteToInvoice,
   createDocument,
   getDefaultContentBlocksForType,
+  getDefaultDocumentTexts,
   getDocumentById,
   getDocuments,
   getMissingIssueRequirements,
@@ -99,9 +100,17 @@ const {
   markInvoicePaidWithNewOrder,
   markQuoteRejected,
   saveDefaultContentBlocksForType,
+  saveDefaultDocumentTexts,
   softDeleteDocument,
   updateDocument,
+  updateDocumentPdfPath,
 } = await import('./documentsService');
+const {
+  DOCUMENT_POSITION_TEMPLATES_SETTING_KEY,
+  getPositionTemplates,
+  lineItemFromPositionTemplate,
+  savePositionTemplates,
+} = await import('./positionTemplates');
 const { resetDocumentNumberGeneratorForTests } = await import('./documentNumber');
 const { KLEINUNTERNEHMER_SATZ } = await import('../schemas');
 const { buildDefaultContentBlocks } = await import('../contentBlocks');
@@ -667,7 +676,7 @@ describe('Bausteine (Addendum Modul 17)', () => {
       ...block,
       title: 'GEÄNDERT',
       text: 'GEÄNDERT',
-      items: ['GEÄNDERT'],
+      items: [{ text: 'GEÄNDERT', enabled: true }],
     }));
     await saveDefaultContentBlocksForType('quote', manipulated);
     // Auch die Settings-Variablenquellen ändern
@@ -773,6 +782,277 @@ describe('Bausteine (Addendum Modul 17)', () => {
     const { storno } = await cancelInvoice(issued.id, new Date(2026, 6, 12));
     expect(storno.content_blocks).toEqual([]);
     expect(storno.snapshot?.content_blocks).toEqual([]);
+  });
+});
+
+describe('Addendum 2: Stichpunkt-Flags und Abwärtskompatibilität', () => {
+  /** Baustein im ALTEN Format (items als string[]), wie vor Addendum 2 gespeichert. */
+  function legacyBlock(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      id: 'legacy-1',
+      kind: 'included',
+      enabled: true,
+      title: 'Im Festpreis enthalten',
+      body_type: 'bullets',
+      items: ['Konzeption und Umsetzung', 'Mobile Optimierung'],
+      text: '',
+      ...overrides,
+    };
+  }
+
+  function insertLegacyDocumentRow(options: { snapshot?: unknown } = {}): string {
+    const id = crypto.randomUUID();
+    const timestamp = new Date().toISOString();
+    execute(
+      `INSERT INTO documents (
+         id, type, number, status, client_id, line_items, total,
+         service_date, layout, content_blocks, snapshot, created_at, updated_at
+       ) VALUES ($1, 'invoice', $2, $3, $4, $5, 1200, 'Juli 2026', 'polygrid', $6, $7, $8, $9)`,
+      [
+        id,
+        options.snapshot ? 'R-2026-001' : null,
+        options.snapshot ? 'issued' : 'draft',
+        CLIENT_ID,
+        JSON.stringify([{ description: 'Website-Erstellung', quantity: 1, unit_price: 1200 }]),
+        JSON.stringify([legacyBlock()]),
+        options.snapshot ? JSON.stringify(options.snapshot) : null,
+        timestamp,
+        timestamp,
+      ],
+    );
+    return id;
+  }
+
+  it('altes Dokument mit string[]-items parst als enabled-Stichpunkte, DB bleibt unangetastet', async () => {
+    const id = insertLegacyDocumentRow();
+    const rawBefore = String(
+      select('SELECT content_blocks FROM documents WHERE id = $1', [id])[0].content_blocks,
+    );
+
+    const loaded = await getDocumentById(id);
+    expect(loaded?.content_blocks[0].items).toEqual([
+      { text: 'Konzeption und Umsetzung', enabled: true },
+      { text: 'Mobile Optimierung', enabled: true },
+    ]);
+
+    // Reine Lese-Normalisierung: die gespeicherte Zeile wird nicht umgeschrieben
+    const rawAfter = String(
+      select('SELECT content_blocks FROM documents WHERE id = $1', [id])[0].content_blocks,
+    );
+    expect(rawAfter).toBe(rawBefore);
+  });
+
+  it('alter Snapshot mit string[]-items parst fehlerfrei und wird nie umgeschrieben', async () => {
+    const legacySnapshot = {
+      type: 'invoice',
+      number: 'R-2026-001',
+      issuer: {
+        company_name: 'PolyGrid Studio',
+        owner_name: 'Marco Kromer',
+        street: 'Musterstraße 1',
+        zip: '12345',
+        city: 'Musterstadt',
+        tax_number: '12/345/67890',
+        vat_id: '',
+        iban: 'DE02120300000000202051',
+        bic: 'BYLADEM1001',
+        bank_name: 'Testbank',
+      },
+      recipient: { name: 'Malerbetrieb Weber', contact_person: null, address: 'Wandweg 3' },
+      line_items: [{ description: 'Website-Erstellung', quantity: 1, unit_price: 1200 }],
+      total: 1200,
+      issue_date: '2026-07-01',
+      due_date: '2026-07-15',
+      valid_until: null,
+      service_date: 'Juli 2026',
+      intro_text: null,
+      outro_text: null,
+      layout: 'polygrid',
+      accent_color: '#0070F2',
+      logo: null,
+      kleinunternehmer_hinweis: KLEINUNTERNEHMER_SATZ,
+      related_document_number: null,
+      content_blocks: [legacyBlock()],
+    };
+    const id = insertLegacyDocumentRow({ snapshot: legacySnapshot });
+    const rawBefore = String(
+      select('SELECT snapshot FROM documents WHERE id = $1', [id])[0].snapshot,
+    );
+
+    const loaded = await getDocumentById(id);
+    expect(loaded?.snapshot?.content_blocks[0].items).toEqual([
+      { text: 'Konzeption und Umsetzung', enabled: true },
+      { text: 'Mobile Optimierung', enabled: true },
+    ]);
+
+    // Lesen und ein erlaubtes Nicht-Inhalts-Update lassen den Snapshot byte-identisch
+    await updateDocumentPdfPath(id, '/01_Finanzen/Rechnungen_2026/R-2026-001_weber.pdf');
+    const rawAfter = String(
+      select('SELECT snapshot FROM documents WHERE id = $1', [id])[0].snapshot,
+    );
+    expect(rawAfter).toBe(rawBefore);
+  });
+
+  it('migriert alte Standard-Keys (string[]-items) beim ersten Laden', async () => {
+    // "Als Standard speichern"-Wert aus der Zeit vor dem Konfigurator
+    setSettingRow('document_default_blocks_quote', [
+      legacyBlock({ id: 'old-default', title: 'Alter Standard' }),
+    ]);
+
+    const defaults = await getDefaultContentBlocksForType('quote');
+    expect(defaults).toHaveLength(1);
+    expect(defaults[0].title).toBe('Alter Standard');
+    expect(defaults[0].items).toEqual([
+      { text: 'Konzeption und Umsetzung', enabled: true },
+      { text: 'Mobile Optimierung', enabled: true },
+    ]);
+
+    // Neue Dokumente übernehmen den migrierten Standard unverändert
+    const quote = await createDocument({ type: 'quote', client_id: CLIENT_ID });
+    expect(quote.content_blocks[0].title).toBe('Alter Standard');
+    expect(quote.content_blocks[0].items[0]).toEqual({
+      text: 'Konzeption und Umsetzung',
+      enabled: true,
+    });
+  });
+
+  it('friert nur aktivierte Stichpunkte ein; deaktivierte bleiben am Dokument erhalten', async () => {
+    const quote = await createDocument({
+      type: 'quote',
+      client_id: CLIENT_ID,
+      line_items: LINE_ITEMS,
+    });
+    const included = quote.content_blocks.find((block) => block.kind === 'included');
+    expect(included).toBeDefined();
+    // Beispiel des Nutzers (Spec 2.3): einen Punkt abschalten, ohne ihn zu löschen
+    await updateDocument(quote.id, {
+      content_blocks: quote.content_blocks.map((block) =>
+        block.kind === 'included'
+          ? {
+              ...block,
+              items: block.items.map((item, index) =>
+                index === 0 ? { ...item, enabled: false } : item,
+              ),
+            }
+          : block,
+      ),
+    });
+
+    const issued = await issueDocument(quote.id, new Date(2026, 6, 10));
+    const frozen = issued.snapshot?.content_blocks.find((block) => block.kind === 'included');
+    const disabledText = included?.items[0]?.text ?? '';
+    expect(frozen?.items.some((item) => item.text === disabledText)).toBe(false);
+    expect(frozen?.items.every((item) => item.enabled)).toBe(true);
+
+    // Am Dokument bleibt der deaktivierte Punkt gespeichert
+    const reloaded = await getDocumentById(quote.id);
+    const kept = reloaded?.content_blocks.find((block) => block.kind === 'included');
+    expect(kept?.items[0]).toEqual({ text: disabledText, enabled: false });
+  });
+});
+
+describe('Addendum 2: Positionsvorlagen', () => {
+  it('seedet beim ersten Laden drei Vorlagen aus der Referenz und persistiert sie', async () => {
+    const templates = await getPositionTemplates();
+
+    expect(templates.map((template) => [template.name, template.unit_price])).toEqual([
+      ['Komplettpaket', 590],
+      ['Onepager', 390],
+      ['Refresh', 490],
+    ]);
+    expect(templates.every((template) => template.default_quantity === 1)).toBe(true);
+
+    // Persistiert: zweites Laden liefert dieselben ids
+    const again = await getPositionTemplates();
+    expect(again.map((template) => template.id)).toEqual(templates.map((template) => template.id));
+  });
+
+  it('respektiert eine bewusst geleerte Liste und überschreibt defekte Werte nicht', async () => {
+    setSettingRow(DOCUMENT_POSITION_TEMPLATES_SETTING_KEY, []);
+    expect(await getPositionTemplates()).toEqual([]);
+
+    setSettingRow(DOCUMENT_POSITION_TEMPLATES_SETTING_KEY, { kaputt: true });
+    const fallback = await getPositionTemplates();
+    expect(fallback.map((template) => template.name)).toEqual([
+      'Komplettpaket',
+      'Onepager',
+      'Refresh',
+    ]);
+    // Der defekte Wert bleibt stehen (kein stilles Überschreiben)
+    const raw = select('SELECT value FROM app_settings WHERE key = $1', [
+      DOCUMENT_POSITION_TEMPLATES_SETTING_KEY,
+    ]);
+    expect(String(raw[0].value)).toBe(JSON.stringify({ kaputt: true }));
+  });
+
+  it('savePositionTemplates validiert und persistiert (CRUD-Roundtrip)', async () => {
+    const templates = await getPositionTemplates();
+    const edited = [
+      ...templates.slice(1),
+      { ...templates[0], id: crypto.randomUUID(), name: 'Kopie', unit_price: 640 },
+    ];
+    await savePositionTemplates(edited);
+
+    const reloaded = await getPositionTemplates();
+    expect(reloaded.map((template) => template.name)).toEqual(['Onepager', 'Refresh', 'Kopie']);
+    expect(reloaded[2].unit_price).toBe(640);
+  });
+
+  it('lineItemFromPositionTemplate setzt den Titel als erste Beschreibungszeile (EB-03)', async () => {
+    const [komplettpaket] = await getPositionTemplates();
+    const item = lineItemFromPositionTemplate(komplettpaket);
+
+    expect(item.description.split('\n')[0]).toBe('Website-Erstellung (Komplettpaket)');
+    expect(item.description).toContain('Neuerstellung einer modernen');
+    expect(item.quantity).toBe(1);
+    expect(item.unit_price).toBe(590);
+  });
+});
+
+describe('Addendum 2: Standard-Einleitungstexte', () => {
+  it('belegt neue Dokumente je Typ vor; explizite Angaben gewinnen', async () => {
+    await saveDefaultDocumentTexts('quote', {
+      intro_text: 'Sehr geehrte/r {{kundenname}}, vielen Dank für Ihr Vertrauen.',
+      outro_text: 'Ich freue mich auf die Zusammenarbeit.',
+    });
+
+    const prefilled = await createDocument({ type: 'quote', client_id: CLIENT_ID });
+    expect(prefilled.intro_text).toBe(
+      'Sehr geehrte/r {{kundenname}}, vielen Dank für Ihr Vertrauen.',
+    );
+    expect(prefilled.outro_text).toBe('Ich freue mich auf die Zusammenarbeit.');
+
+    // Rechnungen haben einen eigenen (hier leeren) Standard
+    const invoice = await createInvoiceDraft();
+    expect(invoice.intro_text).toBeNull();
+
+    // Explizite Angabe (auch null) gewinnt über die Vorbelegung
+    const explicit = await createDocument({
+      type: 'quote',
+      client_id: CLIENT_ID,
+      intro_text: 'Eigener Text',
+      outro_text: null,
+    });
+    expect(explicit.intro_text).toBe('Eigener Text');
+    expect(explicit.outro_text).toBeNull();
+  });
+
+  it('Variablen der Vorbelegung werden beim Ausstellen aufgelöst', async () => {
+    await saveDefaultDocumentTexts('quote', {
+      intro_text: 'Sehr geehrte/r {{kundenname}},',
+      outro_text: '',
+    });
+    const quote = await createDocument({
+      type: 'quote',
+      client_id: CLIENT_ID,
+      line_items: LINE_ITEMS,
+    });
+
+    const issued = await issueDocument(quote.id, new Date(2026, 6, 10));
+    expect(issued.snapshot?.intro_text).toBe('Sehr geehrte/r Malerbetrieb Weber,');
+
+    const texts = await getDefaultDocumentTexts('quote');
+    expect(texts).toEqual({ intro_text: 'Sehr geehrte/r {{kundenname}},', outro_text: null });
   });
 });
 

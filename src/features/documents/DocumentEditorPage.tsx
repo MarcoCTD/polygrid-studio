@@ -78,7 +78,7 @@ function toFormValues(document: BusinessDocument): DocumentFormValues {
     line_items: document.line_items.map((item) => ({ ...item })),
     content_blocks: document.content_blocks.map((block) => ({
       ...block,
-      items: [...block.items],
+      items: block.items.map((item) => ({ ...item })),
     })),
   };
 }
@@ -111,13 +111,18 @@ function previewLineItems(rows: readonly PartialLineItemRow[] | undefined): Line
 }
 
 /** useWatch liefert DeepPartial-Bausteine – zurück zu vollständigen Blöcken. */
+interface PartialContentBlockItemRow {
+  text?: string;
+  enabled?: boolean;
+}
+
 interface PartialContentBlockRow {
   id?: string;
   kind?: ContentBlock['kind'];
   enabled?: boolean;
   title?: string;
   body_type?: ContentBlock['body_type'];
-  items?: (string | undefined)[];
+  items?: (PartialContentBlockItemRow | undefined)[];
   text?: string;
 }
 
@@ -133,7 +138,10 @@ function sanitizeContentBlocks(
         enabled: row.enabled === true,
         title: row.title ?? '',
         body_type: row.body_type === 'bullets' ? ('bullets' as const) : ('paragraph' as const),
-        items: (row.items ?? []).map((item) => item ?? ''),
+        items: (row.items ?? []).map((item) => ({
+          text: item?.text ?? '',
+          enabled: item?.enabled !== false,
+        })),
         text: row.text ?? '',
       },
     ];
@@ -145,7 +153,9 @@ function saveContentBlocks(rows: ContentBlock[]): ContentBlock[] {
   return rows.map((block) => ({
     ...block,
     title: block.title.trim(),
-    items: block.items.map((item) => item.trim()).filter((item) => item.length > 0),
+    items: block.items
+      .map((item) => ({ ...item, text: item.text.trim() }))
+      .filter((item) => item.text.length > 0),
     text: block.text.trim(),
   }));
 }

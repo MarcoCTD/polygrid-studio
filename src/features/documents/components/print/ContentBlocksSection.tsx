@@ -21,9 +21,13 @@ export function ContentBlockBody({
     <>
       {block.body_type === 'bullets' ? (
         <ul className="pg-doc-block-list">
-          {block.items.map((item, index) => (
-            <li key={index}>{item}</li>
-          ))}
+          {/* Deaktivierte Stichpunkte bleiben gespeichert, werden aber nicht
+              gerendert (Addendum 2, Spec 2.3). */}
+          {block.items
+            .filter((item) => item.enabled)
+            .map((item, index) => (
+              <li key={index}>{item.text}</li>
+            ))}
         </ul>
       ) : (
         <p className="pg-doc-block-text">{block.text}</p>

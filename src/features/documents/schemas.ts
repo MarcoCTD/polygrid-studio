@@ -51,6 +51,29 @@ export const ContentBlockKindEnum = z.enum([
 export const ContentBlockBodyTypeEnum = z.enum(['bullets', 'paragraph']);
 
 /**
+ * Ein Stichpunkt eines Bullet-Bausteins (Addendum 2, Spec 2.3): eigenes
+ * enabled-Flag – deaktivierte Punkte bleiben gespeichert, werden aber
+ * nicht gerendert.
+ */
+export const ContentBlockItemSchema = z.object({
+  text: z.string(),
+  enabled: z.boolean(),
+});
+
+/**
+ * Abwärtskompatibilität (Addendum 2, Spec 2.3): Alte Dokumente und alte
+ * Snapshots tragen items als nackte Strings. Sie werden beim Parsen als
+ * enabled interpretiert – reine Lese-Normalisierung, kein Migrationslauf;
+ * gespeicherte Snapshots bleiben unangetastet gültig.
+ */
+const ContentBlockItemCompatSchema = z
+  .union([z.string(), ContentBlockItemSchema])
+  .transform(
+    (item): z.infer<typeof ContentBlockItemSchema> =>
+      typeof item === 'string' ? { text: item, enabled: true } : item,
+  );
+
+/**
  * Ein Baustein: pro Dokument an-/abwählbar (enabled), editierbar und
  * umsortierbar (Array-Reihenfolge). body_type entscheidet, ob items
  * (Bullet-Liste) oder text (Absatz) gerendert wird – das jeweils andere
@@ -62,11 +85,30 @@ export const ContentBlockSchema = z.object({
   enabled: z.boolean(),
   title: z.string(),
   body_type: ContentBlockBodyTypeEnum,
-  items: z.array(z.string()).default([]),
+  items: z.array(ContentBlockItemCompatSchema).default([]),
   text: z.string().default(''),
 });
 
 export const ContentBlockListSchema = z.array(ContentBlockSchema);
+
+// ------------------------------------------------------------
+// Positionsvorlagen (Addendum 2, Spec 2.2)
+// ------------------------------------------------------------
+/**
+ * Wiederverwendbare Position für den Konfigurator: Name ist das interne
+ * Kürzel (z.B. "Onepager"), Titel erscheint im Dokument. Gespeichert als
+ * JSON-Liste in app_settings (Key document_position_templates).
+ */
+export const DocumentPositionTemplateSchema = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+  title: z.string(),
+  description: z.string(),
+  unit_price: z.number().finite(),
+  default_quantity: z.number().positive(),
+});
+
+export const DocumentPositionTemplateListSchema = z.array(DocumentPositionTemplateSchema);
 
 const uuid = z.string().uuid();
 const nullableText = z.string().trim().nullable();
@@ -224,7 +266,9 @@ export type DocumentStatus = z.infer<typeof DocumentStatusEnum>;
 export type DocumentLayout = z.infer<typeof DocumentLayoutEnum>;
 export type ContentBlockKind = z.infer<typeof ContentBlockKindEnum>;
 export type ContentBlockBodyType = z.infer<typeof ContentBlockBodyTypeEnum>;
+export type ContentBlockItem = z.infer<typeof ContentBlockItemSchema>;
 export type ContentBlock = z.infer<typeof ContentBlockSchema>;
+export type DocumentPositionTemplate = z.infer<typeof DocumentPositionTemplateSchema>;
 export type LineItem = z.infer<typeof LineItemSchema>;
 export type DocumentSnapshot = z.infer<typeof DocumentSnapshotSchema>;
 export type SnapshotIssuer = z.infer<typeof SnapshotIssuerSchema>;
