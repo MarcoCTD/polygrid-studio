@@ -592,6 +592,39 @@ test('Variablen ohne Wert: sichtbare Warnung, Ausstellen gesperrt, nach Pflege d
 });
 
 // ------------------------------------------------------------
+// Positionseditor (Auftrag 2)
+// ------------------------------------------------------------
+
+test('Positionseditor: Beschreibung als breite, mehrzeilige Textarea – kein gequetschtes Feld', async ({
+  page,
+  tauri,
+}) => {
+  await bootApp(page);
+  seedIssuerSettings(tauri);
+  seedClient(tauri);
+
+  await createDraftViaUI(page, 'invoice');
+  await page.getByTestId('add-line-item').click();
+
+  // Volle Breite statt gequetschter Spalte (Regression: ~20px im 420px-Panel)
+  const description = page.getByLabel('Position 1: Beschreibung');
+  const box = await description.boundingBox();
+  expect(box?.width ?? 0).toBeGreaterThan(250);
+
+  // Mehrzeilige Beschreibung landet mit Umbruch in der Vorschau (pre-line)
+  await description.fill('Website-Erstellung\nInklusive Responsive-Design');
+  await page.getByLabel('Position 1: Einzelpreis').fill('1200');
+  await expect(page.getByTestId('doc-positions')).toContainText('Inklusive Responsive-Design');
+  await expect(page.getByTestId('line-items-total')).toContainText('1.200,00');
+
+  // Speichern erhält den mehrzeiligen Text
+  await page.getByTestId('document-service-date').fill('Juli 2026');
+  await page.getByTestId('document-save').click();
+  await expect(page.getByText('Entwurf gespeichert')).toBeVisible();
+  await expect(description).toHaveValue('Website-Erstellung\nInklusive Responsive-Design');
+});
+
+// ------------------------------------------------------------
 // Layouts und Seitenumbruch
 // ------------------------------------------------------------
 
