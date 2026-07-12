@@ -138,7 +138,7 @@ function playbookToFormValues(playbook: Playbook | null): PlaybookFormValues {
     return {
       name: '',
       enabled: true,
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       platform_filter: [],
       actions: [defaultAction('create_task')],
     };

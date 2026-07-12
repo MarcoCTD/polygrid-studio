@@ -19,6 +19,7 @@ import migration0013 from '../../../drizzle/0013_modul_13_playbooks.sql?raw';
 import migration0014 from '../../../drizzle/0014_modul_16_website_crm.sql?raw';
 import migration0015 from '../../../drizzle/0015_modul_17_documents.sql?raw';
 import migration0016 from '../../../drizzle/0016_modul_17_addendum_content_blocks.sql?raw';
+import migration0017 from '../../../drizzle/0017_modul_08_status_trennung.sql?raw';
 
 export interface Migration {
   tag: string;
@@ -43,4 +44,5 @@ export const MIGRATIONS: Migration[] = [
   { tag: '0014_modul_16_website_crm', sql: migration0014 },
   { tag: '0015_modul_17_documents', sql: migration0015 },
   { tag: '0016_modul_17_addendum_content_blocks', sql: migration0016 },
+  { tag: '0017_modul_08_status_trennung', sql: migration0017 },
 ];

@@ -28,10 +28,13 @@ const PLATFORM_LABELS: Record<OrderPlatform, string> = {
   website: 'Website',
 };
 
+// Ablauf-Status bewusst NICHT emerald/grün gefärbt (das ist für die Zahlung
+// "Bezahlt" reserviert). "Angenommen" (confirmed) bekommt violett, klar
+// abgesetzt vom früheren grünen "Bezahlt".
 const statusClasses: Record<OrderStatus, string> = {
   inquiry: 'border-slate-300 bg-slate-100 text-slate-700',
   ordered: 'border-blue-300 bg-blue-100 text-blue-700',
-  paid: 'border-emerald-300 bg-emerald-100 text-emerald-700',
+  confirmed: 'border-violet-300 bg-violet-100 text-violet-700',
   in_production: 'border-amber-300 bg-amber-100 text-amber-800',
   shipped: 'border-cyan-300 bg-cyan-100 text-cyan-700',
   completed: 'border-green-300 bg-green-100 text-green-700',

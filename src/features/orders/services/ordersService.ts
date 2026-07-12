@@ -21,7 +21,7 @@ import {
 } from '../types';
 import { generateReceiptNumber } from './receiptNumber';
 
-const OPEN_ORDER_STATUSES: OrderStatus[] = ['ordered', 'paid', 'in_production', 'shipped'];
+const OPEN_ORDER_STATUSES: OrderStatus[] = ['ordered', 'confirmed', 'in_production', 'shipped'];
 
 const UPDATE_FIELDS = [
   'external_order_id',
@@ -72,7 +72,7 @@ function dateYear(isoDate: string): number {
 }
 
 function statusSetsPaymentDate(status: OrderStatus | undefined): boolean {
-  return status === 'paid' || status === 'completed';
+  return status === 'completed';
 }
 
 /**
@@ -283,7 +283,7 @@ export async function createOrder(data: NewOrderInput): Promise<Order> {
     const db = getDatabase();
     const id = crypto.randomUUID();
     const timestamp = now();
-    const status = input.status ?? (input.payment_received_date ? 'paid' : 'ordered');
+    const status = input.status ?? (input.payment_received_date ? 'confirmed' : 'ordered');
     const paymentReceivedDate =
       input.payment_received_date ?? (statusSetsPaymentDate(status) ? todayISODate() : null);
     const paymentStatus =

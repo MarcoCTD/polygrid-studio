@@ -6,8 +6,10 @@
  *
  * Hinweis zu orders_unshipped: Die Spec nennt einen Auftragsstatus "ready",
  * den das Datenmodell nicht kennt. Die Regel ist deshalb auf "bezahlt, aber
- * nach 2 Tagen noch nicht versendet" gemappt (status = 'paid' und
- * shipping_status nicht 'shipped'/'delivered'), siehe ENTSCHEIDUNGEN_MODUL_15.
+ * nach 2 Tagen noch nicht versendet" gemappt. Seit der Status/Payment-Trennung
+ * (Modul 08) hängt "bezahlt" an payment_status = 'paid' (nicht mehr am
+ * entfernten Auftragsstatus 'paid'); der Auftrag darf noch nicht versendet/
+ * abgeschlossen sein, siehe ENTSCHEIDUNGEN_MODUL_15 / ENTSCHEIDUNGEN_STATUS_TRENNUNG.
  */
 import { getDatabase } from '@/services/database';
 import { getSettingWithDefault } from '@/services/settings';
@@ -95,10 +97,11 @@ const ordersUnshippedRule: SmartActionRule = {
       `SELECT COUNT(*) AS count
        FROM orders o
        WHERE o.deleted_at IS NULL
-         AND o.status = 'paid'
+         AND o.payment_status = 'paid'
+         AND o.status NOT IN ('shipped', 'completed', 'cancelled', 'issue')
          AND COALESCE(o.shipping_status, 'not_shipped') NOT IN ('shipped', 'delivered')
-         AND ${lastStatusChangeExpr('paid')} < $1`,
-      [isoTimestampDaysAgo(ORDERS_UNSHIPPED_DAYS)],
+         AND COALESCE(NULLIF(o.payment_received_date, ''), substr(o.updated_at, 1, 10)) < $1`,
+      [localIsoDateDaysAgo(ORDERS_UNSHIPPED_DAYS)],
     );
     if (count === 0) return null;
 
@@ -110,7 +113,7 @@ const ordersUnshippedRule: SmartActionRule = {
           ? `1 bezahlter Auftrag ist seit über ${ORDERS_UNSHIPPED_DAYS} Tagen nicht versendet`
           : `${count} bezahlte Aufträge sind seit über ${ORDERS_UNSHIPPED_DAYS} Tagen nicht versendet`,
       targetRoute: '/orders',
-      targetSearchParams: { view: 'kanban', status: 'paid' },
+      targetSearchParams: { view: 'kanban' },
     };
   },
 };

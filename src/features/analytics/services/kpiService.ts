@@ -1,7 +1,7 @@
 import { getDatabase } from '@/services/database';
 import type { DashboardKPIs } from '../types';
 
-const OPEN_ORDER_STATUSES = ['ordered', 'paid', 'in_production', 'ready'] as const;
+const OPEN_ORDER_STATUSES = ['ordered', 'confirmed', 'in_production', 'ready'] as const;
 const OPEN_TASK_STATUSES = ['todo', 'in_progress'] as const;
 
 interface SumRow {

@@ -21,7 +21,7 @@ export interface OrdersFilterState {
 const STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
   { value: 'inquiry', label: 'Anfrage' },
   { value: 'ordered', label: 'Bestellt' },
-  { value: 'paid', label: 'Bezahlt' },
+  { value: 'confirmed', label: 'Angenommen' },
   { value: 'in_production', label: 'Produktion' },
   { value: 'shipped', label: 'Versendet' },
   { value: 'completed', label: 'Abgeschlossen' },

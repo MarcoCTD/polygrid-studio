@@ -31,7 +31,7 @@ interface KanbanColumnDefinition {
 const KANBAN_COLUMNS: KanbanColumnDefinition[] = [
   { id: 'inquiry', label: 'Anfrage', statuses: ['inquiry'], dropStatus: 'inquiry' },
   { id: 'ordered', label: 'Bestellt', statuses: ['ordered'], dropStatus: 'ordered' },
-  { id: 'paid', label: 'Bezahlt', statuses: ['paid'], dropStatus: 'paid' },
+  { id: 'confirmed', label: 'Angenommen', statuses: ['confirmed'], dropStatus: 'confirmed' },
   {
     id: 'in_production',
     label: 'In Produktion',

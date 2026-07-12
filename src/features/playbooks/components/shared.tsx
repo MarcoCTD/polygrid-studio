@@ -7,7 +7,7 @@ import type { PlaybookActionType, PlaybookRunStatus } from '../schemas';
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   inquiry: 'Anfrage',
   ordered: 'Bestellt',
-  paid: 'Bezahlt',
+  confirmed: 'Angenommen',
   in_production: 'Produktion',
   shipped: 'Versendet',
   completed: 'Abgeschlossen',

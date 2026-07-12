@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const OrderStatusEnum = z.enum([
   'inquiry',
   'ordered',
-  'paid',
+  'confirmed',
   'in_production',
   'shipped',
   'completed',
@@ -19,7 +19,7 @@ export const OrderEventTypeEnum = z.enum(['status_change', 'note_added', 'tracki
 export const ORDER_STATUS_LABELS: Record<z.infer<typeof OrderStatusEnum>, string> = {
   inquiry: 'Anfrage',
   ordered: 'Bestellt',
-  paid: 'Bezahlt',
+  confirmed: 'Angenommen',
   in_production: 'Produktion',
   shipped: 'Versendet',
   completed: 'Abgeschlossen',

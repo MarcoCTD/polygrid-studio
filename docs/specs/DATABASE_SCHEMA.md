@@ -270,8 +270,8 @@ Dieses Dokument ist die **Single Source of Truth** für das komplette SQLite-Sch
 | material_cost         | REAL                             | Nein    | Materialkosten                                                              |
 | platform_fee          | REAL                             | Nein    | Plattformgebühren                                                           |
 | payout_amount         | REAL                             | Nein    | Netto-Auszahlung der Plattform                                              |
-| status                | TEXT                             | Ja      | inquiry, ordered, paid, in_production, shipped, completed, issue, cancelled |
-| payment_status        | TEXT                             | Ja      | pending, paid, refunded, disputed                                           |
+| status                | TEXT                             | Ja      | inquiry, ordered, confirmed, in_production, shipped, completed, issue, cancelled (Ablauf-Status; kein `paid` mehr seit Modul 08 Status/Payment-Trennung, Migration 0017) |
+| payment_status        | TEXT                             | Ja      | pending, paid, refunded, disputed (Zahlungsstatus, unabhängig vom Ablauf-Status)                                           |
 | payment_received_date | TEXT (ISO)                       | Nein    | Zuflussdatum für EÜR (§11 EStG)                                             |
 | shipping_status       | TEXT                             | Nein    | not_shipped, shipped, delivered, returned                                   |
 | tracking_number       | TEXT                             | Nein    | Sendungsverfolgungsnummer                                                   |

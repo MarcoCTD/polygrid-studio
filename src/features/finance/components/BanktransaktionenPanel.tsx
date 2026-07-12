@@ -560,7 +560,7 @@ export function BanktransaktionenPanel() {
         onDecline={() => setPendingStatus(null)}
         onConfirm={() => {
           if (!pendingStatus?.orderId) return;
-          void updateOrder(pendingStatus.orderId, { status: 'paid' })
+          void updateOrder(pendingStatus.orderId, { payment_status: 'paid' })
             .then(() => {
               toast.success('Auftrag auf bezahlt gesetzt');
               setPendingStatus(null);

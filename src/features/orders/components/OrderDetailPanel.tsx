@@ -55,7 +55,7 @@ interface OrderDetailPanelProps {
 const STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
   { value: 'inquiry', label: 'Anfrage' },
   { value: 'ordered', label: 'Bestellt' },
-  { value: 'paid', label: 'Bezahlt' },
+  { value: 'confirmed', label: 'Angenommen' },
   { value: 'in_production', label: 'In Produktion' },
   { value: 'shipped', label: 'Versendet' },
   { value: 'completed', label: 'Abgeschlossen' },
@@ -353,7 +353,7 @@ export function OrderDetailPanel({ order, onClose, onChanged }: OrderDetailPanel
         onDecline={() => setPendingStatus(null)}
         onConfirm={() => {
           if (!pendingStatus?.orderId) return;
-          void updateOrder(pendingStatus.orderId, { status: 'paid' })
+          void updateOrder(pendingStatus.orderId, { payment_status: 'paid' })
             .then((updated) => {
               setCurrentOrder({ ...updated, product_name: currentOrder.product_name });
               setPendingStatus(null);

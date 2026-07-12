@@ -88,6 +88,10 @@ async function loadOrderInputs(): Promise<EuerOrderInput[]> {
             o.sale_price, o.shipping_revenue, o.status, o.payment_status,
             o.payment_received_date, o.order_date, o.deleted_at,
             p.name AS product_name,
+            -- Fallback-Zuflussdatum aus der Timeline. 'paid' ist hier ein
+            -- historischer Audit-Wert aus order_events (vor der Status/Payment-
+            -- Trennung, Modul 08); neue Aufträge erreichen stattdessen 'completed'.
+            -- Beide bleiben als Zahlungs-/Abschluss-Signal gültig.
             (SELECT MIN(ev.created_at)
              FROM order_events ev
              WHERE ev.order_id = o.id

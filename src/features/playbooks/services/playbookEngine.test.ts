@@ -237,7 +237,7 @@ describe('Migration & Seed', () => {
     const rows = select('SELECT name, enabled, trigger_status FROM playbooks ORDER BY name');
     expect(rows).toHaveLength(2);
     expect(rows.every((row) => row.enabled === 0)).toBe(true);
-    expect(rows.map((row) => row.trigger_status).sort()).toEqual(['paid', 'shipped']);
+    expect(rows.map((row) => row.trigger_status).sort()).toEqual(['confirmed', 'shipped']);
   });
 
   it('erzwingt Idempotenz über den partiellen Unique-Index', () => {
@@ -247,7 +247,7 @@ describe('Migration & Seed', () => {
     const insert = (status: string) =>
       execute(
         `INSERT INTO playbook_runs (id, playbook_id, order_id, trigger_status, status, results, executed_at)
-         VALUES ($1, $2, $3, 'paid', $4, '[]', $5)`,
+         VALUES ($1, $2, $3, 'confirmed', $4, '[]', $5)`,
         [crypto.randomUUID(), playbookId, orderId, status, new Date().toISOString()],
       );
 
@@ -273,7 +273,7 @@ describe('runPlaybooksForStatusChange', () => {
     const orderId = seedOrder({ product_id: productId, external_order_id: 'ETSY-4711' });
     await createPlaybook({
       name: 'Test Aufgabe',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       platform_filter: null,
       actions: [
         {
@@ -286,7 +286,7 @@ describe('runPlaybooksForStatusChange', () => {
       ],
     });
 
-    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    const summaries = await runPlaybooksForStatusChange(orderId, 'confirmed');
     expect(summaries).toHaveLength(1);
     expect(summaries[0].status).toBe('success');
     expect(summaries[0].created_count).toBe(1);
@@ -303,7 +303,7 @@ describe('runPlaybooksForStatusChange', () => {
     const orderId = seedOrder();
     await createPlaybook({
       name: 'Einmalig',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       platform_filter: null,
       actions: [
         {
@@ -316,11 +316,11 @@ describe('runPlaybooksForStatusChange', () => {
       ],
     });
 
-    const first = await runPlaybooksForStatusChange(orderId, 'paid');
+    const first = await runPlaybooksForStatusChange(orderId, 'confirmed');
     expect(first).toHaveLength(1);
 
     // Zurück- und wieder Vorschieben: Engine erneut mit demselben Status
-    const second = await runPlaybooksForStatusChange(orderId, 'paid');
+    const second = await runPlaybooksForStatusChange(orderId, 'confirmed');
     expect(second).toHaveLength(0);
 
     expect(select('SELECT id FROM tasks')).toHaveLength(1);
@@ -406,7 +406,7 @@ describe('runPlaybooksForStatusChange', () => {
     const orderId = seedOrder({ customer_name: null });
     await createPlaybook({
       name: 'Variablen',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       platform_filter: null,
       actions: [
         {
@@ -419,7 +419,7 @@ describe('runPlaybooksForStatusChange', () => {
       ],
     });
 
-    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    const summaries = await runPlaybooksForStatusChange(orderId, 'confirmed');
     expect(summaries[0].results[0].message).toContain('{{kundenname}}');
     expect(summaries[0].results[0].message).toContain('{{unbekannt}}');
 
@@ -432,7 +432,7 @@ describe('runPlaybooksForStatusChange', () => {
     const orderId = seedOrder();
     await createPlaybook({
       name: 'Mit Fehler',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       platform_filter: null,
       actions: [
         { type: 'suggest_template', template_id: crypto.randomUUID() },
@@ -447,12 +447,12 @@ describe('runPlaybooksForStatusChange', () => {
     });
     await createPlaybook({
       name: 'Nur Fehler',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       platform_filter: null,
       actions: [{ type: 'suggest_template', template_id: crypto.randomUUID() }],
     });
 
-    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    const summaries = await runPlaybooksForStatusChange(orderId, 'confirmed');
     expect(summaries).toHaveLength(2);
 
     const mixed = summaries.find((summary) => summary.playbook_name === 'Mit Fehler');
@@ -468,7 +468,7 @@ describe('runPlaybooksForStatusChange', () => {
     const orderId = seedOrder({ platform: 'ebay' });
     await createPlaybook({
       name: 'Nur Etsy',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       platform_filter: ['etsy'],
       actions: [
         {
@@ -481,7 +481,7 @@ describe('runPlaybooksForStatusChange', () => {
       ],
     });
 
-    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    const summaries = await runPlaybooksForStatusChange(orderId, 'confirmed');
     expect(summaries).toHaveLength(0);
     expect(select('SELECT id FROM playbook_runs')).toHaveLength(0);
   });
@@ -511,24 +511,24 @@ describe('Statusänderung wird niemals blockiert', () => {
     const orderId = seedOrder();
     execute('DROP TABLE playbook_runs');
 
-    const updated = await updateOrder(orderId, { status: 'paid' });
-    expect(updated.status).toBe('paid');
+    const updated = await updateOrder(orderId, { status: 'confirmed' });
+    expect(updated.status).toBe('confirmed');
 
     const rows = select('SELECT status FROM orders WHERE id = $1', [orderId]);
-    expect(rows[0].status).toBe('paid');
+    expect(rows[0].status).toBe('confirmed');
   });
 
   it('updateOrder gelingt auch, wenn alle Playbook-Aktionen fehlschlagen', async () => {
     const orderId = seedOrder();
     await createPlaybook({
       name: 'Kaputt',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       platform_filter: null,
       actions: [{ type: 'suggest_template', template_id: crypto.randomUUID() }],
     });
 
-    const updated = await updateOrder(orderId, { status: 'paid' });
-    expect(updated.status).toBe('paid');
+    const updated = await updateOrder(orderId, { status: 'confirmed' });
+    expect(updated.status).toBe('confirmed');
 
     const runs = select('SELECT status FROM playbook_runs');
     expect(runs).toHaveLength(1);
@@ -592,7 +592,7 @@ describe('Edge-Cases: Auftragsdaten', () => {
     const orderId = seedOrder({ product_id: null, shipping_cost: 5 });
     await createPlaybook({
       name: 'Ohne Produkt',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       platform_filter: null,
       actions: [
         {
@@ -614,7 +614,7 @@ describe('Edge-Cases: Auftragsdaten', () => {
       ],
     });
 
-    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    const summaries = await runPlaybooksForStatusChange(orderId, 'confirmed');
     expect(summaries).toHaveLength(1);
     // Beide Aktionen laufen durch; {{produktname}} wird als nicht auflösbar gemeldet
     expect(summaries[0].results[0].status).toBe('success');
@@ -637,7 +637,7 @@ describe('Edge-Cases: Auftragsdaten', () => {
     );
     await createPlaybook({
       name: 'Fallbacks',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       platform_filter: null,
       actions: [
         {
@@ -650,7 +650,7 @@ describe('Edge-Cases: Auftragsdaten', () => {
       ],
     });
 
-    await runPlaybooksForStatusChange(orderId, 'paid');
+    await runPlaybooksForStatusChange(orderId, 'confirmed');
     const title = String(select('SELECT title FROM tasks')[0].title);
     // {{bestellnummer}} fällt auf die Belegnummer zurück
     expect(title).toContain(`Bestellung ${receipt}`);
@@ -668,7 +668,7 @@ describe('Edge-Cases: Auftragsdaten', () => {
     const orderId = seedOrder({ product_id: productId, shipping_cost: 3 });
     await createPlaybook({
       name: 'Gelöschtes Produkt',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       platform_filter: null,
       actions: [
         {
@@ -690,7 +690,7 @@ describe('Edge-Cases: Auftragsdaten', () => {
       ],
     });
 
-    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    const summaries = await runPlaybooksForStatusChange(orderId, 'confirmed');
     expect(summaries[0].status).toBe('success');
     expect(select('SELECT title FROM tasks')[0].title).toBe('Alte Vase drucken');
     expect(select('SELECT product_id FROM expenses')[0].product_id).toBe(productId);
@@ -701,7 +701,7 @@ describe('Edge-Cases: Auftragsdaten', () => {
     const orderId = seedOrder({ customer_name: hostileName });
     await createPlaybook({
       name: 'Injection',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       platform_filter: null,
       actions: [
         {
@@ -714,7 +714,7 @@ describe('Edge-Cases: Auftragsdaten', () => {
       ],
     });
 
-    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    const summaries = await runPlaybooksForStatusChange(orderId, 'confirmed');
     expect(summaries[0].status).toBe('success');
     expect(select('SELECT title FROM tasks')[0].title).toBe(`Für ${hostileName}`);
     // results-JSON im Run ist trotz Anführungszeichen valide
@@ -767,12 +767,12 @@ describe('Edge-Cases: Auftragsdaten', () => {
     const orderId = seedOrder({ deleted_at: new Date().toISOString() });
     await createPlaybook({
       name: 'Gelöschter Auftrag',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       platform_filter: null,
       actions: [SIMPLE_TASK_ACTION as never],
     });
 
-    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    const summaries = await runPlaybooksForStatusChange(orderId, 'confirmed');
     expect(summaries).toHaveLength(0);
     expect(select('SELECT id FROM tasks')).toHaveLength(0);
     expect(select('SELECT id FROM playbook_runs')).toHaveLength(0);
@@ -783,7 +783,7 @@ describe('Edge-Cases: Auftragsdaten', () => {
     const orderId = seedOrder({ customer_name: longName });
     await createPlaybook({
       name: 'Langer Titel',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       platform_filter: null,
       actions: [
         {
@@ -796,7 +796,7 @@ describe('Edge-Cases: Auftragsdaten', () => {
       ],
     });
 
-    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    const summaries = await runPlaybooksForStatusChange(orderId, 'confirmed');
     expect(summaries[0].status).toBe('success');
     const title = String(select('SELECT title FROM tasks')[0].title);
     expect(title.length).toBe(200);
@@ -810,18 +810,18 @@ describe('Edge-Cases: Trigger, Reihenfolge & Idempotenz', () => {
     // Bewusst in umgekehrter Reihenfolge einfügen: created_at entscheidet, nicht die Insert-Reihenfolge
     seedPlaybookRow({
       name: 'Zweites (jünger)',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       actions: [{ ...SIMPLE_TASK_ACTION, title_template: 'B' }],
       created_at: '2026-07-02T10:00:00.000Z',
     });
     seedPlaybookRow({
       name: 'Erstes (älter)',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       actions: [{ ...SIMPLE_TASK_ACTION, title_template: 'A' }],
       created_at: '2026-07-01T10:00:00.000Z',
     });
 
-    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    const summaries = await runPlaybooksForStatusChange(orderId, 'confirmed');
     expect(summaries.map((summary) => summary.playbook_name)).toEqual([
       'Erstes (älter)',
       'Zweites (jünger)',
@@ -833,18 +833,18 @@ describe('Edge-Cases: Trigger, Reihenfolge & Idempotenz', () => {
     const orderId = seedOrder();
     seedPlaybookRow({
       name: 'Kaputt zuerst',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       actions: [{ type: 'suggest_template', template_id: crypto.randomUUID() }],
       created_at: '2026-07-01T10:00:00.000Z',
     });
     seedPlaybookRow({
       name: 'Läuft danach',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       actions: [SIMPLE_TASK_ACTION],
       created_at: '2026-07-02T10:00:00.000Z',
     });
 
-    const summaries = await runPlaybooksForStatusChange(orderId, 'paid');
+    const summaries = await runPlaybooksForStatusChange(orderId, 'confirmed');
     expect(summaries.map((summary) => [summary.playbook_name, summary.status])).toEqual([
       ['Kaputt zuerst', 'error'],
       ['Läuft danach', 'success'],
@@ -882,12 +882,12 @@ describe('Edge-Cases: Trigger, Reihenfolge & Idempotenz', () => {
     const orderId = seedOrder();
     const playbook = await createPlaybook({
       name: 'Vor Bearbeitung',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       platform_filter: null,
       actions: [SIMPLE_TASK_ACTION as never],
     });
 
-    expect(await runPlaybooksForStatusChange(orderId, 'paid')).toHaveLength(1);
+    expect(await runPlaybooksForStatusChange(orderId, 'confirmed')).toHaveLength(1);
 
     await updatePlaybook(playbook.id, {
       name: 'Nach Bearbeitung',
@@ -895,7 +895,7 @@ describe('Edge-Cases: Trigger, Reihenfolge & Idempotenz', () => {
     });
 
     // Gleicher Auftrag, gleicher Status: kein zweiter Run trotz Bearbeitung
-    expect(await runPlaybooksForStatusChange(orderId, 'paid')).toHaveLength(0);
+    expect(await runPlaybooksForStatusChange(orderId, 'confirmed')).toHaveLength(0);
     expect(select('SELECT id FROM tasks')).toHaveLength(1);
 
     // Anderer Trigger-Status nach Bearbeitung: neuer Lauf ist erlaubt
@@ -906,7 +906,7 @@ describe('Edge-Cases: Trigger, Reihenfolge & Idempotenz', () => {
 
   it('Status-Sprung (inquiry direkt auf completed) feuert nur Playbooks des Zielstatus', async () => {
     const orderId = seedOrder({ status: 'inquiry' });
-    for (const status of ['paid', 'shipped', 'completed']) {
+    for (const status of ['confirmed', 'shipped', 'completed']) {
       seedPlaybookRow({
         name: `Playbook ${status}`,
         trigger_status: status,
@@ -977,11 +977,11 @@ describe('Edge-Cases: Log & Vorschläge nach Löschungen', () => {
     const orderId = seedOrder();
     const playbook = await createPlaybook({
       name: 'Bald gelöscht',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       platform_filter: null,
       actions: [SIMPLE_TASK_ACTION as never],
     });
-    await runPlaybooksForStatusChange(orderId, 'paid');
+    await runPlaybooksForStatusChange(orderId, 'confirmed');
     await softDeletePlaybook(playbook.id);
 
     const runs = await getRecentRuns();
@@ -995,11 +995,11 @@ describe('Edge-Cases: Log & Vorschläge nach Löschungen', () => {
     const orderId = seedOrder();
     await createPlaybook({
       name: 'Vorschlag',
-      trigger_status: 'paid',
+      trigger_status: 'confirmed',
       platform_filter: null,
       actions: [{ type: 'suggest_template', template_id: templateId }],
     });
-    await runPlaybooksForStatusChange(orderId, 'paid');
+    await runPlaybooksForStatusChange(orderId, 'confirmed');
     await softDeleteOrder(orderId);
 
     const suggestions = await getOpenTemplateSuggestions(orderId);

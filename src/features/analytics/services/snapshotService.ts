@@ -117,7 +117,7 @@ export async function createOrUpdateSnapshot(
       count(
         `SELECT COUNT(*) AS count
          FROM orders
-         WHERE status IN ('ordered', 'paid', 'in_production', 'ready')
+         WHERE status IN ('ordered', 'confirmed', 'in_production', 'ready')
            AND deleted_at IS NULL`,
         [],
       ),

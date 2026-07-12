@@ -20,7 +20,7 @@ import type { OrderFilters, OrderListItem, OrderStatus } from './types';
 const DEFAULT_STATUSES: OrderStatus[] = [
   'inquiry',
   'ordered',
-  'paid',
+  'confirmed',
   'in_production',
   'shipped',
   'completed',

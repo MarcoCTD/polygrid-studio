@@ -2,6 +2,7 @@ import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import ExcelJS from 'exceljs';
 import { getDatabase } from '@/services/database';
+import { EUER_ORDER_INCOME_SQL } from './euerIncome';
 import { EXPENSE_CATEGORY_LABELS, type ExpenseCategory } from '@/features/expenses/constants';
 import type { Expense } from '@/features/expenses/schemas';
 import type {
@@ -65,8 +66,6 @@ const EXPORT_HEADERS = [
   'Beleg vorhanden',
   'Externe Referenz',
 ] as const;
-
-const EARNING_STATUSES: OrderStatus[] = ['paid', 'shipped', 'completed'];
 
 const EUER_CATEGORY_BY_EXPENSE: Record<ExpenseCategory, string> = {
   filament: 'Wareneinkauf',
@@ -280,7 +279,6 @@ function formatCsv(bookings: FinanceBooking[]): string {
 
 async function loadOrders(dateFrom: string, dateTo: string): Promise<ExportOrder[]> {
   const range = normalizeDateRange(dateFrom, dateTo);
-  const statusPlaceholders = EARNING_STATUSES.map((_, index) => `$${index + 3}`).join(', ');
   const rows = await getDatabase().select<Row[]>(
     `SELECT o.*, ${ORDER_REVENUE_DATE_EXPR} AS euer_payment_date,
        EXISTS (
@@ -295,9 +293,9 @@ async function loadOrders(dateFrom: string, dateTo: string): Promise<ExportOrder
      WHERE o.deleted_at IS NULL
        AND ${ORDER_REVENUE_DATE_EXPR} >= $1
        AND ${ORDER_REVENUE_DATE_EXPR} <= $2
-       AND o.status IN (${statusPlaceholders})
+       AND ${EUER_ORDER_INCOME_SQL}
      ORDER BY euer_payment_date ASC, o.receipt_number ASC`,
-    [range.dateFrom, range.dateTo, ...EARNING_STATUSES],
+    [range.dateFrom, range.dateTo],
   );
   return rows.map(rowToExportOrder);
 }
@@ -374,7 +372,6 @@ export async function getEuerExportPreview(
   dateTo: string,
 ): Promise<EuerExportPreview> {
   const range = normalizeDateRange(dateFrom, dateTo);
-  const statusPlaceholders = EARNING_STATUSES.map((_, index) => `$${index + 3}`).join(', ');
   const db = getDatabase();
   const incomePromise = db
     .select<{ count: number; total: number | null }[]>(
@@ -383,8 +380,8 @@ export async function getEuerExportPreview(
        WHERE o.deleted_at IS NULL
          AND ${ORDER_REVENUE_DATE_EXPR} >= $1
          AND ${ORDER_REVENUE_DATE_EXPR} <= $2
-         AND o.status IN (${statusPlaceholders})`,
-      [range.dateFrom, range.dateTo, ...EARNING_STATUSES],
+         AND ${EUER_ORDER_INCOME_SQL}`,
+      [range.dateFrom, range.dateTo],
     )
     .catch((error) => {
       console.error('EÜR preview income query failed', error);

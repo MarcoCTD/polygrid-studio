@@ -158,7 +158,7 @@ const N26_STANDARD_MAPPING: Record<string, BankField> = {
   'Exchange Rate': 'ignore',
 };
 
-const ORDER_MATCH_STATUSES: OrderStatus[] = ['ordered', 'paid', 'shipped'];
+const ORDER_MATCH_STATUSES: OrderStatus[] = ['ordered', 'confirmed', 'shipped'];
 
 function now(): string {
   return new Date().toISOString();
@@ -964,7 +964,7 @@ async function findPayoutAllocations(
      WHERE o.deleted_at IS NULL
        AND o.platform = $1
        AND o.payment_received_date IS NULL
-       AND o.status IN ('ordered', 'paid', 'shipped')
+       AND o.status IN ('ordered', 'confirmed', 'shipped')
        AND o.order_date >= $2
        AND o.order_date <= $3
      ORDER BY o.order_date ASC`,
