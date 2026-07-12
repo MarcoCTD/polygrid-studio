@@ -33,6 +33,19 @@ export const ORDER_STATUS_OPTIONS = OrderStatusEnum.options.map((value) => ({
   label: ORDER_STATUS_LABELS[value],
 }));
 
+export const PAYMENT_STATUS_LABELS: Record<z.infer<typeof PaymentStatusEnum>, string> = {
+  pending: 'Offen',
+  paid: 'Bezahlt',
+  refunded: 'Erstattet',
+  disputed: 'Klärung',
+};
+
+/** Zahlungsstatus-Optionen für den Inline-Wechsel in Tabelle/Detail-Panel. */
+export const PAYMENT_STATUS_OPTIONS = PaymentStatusEnum.options.map((value) => ({
+  value,
+  label: PAYMENT_STATUS_LABELS[value],
+}));
+
 const uuid = z.string().uuid();
 const nullableUuid = uuid.nullable();
 const nullableText = z.string().trim().nullable();

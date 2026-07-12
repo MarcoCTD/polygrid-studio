@@ -4,7 +4,7 @@ import { Lock } from 'lucide-react';
 import { formatEUR, formatRelativeDate } from '@/features/products/utils';
 import { cn } from '@/lib/utils';
 import type { OrderListItem } from '../types';
-import { OrderPlatformIcon } from './OrderBadges';
+import { OrderPlatformIcon, PaymentStatusBadge } from './OrderBadges';
 
 interface KanbanCardProps {
   order: OrderListItem;
@@ -55,6 +55,12 @@ export function KanbanCard({ order, onOpen }: KanbanCardProps) {
         <span className="text-sm font-semibold tabular-nums text-text-primary">
           {formatEUR(order.sale_price)}
         </span>
+      </div>
+
+      {/* Geldstatus im Kanban sichtbar, klar abgesetzt vom Ablauf-Status
+          (eigene Spalte oben) durch Münz-Icon und Präfix "Zahlung:". */}
+      <div className="mt-2 flex">
+        <PaymentStatusBadge status={order.payment_status} />
       </div>
 
       <div className="mt-3 flex items-center justify-between gap-2 text-xs text-text-tertiary">

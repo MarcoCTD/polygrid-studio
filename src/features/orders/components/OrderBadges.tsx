@@ -1,6 +1,7 @@
 import {
   BadgeEuro,
   CircleDollarSign,
+  Coins,
   Globe,
   Landmark,
   Lock,
@@ -10,15 +11,11 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { ORDER_STATUS_LABELS as STATUS_LABELS } from '../types';
+import {
+  ORDER_STATUS_LABELS as STATUS_LABELS,
+  PAYMENT_STATUS_LABELS as PAYMENT_LABELS,
+} from '../types';
 import type { OrderPlatform, OrderStatus, PaymentStatus } from '../types';
-
-const PAYMENT_LABELS: Record<PaymentStatus, string> = {
-  pending: 'Offen',
-  paid: 'Bezahlt',
-  refunded: 'Erstattet',
-  disputed: 'Klärung',
-};
 
 const PLATFORM_LABELS: Record<OrderPlatform, string> = {
   etsy: 'Etsy',
@@ -65,10 +62,19 @@ export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   );
 }
 
+/**
+ * Zahlungsstatus-Badge. Trägt Münz-Icon und das Präfix "Zahlung:", damit der
+ * Geldstatus (v.a. "Bezahlt") nie mit einem Ablauf-Status verwechselt wird
+ * (Disambiguierung, Modul 08).
+ */
 export function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
   return (
-    <Badge variant="outline" className={cn('whitespace-nowrap', paymentClasses[status])}>
-      {PAYMENT_LABELS[status]}
+    <Badge
+      variant="outline"
+      className={cn('inline-flex items-center gap-1 whitespace-nowrap', paymentClasses[status])}
+    >
+      <Coins className="size-3.5 shrink-0" aria-hidden />
+      Zahlung: {PAYMENT_LABELS[status]}
     </Badge>
   );
 }

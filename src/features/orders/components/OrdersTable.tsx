@@ -30,7 +30,13 @@ import {
 import { InlineStatusBadge } from '@/components/shared';
 import { formatEUR, formatRelativeDate } from '@/features/products/utils';
 import { softDeleteOrder, updateOrder } from '../services';
-import { ORDER_STATUS_OPTIONS, type OrderListItem, type OrderStatus } from '../types';
+import {
+  ORDER_STATUS_OPTIONS,
+  PAYMENT_STATUS_OPTIONS,
+  type OrderListItem,
+  type OrderStatus,
+  type PaymentStatus,
+} from '../types';
 import {
   OrderPlatformIcon,
   OrderStatusBadge,
@@ -73,6 +79,25 @@ export function OrdersTable({ orders, isLoading, onOpenOrder, onChanged }: Order
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : 'Status konnte nicht geändert werden',
+        );
+      }
+    },
+    [onChanged],
+  );
+
+  const handlePaymentSelect = useCallback(
+    async (order: OrderListItem, paymentStatus: PaymentStatus) => {
+      try {
+        // Zentraler Service-Pfad (kein Direktschreiben): updateOrder pflegt
+        // payment_received_date passend zum payment_status (Modul 08).
+        await updateOrder(order.id, { payment_status: paymentStatus });
+        toast.success(
+          `Zahlung geändert: ${PAYMENT_STATUS_OPTIONS.find((o) => o.value === paymentStatus)?.label ?? paymentStatus}`,
+        );
+        onChanged();
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : 'Zahlung konnte nicht geändert werden',
         );
       }
     },
@@ -135,7 +160,17 @@ export function OrdersTable({ orders, isLoading, onOpenOrder, onChanged }: Order
       {
         accessorKey: 'payment_status',
         header: 'Zahlung',
-        cell: ({ row }) => <PaymentStatusBadge status={row.original.payment_status} />,
+        cell: ({ row }) => (
+          <InlineStatusBadge
+            value={row.original.payment_status}
+            options={PAYMENT_STATUS_OPTIONS}
+            renderBadge={(status) => <PaymentStatusBadge status={status} />}
+            onSelect={(status) => handlePaymentSelect(row.original, status)}
+            disabled={row.original.tax_locked}
+            disabledTitle="Steuerlich gesperrt – Zahlung kann nicht geändert werden"
+            ariaLabel={`Zahlung von ${row.original.receipt_number} ändern`}
+          />
+        ),
       },
       {
         accessorKey: 'tax_locked',
@@ -171,7 +206,7 @@ export function OrdersTable({ orders, isLoading, onOpenOrder, onChanged }: Order
         ),
       },
     ],
-    [onOpenOrder, handleStatusSelect],
+    [onOpenOrder, handleStatusSelect, handlePaymentSelect],
   );
 
   // TanStack Table exposes callback-heavy APIs that trigger the React Compiler lint rule.
@@ -229,7 +264,7 @@ export function OrdersTable({ orders, isLoading, onOpenOrder, onChanged }: Order
           {table.getHeaderGroups().map((headerGroup) => (
             <div
               key={headerGroup.id}
-              className="grid grid-cols-[110px_120px_120px_1.6fr_1fr_130px_120px_110px_60px_44px]"
+              className="grid grid-cols-[110px_130px_120px_1.6fr_1fr_130px_120px_150px_60px_44px]"
             >
               {headerGroup.headers.map((header) => (
                 <button
@@ -253,7 +288,7 @@ export function OrdersTable({ orders, isLoading, onOpenOrder, onChanged }: Order
               return (
                 <div
                   key={row.id}
-                  className="absolute left-0 grid w-full grid-cols-[110px_120px_120px_1.6fr_1fr_130px_120px_110px_60px_44px] border-b border-border-subtle text-sm hover:bg-bg-hover"
+                  className="absolute left-0 grid w-full grid-cols-[110px_130px_120px_1.6fr_1fr_130px_120px_150px_60px_44px] border-b border-border-subtle text-sm hover:bg-bg-hover"
                   style={{ transform: `translateY(${virtualRow.start}px)` }}
                   onClick={() => onOpenOrder(row.original)}
                 >
