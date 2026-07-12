@@ -30,6 +30,7 @@ import {
   type BankTransactionMatch,
 } from '../services';
 import {
+  PAYMENT_STATUS_LABELS,
   UpdateOrderSchema,
   type Order,
   type OrderEvent,
@@ -189,7 +190,13 @@ export function OrderDetailPanel({ order, onClose, onChanged }: OrderDetailPanel
     setIsSaving(true);
     try {
       const updated = await updateOrder(currentOrder.id, payload);
-      const merged = { ...updated, product_name: currentOrder.product_name };
+      // has_paid_invoice ändert sich nicht durch ein Auftrags-Update (nur durch
+      // Rechnungsaktionen), bleibt also erhalten.
+      const merged = {
+        ...updated,
+        product_name: currentOrder.product_name,
+        has_paid_invoice: currentOrder.has_paid_invoice,
+      };
       setCurrentOrder(merged);
       form.reset(orderToFormValues(merged));
       await reloadEvents();
@@ -223,7 +230,11 @@ export function OrderDetailPanel({ order, onClose, onChanged }: OrderDetailPanel
   async function unlinkBankMatch() {
     try {
       const updated = await updateOrder(currentOrder.id, { bank_match_id: null });
-      setCurrentOrder({ ...updated, product_name: currentOrder.product_name });
+      setCurrentOrder({
+        ...updated,
+        product_name: currentOrder.product_name,
+        has_paid_invoice: currentOrder.has_paid_invoice,
+      });
       setBankMatch(null);
       onChanged();
       toast.success('Bank-Match entfernt');
@@ -231,6 +242,30 @@ export function OrderDetailPanel({ order, onClose, onChanged }: OrderDetailPanel
       toast.error(
         error instanceof Error ? error.message : 'Bank-Match konnte nicht entfernt werden',
       );
+    }
+  }
+
+  const hasPaidInvoice = currentOrder.has_paid_invoice === true;
+  // Stiller Widerspruch (Modul 08): verknüpfte Rechnung bezahlt, Auftrag aber
+  // nicht auf bezahlt (z.B. Altdaten). Korrektur setzt payment_status='paid'
+  // über den zentralen updateOrder-Pfad.
+  const paymentMismatch = hasPaidInvoice && currentOrder.payment_status !== 'paid';
+
+  async function handleFixPaymentMismatch() {
+    try {
+      const updated = await updateOrder(currentOrder.id, { payment_status: 'paid' });
+      const merged = {
+        ...updated,
+        product_name: currentOrder.product_name,
+        has_paid_invoice: currentOrder.has_paid_invoice,
+      };
+      setCurrentOrder(merged);
+      form.reset(orderToFormValues(merged));
+      await reloadEvents();
+      onChanged();
+      toast.success('Zahlung auf bezahlt gesetzt');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Zahlung konnte nicht gesetzt werden');
     }
   }
 
@@ -284,6 +319,26 @@ export function OrderDetailPanel({ order, onClose, onChanged }: OrderDetailPanel
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
             Steuerlich gesperrt - nur Notizen, Tracking, Bank-Match und Storno können noch
             bearbeitet werden.
+          </div>
+        )}
+
+        {paymentMismatch && (
+          <div className="mt-3 flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+            <div className="min-w-0">
+              <p className="font-medium">Widerspruch zur verknüpften Rechnung</p>
+              <p className="mt-0.5">
+                Die verknüpfte Rechnung ist bezahlt, der Auftrag steht aber auf „
+                {PAYMENT_STATUS_LABELS[currentOrder.payment_status]}“.
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              className="shrink-0"
+              onClick={() => void handleFixPaymentMismatch()}
+            >
+              Auf bezahlt setzen
+            </Button>
           </div>
         )}
       </header>
@@ -513,7 +568,12 @@ function OverviewTab({
       <SelectField
         label="Payment-Status"
         value={form.watch('payment_status') ?? order.payment_status}
-        disabled={!editable}
+        disabled={!editable || order.has_paid_invoice === true}
+        hint={
+          order.has_paid_invoice
+            ? 'Über die verknüpfte Rechnung gesteuert, dort stornieren um zu ändern'
+            : undefined
+        }
         options={PAYMENT_OPTIONS}
         onChange={(value) => {
           if (value) form.setValue('payment_status', value as PaymentStatus);
@@ -697,12 +757,15 @@ function SelectField({
   value,
   options,
   disabled,
+  hint,
   onChange,
 }: {
   label: string;
   value: string;
   options: { value: string; label: string }[];
   disabled?: boolean;
+  /** Kleiner Hinweis unter dem Feld, z.B. warum es gesperrt ist. */
+  hint?: string;
   onChange: (value: string | null) => void;
 }) {
   const selectedLabel = options.find((option) => option.value === value)?.label ?? 'Auswählen';
@@ -711,7 +774,7 @@ function SelectField({
     <div className="space-y-1.5 text-sm">
       <span className="font-medium text-text-secondary">{label}</span>
       <Select value={value} onValueChange={onChange} disabled={disabled}>
-        <SelectTrigger className="w-full">
+        <SelectTrigger className="w-full" title={disabled ? hint : undefined}>
           <SelectValue>{selectedLabel}</SelectValue>
         </SelectTrigger>
         <SelectContent>
@@ -722,6 +785,7 @@ function SelectField({
           ))}
         </SelectContent>
       </Select>
+      {hint ? <p className="text-xs text-text-muted">{hint}</p> : null}
     </div>
   );
 }

@@ -155,8 +155,21 @@ function rowToOrderListItem(row: OrderRow): OrderListItem {
   return {
     ...rowToOrder(row),
     product_name: (row.product_name as string | null | undefined) ?? null,
+    has_paid_invoice: Boolean(row.has_paid_invoice),
   };
 }
+
+/**
+ * Es existiert eine verknüpfte, ausgestellte + bezahlte Rechnung? Steuert die
+ * Zahlungsstatus-Sperre (Modul 08). SQL-Fragment für die Listen-Queries.
+ */
+const HAS_PAID_INVOICE_SQL = `EXISTS (
+  SELECT 1 FROM documents d
+  WHERE d.order_id = o.id
+    AND d.type = 'invoice'
+    AND d.status = 'paid'
+    AND d.deleted_at IS NULL
+) AS has_paid_invoice`;
 
 function rowToOrderEvent(row: OrderRow): OrderEvent {
   return OrderEventSchema.parse({
@@ -530,7 +543,7 @@ export async function getOrders(filters?: OrderFilters): Promise<OrderListItem[]
   try {
     const { where, params } = buildOrderWhere(filters);
     const rows = await getDatabase().select<OrderRow[]>(
-      `SELECT o.*, p.name AS product_name
+      `SELECT o.*, p.name AS product_name, ${HAS_PAID_INVOICE_SQL}
        FROM orders o
        LEFT JOIN products p ON p.id = o.product_id
        ${where}
@@ -549,7 +562,7 @@ export async function getOrders(filters?: OrderFilters): Promise<OrderListItem[]
 export async function getOrderById(id: string): Promise<OrderListItem | null> {
   try {
     const rows = await getDatabase().select<OrderRow[]>(
-      `SELECT o.*, p.name AS product_name
+      `SELECT o.*, p.name AS product_name, ${HAS_PAID_INVOICE_SQL}
        FROM orders o
        LEFT JOIN products p ON p.id = o.product_id
        WHERE o.id = $1

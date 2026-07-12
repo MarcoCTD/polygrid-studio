@@ -178,4 +178,12 @@ export interface OrderFilters {
 
 export interface OrderListItem extends Order {
   product_name: string | null;
+  /**
+   * Es existiert eine verknüpfte, ausgestellte und als bezahlt markierte
+   * Rechnung (Modul 08). Dann ist der Zahlungsstatus über die Rechnung
+   * gesteuert und im Auftrag gesperrt (Entsperrung nur via Storno). Optional,
+   * weil nicht jeder Konstruktionspfad diesen Kontext lädt (Default: nicht
+   * gesperrt).
+   */
+  has_paid_invoice?: boolean;
 }

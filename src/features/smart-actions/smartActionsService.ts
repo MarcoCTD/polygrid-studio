@@ -8,6 +8,7 @@
  */
 import { WEBSITE_SMART_ACTION_RULES } from '@/features/websites/smartActionRules';
 import { DOCUMENT_SMART_ACTION_RULES } from '@/features/documents/smartActionRules';
+import { ORDER_SMART_ACTION_RULES } from '@/features/orders/smartActionRules';
 import { getRegisteredSmartActionRules, registerSmartActionRules } from './registry';
 import { SMART_ACTION_RULES } from './rules';
 import { getSnoozes, isSnoozed, snoozeSmartAction } from './snoozeService';
@@ -20,6 +21,8 @@ registerSmartActionRules(SMART_ACTION_RULES);
 registerSmartActionRules(WEBSITE_SMART_ACTION_RULES);
 // Dokumente-Regel invoice_overdue (Modul 17)
 registerSmartActionRules(DOCUMENT_SMART_ACTION_RULES);
+// Auftrags-Regel order_invoice_mismatch (Modul 08 Status/Payment-Trennung)
+registerSmartActionRules(ORDER_SMART_ACTION_RULES);
 
 export const MAX_SMART_ACTIONS = 5;
 

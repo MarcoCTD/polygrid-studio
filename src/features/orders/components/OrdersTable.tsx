@@ -166,8 +166,12 @@ export function OrdersTable({ orders, isLoading, onOpenOrder, onChanged }: Order
             options={PAYMENT_STATUS_OPTIONS}
             renderBadge={(status) => <PaymentStatusBadge status={status} />}
             onSelect={(status) => handlePaymentSelect(row.original, status)}
-            disabled={row.original.tax_locked}
-            disabledTitle="Steuerlich gesperrt – Zahlung kann nicht geändert werden"
+            disabled={row.original.tax_locked || row.original.has_paid_invoice === true}
+            disabledTitle={
+              row.original.has_paid_invoice
+                ? 'Über die verknüpfte Rechnung gesteuert, dort stornieren um zu ändern'
+                : 'Steuerlich gesperrt – Zahlung kann nicht geändert werden'
+            }
             ariaLabel={`Zahlung von ${row.original.receipt_number} ändern`}
           />
         ),

@@ -69,6 +69,28 @@ Dropdown), bleibt als Direktschreiben bestehen. Die frühere Zusatz-Empfehlung
 obsolet und wird in Etappe C entfernt; für Etappe A zeigen die Dialoge auf
 `payment_status='paid'` statt auf den entfernten Status.
 
+## E-07: Rechnungs-Sperre über abgeleitetes Flag `has_paid_invoice`
+
+Die Sperre des Zahlungsstatus bei verknüpfter bezahlter Rechnung wird über ein
+in `getOrders`/`getOrderById` per EXISTS-Subquery berechnetes Flag
+`has_paid_invoice` gelöst (verknüpfte Rechnung `type='invoice'`,
+`status='paid'`, `deleted_at IS NULL`). Gründe:
+
+- Das Flag steht damit sowohl für das Inline-Dropdown (Tabelle) als auch für
+  das Detail-Panel einheitlich bereit, ohne pro Zeile eine Extra-Query.
+- Optionales Feld auf `OrderListItem`, damit andere Konstruktionspfade (z.B.
+  euerExportService) unverändert bleiben (Default: nicht gesperrt).
+- Entsperrung ergibt sich automatisch: Ein Storno setzt die Original-Rechnung
+  auf `cancelled` → EXISTS wird false → Auftrag wieder editierbar. `cancelInvoice`
+  wird bewusst nicht erweitert (Auftrag bleibt bis zur Nutzer-Korrektur bezahlt,
+  ist dann aber wieder änderbar).
+
+Die Sperre ist eine UI-Sperre (Dropdown/Select disabled + Tooltip). Der Service
+blockiert `payment_status`-Änderungen nicht hart – der Korrektur-Button
+("Auf bezahlt setzen") läuft über denselben zentralen `updateOrder`-Pfad. Der
+stille Widerspruch (bezahlte Rechnung, Auftrag ≠ paid) wird doppelt sichtbar:
+Warnbanner im Detail-Panel und Smart-Action `order_invoice_mismatch` (danger).
+
 ## E-06: Analytics-Open-Order-Zähler folgen dem Rename
 
 `kpiService.ts`/`snapshotService.ts` zählen offene Aufträge über
