@@ -28,6 +28,9 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { getOneDriveBasePath, importFileToBase } from '@/services/filesystem';
+import { getImportTargetFolder, isPathInsideBase } from '@/features/files/importTarget';
+import { relativeToAbsolute } from '@/features/files/productFolders';
 import { useUIStore } from '@/stores';
 import {
   EXPENSE_CATEGORIES,
@@ -580,6 +583,10 @@ function ReceiptTab({
   onSaved: (expense: Expense) => void;
 }) {
   const receiptPath = form.watch('receipt_file_path');
+  const [pendingImport, setPendingImport] = useState<{
+    sourcePath: string;
+    targetFolder: string;
+  } | null>(null);
 
   async function updateReceipt(path: string | null) {
     form.setValue('receipt_file_path', path, { shouldDirty: true });
@@ -610,12 +617,50 @@ function ReceiptTab({
         ],
       });
 
-      if (typeof selected === 'string') {
-        await updateReceipt(selected);
-        toast.success('Beleg verknüpft');
+      if (typeof selected !== 'string') {
+        return;
       }
+
+      // Belege ausserhalb des OneDrive-Ordners werden vor dem Verknuepfen
+      // in die Basis kopiert (nach Bestaetigung); innerhalb bleibt alles wie bisher.
+      const basePath = await getOneDriveBasePath();
+      if (basePath && !isPathInsideBase(selected, basePath)) {
+        const targetFolder = getImportTargetFolder(
+          { kind: 'expense', expenseDate: form.getValues('date') ?? null },
+          'beleg',
+        );
+        setPendingImport({ sourcePath: selected, targetFolder });
+        return;
+      }
+
+      await updateReceipt(selected);
+      toast.success('Beleg verknüpft');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Beleg konnte nicht verknüpft werden');
+    }
+  }
+
+  async function confirmReceiptImport() {
+    if (!pendingImport) return;
+    try {
+      const basePath = await getOneDriveBasePath();
+      if (!basePath) {
+        throw new Error('Kein OneDrive-Basispfad konfiguriert.');
+      }
+
+      // Kopieren, dann auf die Kopie verweisen. Schlaegt die Kopie fehl,
+      // bleibt receipt_file_path unveraendert.
+      const relativePath = await importFileToBase(
+        pendingImport.sourcePath,
+        pendingImport.targetFolder,
+        fileNameFromPath(pendingImport.sourcePath),
+      );
+      await updateReceipt(relativeToAbsolute(relativePath, basePath));
+      toast.success('Beleg kopiert und verknüpft');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Beleg konnte nicht kopiert werden');
+    } finally {
+      setPendingImport(null);
     }
   }
 
@@ -684,6 +729,30 @@ function ReceiptTab({
       <p className="rounded-lg bg-info-subtle p-3 text-xs text-text-secondary">
         Für erweiterte Dateiverknüpfungen nutze den Dateimanager (Modul 03).
       </p>
+
+      <AlertDialog
+        open={pendingImport !== null}
+        onOpenChange={(open) => !open && setPendingImport(null)}
+      >
+        <AlertDialogContent className="bg-bg-elevated text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Beleg in OneDrive kopieren</AlertDialogTitle>
+            <AlertDialogDescription className="text-text-secondary">
+              Der Beleg liegt außerhalb deines OneDrive-Ordners. Beim Verknüpfen wird er nach{' '}
+              <span className="font-medium text-text-primary">
+                {pendingImport?.targetFolder ?? ''}
+              </span>{' '}
+              kopiert. Das Original bleibt erhalten.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="bg-bg-elevated">
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void confirmReceiptImport()}>
+              Kopieren und verknüpfen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

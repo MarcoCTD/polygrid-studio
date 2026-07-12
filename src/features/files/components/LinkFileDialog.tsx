@@ -19,9 +19,22 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { getFileInfo, getOneDriveBasePath, hasOneDriveBasePath } from '@/services/filesystem';
+import { toast } from 'sonner';
+import {
+  checkPathExists,
+  getExternalFileInfo,
+  getFileInfo,
+  getOneDriveBasePath,
+  hasOneDriveBasePath,
+  importFileToBase,
+} from '@/services/filesystem';
 import { createFileLink, searchProductsForFileLinks } from '../db';
-import { absoluteToRelative } from '../productFolders';
+import { getImportTargetFolder, isPathInsideBase } from '../importTarget';
+import {
+  absoluteToRelative,
+  createProductFolderStructure,
+  getProductFolderPath,
+} from '../productFolders';
 import type { FileType } from '../types';
 import { newFileLinkSchema } from '../types';
 import { formatUnknownError, getBaseName } from '../utils';
@@ -34,9 +47,6 @@ const FILE_TYPE_OPTIONS: { value: FileType; label: string }[] = [
   { value: 'beleg', label: 'Beleg' },
   { value: 'sonstiges', label: 'Sonstiges' },
 ];
-
-const OUTSIDE_ONEDRIVE_MESSAGE =
-  'Diese Datei liegt außerhalb deines OneDrive-Ordners und kann nicht zuverlässig verknüpft werden. Verschiebe sie zuerst in deinen PolyGrid Studio Ordner.';
 
 interface ProductSearchResult {
   id: string;
@@ -73,7 +83,15 @@ export function LinkFileDialog({
   const [error, setError] = useState<string | null>(null);
   const [isOutsideOneDrive, setIsOutsideOneDrive] = useState(false);
 
-  const canSave = Boolean(selectedProduct) && displayName.trim().length > 0 && !isOutsideOneDrive;
+  const canSave = Boolean(selectedProduct) && displayName.trim().length > 0;
+
+  // Zielordner fuer den Import (nur relevant, wenn die Datei ausserhalb liegt).
+  const importTargetFolder = useMemo(() => {
+    if (!isOutsideOneDrive || !selectedProduct) {
+      return null;
+    }
+    return getImportTargetFolder({ kind: 'product', productName: selectedProduct.name }, fileType);
+  }, [isOutsideOneDrive, selectedProduct, fileType]);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,7 +103,7 @@ export function LinkFileDialog({
             return;
           }
 
-          setIsOutsideOneDrive(!isPathInsideBasePath(filePath, basePath));
+          setIsOutsideOneDrive(!isPathInsideBase(filePath, basePath));
         })
         .catch((err) => {
           if (!cancelled) setError(formatUnknownError(err));
@@ -144,24 +162,55 @@ export function LinkFileDialog({
         throw new Error('Kein OneDrive-Basispfad konfiguriert.');
       }
 
-      const fileInfo = await getFileInfo(filePath);
+      let relativePath: string;
+      let fileSize: number | null;
+      let extension: string | null;
+
+      if (isOutsideOneDrive) {
+        // Externe Datei: erst in die Basis kopieren, dann auf die Kopie verweisen.
+        // Schlaegt die Kopie fehl, wird KEIN file_link angelegt.
+        const fileInfo = await getExternalFileInfo(filePath);
+        const productFolder = getProductFolderPath(basePath, selectedProduct.name);
+        const productFolderExists = await checkPathExists(productFolder);
+        if (!productFolderExists) {
+          await createProductFolderStructure(basePath, selectedProduct.name);
+        }
+
+        const targetFolder = getImportTargetFolder(
+          { kind: 'product', productName: selectedProduct.name },
+          fileType,
+        );
+        relativePath = await importFileToBase(filePath, targetFolder, fileName);
+        fileSize = fileInfo.size;
+        extension = fileInfo.extension;
+      } else {
+        const fileInfo = await getFileInfo(filePath);
+        relativePath = absoluteToRelative(filePath, basePath);
+        fileSize = fileInfo.size;
+        extension = fileInfo.extension;
+      }
+
       const payload = newFileLinkSchema.parse({
         entity_type: 'product',
         entity_id: selectedProduct.id,
-        file_path: absoluteToRelative(filePath, basePath),
+        file_path: relativePath,
         file_type: fileType,
         note: note.trim() ? note.trim() : null,
         is_primary: 0,
         position: 0,
-        file_size: fileInfo.size,
-        mime_type: guessMimeType(fileInfo.extension),
+        file_size: fileSize,
+        mime_type: guessMimeType(extension),
         display_name: displayName.trim() || fileName,
       });
 
       await createFileLink(payload);
       onSuccess();
     } catch (err) {
-      setError(formatUnknownError(err));
+      const message = formatUnknownError(err);
+      setError(message);
+      if (isOutsideOneDrive) {
+        toast.error(message);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -266,8 +315,12 @@ export function LinkFileDialog({
           </div>
 
           {isOutsideOneDrive ? (
-            <p className="rounded-md border border-danger bg-danger-subtle p-3 text-sm text-danger">
-              {OUTSIDE_ONEDRIVE_MESSAGE}
+            <p className="rounded-md border border-border bg-info-subtle p-3 text-sm text-text-secondary">
+              Diese Datei liegt außerhalb deines OneDrive-Ordners. Beim Verknüpfen wird sie nach{' '}
+              <span className="font-medium text-text-primary">
+                {importTargetFolder ?? 'den passenden Produktordner (zuerst Produkt wählen)'}
+              </span>{' '}
+              kopiert. Das Original bleibt erhalten.
             </p>
           ) : null}
 
@@ -297,17 +350,4 @@ function guessMimeType(extension: string | null): string | null {
   if (normalized === 'stl') return 'model/stl';
   if (normalized === 'pdf') return 'application/pdf';
   return null;
-}
-
-function isPathInsideBasePath(filePath: string, basePath: string): boolean {
-  const normalizedFilePath = normalizePath(filePath);
-  const normalizedBasePath = normalizePath(basePath);
-  return (
-    normalizedFilePath === normalizedBasePath ||
-    normalizedFilePath.startsWith(`${normalizedBasePath}/`)
-  );
-}
-
-function normalizePath(path: string): string {
-  return path.replace(/\\/g, '/').replace(/\/+$/, '');
 }

@@ -63,6 +63,12 @@ export class TauriMock {
   readonly writtenFiles = new Map<string, string>();
   /** Rueckgabewert fuer den naechsten plugin:dialog|open / |save Aufruf. */
   nextDialogResult: string | string[] | null = null;
+  /** Simuliert belegte Zielpfade fuer import_file_to_base (relativ zur Basis). */
+  readonly existingImportTargets = new Set<string>();
+  /** Erfolgreiche Importe in Aufruf-Reihenfolge, fuer Assertions. */
+  readonly importedFiles: Array<{ source: string; targetPath: string }> = [];
+  /** Fehlermeldung, mit der der naechste import_file_to_base-Aufruf abbricht. */
+  nextImportError: string | null = null;
 
   constructor(db: Database) {
     this.db = db;
@@ -151,8 +157,39 @@ export class TauriMock {
         return null;
       case 'list_directory':
         return [];
-      case 'get_file_info':
-        return null;
+      case 'get_file_info': {
+        // Plausible Datei-Infos aus dem Pfad ableiten (Form wie im Rust-Command).
+        const filePath = String(args.path ?? '');
+        const name = filePath.split(/[\\/]/).filter(Boolean).pop() ?? filePath;
+        const dotIndex = name.lastIndexOf('.');
+        return {
+          name,
+          path: filePath,
+          isDirectory: false,
+          size: 1234,
+          modifiedAt: 1_750_000_000,
+          extension: dotIndex > 0 ? name.slice(dotIndex + 1) : null,
+        };
+      }
+      case 'import_file_to_base': {
+        if (this.nextImportError) {
+          const message = this.nextImportError;
+          this.nextImportError = null;
+          throw new Error(message);
+        }
+
+        const targetFolder = String(args.targetFolder ?? '');
+        const fileName = String(args.fileName ?? '');
+        const targetPath = this.resolveImportTarget(targetFolder, fileName);
+        this.existingImportTargets.add(targetPath);
+        this.importedFiles.push({ source: String(args.source ?? ''), targetPath });
+        return {
+          operationType: 'import',
+          sourcePath: String(args.source ?? ''),
+          targetPath,
+          isUndoable: false,
+        };
+      }
       case 'write_export_file': {
         // Binärdatei-Export (Modul 14): Inhalt als Base64 ablegen, damit Tests
         // die xlsx im Node-Prozess zurücklesen können.
@@ -204,6 +241,25 @@ export class TauriMock {
       default:
         throw new Error(`TauriMock: unbekanntes Kommando "${cmd}" (Args: ${JSON.stringify(args)})`);
     }
+  }
+
+  /** Namenskonflikt-Aufloesung wie im Rust-Command: Suffix -1, -2, ... */
+  private resolveImportTarget(targetFolder: string, fileName: string): string {
+    const first = `${targetFolder}/${fileName}`;
+    if (!this.existingImportTargets.has(first)) {
+      return first;
+    }
+
+    const dotIndex = fileName.lastIndexOf('.');
+    const stem = dotIndex > 0 ? fileName.slice(0, dotIndex) : fileName;
+    const extension = dotIndex > 0 ? fileName.slice(dotIndex) : '';
+    for (let suffix = 1; suffix <= 999; suffix++) {
+      const candidate = `${targetFolder}/${stem}-${suffix}${extension}`;
+      if (!this.existingImportTargets.has(candidate)) {
+        return candidate;
+      }
+    }
+    throw new Error('Mock: kein freier Dateiname am Zielort gefunden.');
   }
 
   /** Direkter SQL-Zugriff fuer Test-Assertions und Seeds. */

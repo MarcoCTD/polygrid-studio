@@ -246,6 +246,45 @@ pub fn copy_file(
     })
 }
 
+/// Importiert eine Datei von ausserhalb des OneDrive-Basisordners in die Basis.
+/// Die Quelle wird nur gelesen und bleibt unveraendert (Kopie, nie Verschieben);
+/// eine Basis-Validierung findet fuer die Quelle bewusst NICHT statt. Das Ziel
+/// wird dagegen strikt validiert: `target_folder` ist ein relativer Pfad
+/// innerhalb der Basis, Traversal (`..`, absolute Pfade) wird abgelehnt.
+/// Bei Namenskonflikt wird `-1`, `-2`, ... vor der Endung angehaengt,
+/// bestehende Dateien werden nie ueberschrieben.
+#[tauri::command]
+pub fn import_file_to_base(
+    base_path: String,
+    source: String,
+    target_folder: String,
+    file_name: String,
+) -> Result<FileOperationLog, FsError> {
+    let base = canonical_base(&base_path)?;
+    let source_path = path_from_string(&source)?;
+    let source_path = fs::canonicalize(&source_path)?;
+
+    if source_path.is_dir() {
+        return Err(FsError::Io(
+            "Ordner koennen nicht importiert werden.".to_string(),
+        ));
+    }
+
+    let file_name = validate_import_file_name(&file_name)?;
+    let target_dir = resolve_import_target_dir(&base, &target_folder)?;
+    let final_target = conflict_free_target(&target_dir, file_name)?;
+
+    fs::copy(&source_path, &final_target)?;
+
+    Ok(FileOperationLog {
+        operation_type: "import".to_string(),
+        // Die Quelle liegt ausserhalb der Basis, daher absoluter Pfad im Log.
+        source_path: path_to_string(&source_path),
+        target_path: Some(relative_path(&final_target, &base)?),
+        is_undoable: false,
+    })
+}
+
 #[tauri::command]
 pub fn delete_to_archive(base_path: String, path: String) -> Result<FileOperationLog, FsError> {
     let base = canonical_base(&base_path)?;
@@ -408,6 +447,71 @@ fn relative_path_buf_to_string(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
 
+fn validate_import_file_name(file_name: &str) -> Result<&str, FsError> {
+    let trimmed = file_name.trim();
+    if trimmed.is_empty()
+        || trimmed == "."
+        || trimmed == ".."
+        || trimmed.contains('/')
+        || trimmed.contains('\\')
+    {
+        return Err(FsError::Io(
+            "Ungueltiger Dateiname fuer den Import.".to_string(),
+        ));
+    }
+    Ok(trimmed)
+}
+
+fn resolve_import_target_dir(base: &Path, target_folder: &str) -> Result<PathBuf, FsError> {
+    let relative = Path::new(target_folder);
+    let only_normal_components = relative
+        .components()
+        .all(|component| matches!(component, std::path::Component::Normal(_)));
+    if relative.as_os_str().is_empty() || relative.is_absolute() || !only_normal_components {
+        return Err(FsError::PathOutsideBase);
+    }
+
+    let target_dir = base.join(relative);
+    fs::create_dir_all(&target_dir)?;
+
+    // Nach dem Anlegen kanonisieren: faengt Symlinks ab, die aus der Basis fuehren.
+    let canonical = fs::canonicalize(&target_dir)?;
+    if canonical.starts_with(base) {
+        Ok(canonical)
+    } else {
+        Err(FsError::PathOutsideBase)
+    }
+}
+
+fn conflict_free_target(target_dir: &Path, file_name: &str) -> Result<PathBuf, FsError> {
+    let first = target_dir.join(file_name);
+    if !first.exists() {
+        return Ok(first);
+    }
+
+    let (stem, extension) = split_file_name(file_name);
+    for suffix in 1..=999 {
+        let candidate = target_dir.join(format!("{}-{}{}", stem, suffix, extension));
+        if !candidate.exists() {
+            return Ok(candidate);
+        }
+    }
+
+    Err(FsError::Io(
+        "Kein freier Dateiname am Zielort gefunden.".to_string(),
+    ))
+}
+
+fn split_file_name(file_name: &str) -> (String, String) {
+    match file_name.rfind('.') {
+        Some(index) if index > 0 => (
+            file_name[..index].to_string(),
+            file_name[index..].to_string(),
+        ),
+        _ => (file_name.to_string(), String::new()),
+    }
+}
+
 fn archive_target_path(base: &Path, relative_source: &Path) -> Result<PathBuf, FsError> {
     let target = base.join("09_Archiv").join(relative_source);
 
@@ -461,4 +565,166 @@ fn civil_from_days(days_since_epoch: i64) -> (i64, i64, i64) {
     let year = y + if m <= 2 { 1 } else { 0 };
 
     (year, m, d)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    static TEST_DIR_COUNTER: AtomicU32 = AtomicU32::new(0);
+
+    /// Eindeutiges Testverzeichnis unterhalb des System-Temp-Ordners.
+    fn make_test_dir(label: &str) -> PathBuf {
+        let counter = TEST_DIR_COUNTER.fetch_add(1, Ordering::SeqCst);
+        let dir = std::env::temp_dir().join(format!(
+            "polygrid-import-test-{}-{}-{}",
+            std::process::id(),
+            counter,
+            label
+        ));
+        fs::create_dir_all(&dir).expect("Testverzeichnis anlegen");
+        dir
+    }
+
+    #[test]
+    fn split_file_name_trennt_stamm_und_endung() {
+        assert_eq!(
+            split_file_name("foto.png"),
+            ("foto".to_string(), ".png".to_string())
+        );
+        assert_eq!(
+            split_file_name("archiv.tar.gz"),
+            ("archiv.tar".to_string(), ".gz".to_string())
+        );
+        assert_eq!(
+            split_file_name("ohne-endung"),
+            ("ohne-endung".to_string(), String::new())
+        );
+        assert_eq!(
+            split_file_name(".gitignore"),
+            (".gitignore".to_string(), String::new())
+        );
+    }
+
+    #[test]
+    fn conflict_free_target_haengt_suffixe_an() {
+        let dir = make_test_dir("conflict");
+        fs::write(dir.join("foto.png"), b"a").unwrap();
+        fs::write(dir.join("foto-1.png"), b"b").unwrap();
+
+        let target = conflict_free_target(&dir, "foto.png").unwrap();
+        assert_eq!(target, dir.join("foto-2.png"));
+
+        let frei = conflict_free_target(&dir, "neu.png").unwrap();
+        assert_eq!(frei, dir.join("neu.png"));
+
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn resolve_import_target_dir_lehnt_traversal_ab() {
+        let base = make_test_dir("traversal-base");
+        let base = fs::canonicalize(&base).unwrap();
+
+        assert!(matches!(
+            resolve_import_target_dir(&base, "../ausserhalb"),
+            Err(FsError::PathOutsideBase)
+        ));
+        assert!(matches!(
+            resolve_import_target_dir(&base, "/etc"),
+            Err(FsError::PathOutsideBase)
+        ));
+        assert!(matches!(
+            resolve_import_target_dir(&base, "02_Produkte/../../raus"),
+            Err(FsError::PathOutsideBase)
+        ));
+        assert!(matches!(
+            resolve_import_target_dir(&base, ""),
+            Err(FsError::PathOutsideBase)
+        ));
+
+        let ok = resolve_import_target_dir(&base, "01_Finanzen/Belege_2026").unwrap();
+        assert!(ok.starts_with(&base));
+        assert!(ok.is_dir());
+
+        fs::remove_dir_all(&base).unwrap();
+    }
+
+    #[test]
+    fn import_file_to_base_kopiert_und_laesst_original_stehen() {
+        let base = make_test_dir("import-base");
+        let extern_dir = make_test_dir("import-extern");
+        let source = extern_dir.join("beleg.pdf");
+        fs::write(&source, b"inhalt").unwrap();
+
+        let log = import_file_to_base(
+            base.to_string_lossy().to_string(),
+            source.to_string_lossy().to_string(),
+            "01_Finanzen/Belege_2026".to_string(),
+            "beleg.pdf".to_string(),
+        )
+        .unwrap();
+
+        assert_eq!(log.operation_type, "import");
+        assert_eq!(
+            log.target_path.as_deref(),
+            Some("01_Finanzen/Belege_2026/beleg.pdf")
+        );
+        assert!(!log.is_undoable);
+        // Original bleibt erhalten, Kopie existiert mit gleichem Inhalt.
+        assert!(source.exists());
+        let base_canonical = fs::canonicalize(&base).unwrap();
+        let copy = base_canonical.join("01_Finanzen/Belege_2026/beleg.pdf");
+        assert_eq!(fs::read(&copy).unwrap(), b"inhalt");
+
+        fs::remove_dir_all(&base).unwrap();
+        fs::remove_dir_all(&extern_dir).unwrap();
+    }
+
+    #[test]
+    fn import_file_to_base_loest_namenskonflikt() {
+        let base = make_test_dir("konflikt-base");
+        let extern_dir = make_test_dir("konflikt-extern");
+        let source = extern_dir.join("foto.png");
+        fs::write(&source, b"neu").unwrap();
+
+        let ziel_dir = base.join("02_Produkte/vase/Bilder");
+        fs::create_dir_all(&ziel_dir).unwrap();
+        fs::write(ziel_dir.join("foto.png"), b"alt").unwrap();
+
+        let log = import_file_to_base(
+            base.to_string_lossy().to_string(),
+            source.to_string_lossy().to_string(),
+            "02_Produkte/vase/Bilder".to_string(),
+            "foto.png".to_string(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            log.target_path.as_deref(),
+            Some("02_Produkte/vase/Bilder/foto-1.png")
+        );
+        // Bestehende Datei wurde nicht ueberschrieben.
+        assert_eq!(fs::read(ziel_dir.join("foto.png")).unwrap(), b"alt");
+        assert_eq!(fs::read(ziel_dir.join("foto-1.png")).unwrap(), b"neu");
+
+        fs::remove_dir_all(&base).unwrap();
+        fs::remove_dir_all(&extern_dir).unwrap();
+    }
+
+    #[test]
+    fn import_file_to_base_fehler_bei_fehlender_quelle() {
+        let base = make_test_dir("fehler-base");
+
+        let result = import_file_to_base(
+            base.to_string_lossy().to_string(),
+            base.join("gibt-es-nicht.pdf").to_string_lossy().to_string(),
+            "04_Auftraege".to_string(),
+            "gibt-es-nicht.pdf".to_string(),
+        );
+        assert!(matches!(result, Err(FsError::NotFound)));
+
+        fs::remove_dir_all(&base).unwrap();
+    }
 }

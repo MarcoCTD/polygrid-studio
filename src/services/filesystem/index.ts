@@ -101,6 +101,81 @@ export async function copyFile(source: string, target: string): Promise<void> {
   await logSuccessfulOperation(result);
 }
 
+/**
+ * Liest Datei-Infos einer Datei AUSSERHALB des OneDrive-Basisordners
+ * (z.B. fuer den Import beim Verknuepfen). Nur Lesen, keine Schreiboperation.
+ */
+export async function getExternalFileInfo(path: string): Promise<FileInfo> {
+  return invoke<FileInfo>('get_file_info', { path, basePath: null });
+}
+
+/**
+ * Importiert eine externe Datei in den OneDrive-Basisordner: Kopie in
+ * `targetFolder` (relativ zur Basis, wird bei Bedarf angelegt), Namenskonflikte
+ * werden per Suffix -1/-2 geloest, das Original bleibt unveraendert.
+ * Liefert den relativen Pfad der neuen Kopie. Fehlversuche landen mit
+ * Status 'failed' im Operations-Log.
+ */
+export async function importFileToBase(
+  source: string,
+  targetFolder: string,
+  fileName: string,
+): Promise<string> {
+  const basePath = await requireBasePath();
+  let result: WriteCommandResult;
+  try {
+    result = await invoke<WriteCommandResult>('import_file_to_base', {
+      basePath,
+      source,
+      targetFolder,
+      fileName,
+    });
+  } catch (err) {
+    const message = formatImportError(err);
+    try {
+      await logFileOperation({
+        operationType: 'import',
+        sourcePath: source,
+        targetPath: `${targetFolder}/${fileName}`,
+        status: 'failed',
+        errorMessage: message,
+        isUndoable: false,
+      });
+    } catch {
+      // Log-Fehler duerfen die eigentliche Fehlermeldung nicht verdecken.
+    }
+    throw new Error(message);
+  }
+
+  await logSuccessfulOperation(result);
+  if (!result.targetPath) {
+    throw new Error('Import lieferte keinen Zielpfad zurueck.');
+  }
+  return result.targetPath;
+}
+
+function formatImportError(err: unknown): string {
+  if (err && typeof err === 'object' && 'kind' in err) {
+    const fsError = err as FsError;
+    switch (fsError.kind) {
+      case 'NotFound':
+        return 'Die Quelldatei wurde nicht gefunden.';
+      case 'PermissionDenied':
+        return 'Keine Berechtigung zum Lesen der Quelldatei oder Schreiben am Zielort.';
+      case 'PathOutsideBase':
+        return 'Der Zielordner liegt nicht innerhalb des OneDrive-Basisordners.';
+      case 'AlreadyExists':
+        return 'Am Zielort existiert bereits eine gleichnamige Datei.';
+      case 'Io':
+        return `Datei konnte nicht kopiert werden: ${fsError.message}`;
+    }
+  }
+  if (err instanceof Error) {
+    return err.message;
+  }
+  return 'Datei konnte nicht kopiert werden.';
+}
+
 export async function deleteToArchive(path: string): Promise<void> {
   const basePath = await requireBasePath();
   const result = await invoke<WriteCommandResult>('delete_to_archive', { basePath, path });

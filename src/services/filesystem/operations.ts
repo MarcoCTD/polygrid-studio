@@ -1,6 +1,6 @@
 import { getDatabase } from '@/services/database';
 
-export type FileOperationType = 'rename' | 'move' | 'copy' | 'archive' | 'create_dir';
+export type FileOperationType = 'rename' | 'move' | 'copy' | 'archive' | 'create_dir' | 'import';
 export type FileOperationStatus = 'success' | 'failed' | 'undone';
 
 export interface FileOperation {

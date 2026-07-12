@@ -42,6 +42,7 @@ pub fn run() {
             filesystem::commands::rename_file,
             filesystem::commands::move_file,
             filesystem::commands::copy_file,
+            filesystem::commands::import_file_to_base,
             filesystem::commands::delete_to_archive,
             filesystem::commands::undo_last_operation,
             filesystem::commands::write_export_file
