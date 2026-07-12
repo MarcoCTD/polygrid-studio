@@ -1,6 +1,17 @@
 # Datenbank-Schema
 
-PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Juli 2026 | Version 1.10
+PolyGrid Studio Business OS | Konsolidiertes Schema über alle Module | Juli 2026 | Version 1.11
+
+> **Änderungen in v1.11 gegenüber v1.10 (Bug-Fix Playbook-Trigger nach Status-Trennung):**
+>
+> - Migration `0018_fix_playbook_trigger_paid`: zieht `playbook_runs.trigger_status`
+>   `paid → confirmed` nach (0017 hatte nur `playbooks` migriert); kollisionssicher
+>   gegen den Unique-Index `idx_playbook_runs_idempotency` – kollidierende Alt-Runs
+>   behalten `paid`. `playbooks` wird als idempotentes Sicherheitsnetz erneut umgezogen.
+> - `playbook_runs.trigger_status` ist im Zod-Schema jetzt bewusst Freitext (Historie
+>   darf entfernte Status tragen); `playbooks.trigger_status` bleibt fachlich das
+>   Order-Status-Enum, Alt-Werte werden in der UI als „veralteter Trigger" markiert
+>   statt das Laden zu blockieren. Details: `ENTSCHEIDUNGEN_STATUS_TRENNUNG.md` E-08.
 
 > **Änderungen in v1.10 gegenüber v1.9 (Addendum 2 Modul 17 – Dokument-Konfigurator):**
 >
@@ -405,7 +416,7 @@ Junction-Tabelle für Sammelauszahlungen. Eine Banktransaktion (Plattform-Auszah
 | id              | TEXT (UUID) | Ja      | Primärschlüssel                                                                                                                         |
 | name            | TEXT        | Ja      | Anzeigename                                                                                                                             |
 | enabled         | INTEGER     | Ja      | Boolean, Default: true (Seeds werden deaktiviert angelegt)                                                                              |
-| trigger_status  | TEXT        | Ja      | Auftragsstatus, der auslöst (Enum aus Modul 08)                                                                                         |
+| trigger_status  | TEXT        | Ja      | Auftragsstatus, der auslöst (Enum aus Modul 08; `paid → confirmed` durch Migrationen 0017/0018, Alt-Werte werden in der UI markiert)    |
 | platform_filter | TEXT (JSON) | Nein    | Array von Plattformen (`etsy`, `ebay`, `kleinanzeigen`, `direkt`); NULL = alle                                                          |
 | actions         | TEXT (JSON) | Ja      | Array von Aktionen (Zod discriminated union: `create_task`, `create_expense`, `suggest_template`); Reihenfolge = Ausführungsreihenfolge |
 | created_at      | TEXT (ISO)  | Ja      |                                                                                                                                         |
@@ -421,7 +432,7 @@ Junction-Tabelle für Sammelauszahlungen. Eine Banktransaktion (Plattform-Auszah
 | id             | TEXT (UUID) | Ja      | Primärschlüssel                                                                                                                                                      |
 | playbook_id    | TEXT (FK)   | Ja      | → playbooks.id                                                                                                                                                       |
 | order_id       | TEXT (FK)   | Ja      | → orders.id (auslösender Auftrag)                                                                                                                                    |
-| trigger_status | TEXT        | Ja      | Status zum Zeitpunkt der Ausführung                                                                                                                                  |
+| trigger_status | TEXT        | Ja      | Status zum Zeitpunkt der Ausführung (Historie: kann entfernte Enum-Werte tragen; 0018 zog `paid → confirmed` nach, außer bei Index-Kollision)                        |
 | status         | TEXT        | Ja      | `success`, `partial`, `error`, `dry_run`                                                                                                                             |
 | results        | TEXT (JSON) | Ja      | Pro Aktion: Typ, Status, erstellte Entity-ID, Hinweis/Fehlermeldung, Vorschau; `suggest_template`-Vorschläge inkl. `dismissed`-Flag leben hier (kein eigenes Schema) |
 | executed_at    | TEXT (ISO)  | Ja      |                                                                                                                                                                      |

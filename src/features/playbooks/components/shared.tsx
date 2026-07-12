@@ -51,10 +51,31 @@ export function RunStatusBadge({ status }: { status: PlaybookRunStatus }) {
   );
 }
 
-export function TriggerStatusBadge({ status }: { status: OrderStatus }) {
+/**
+ * Nimmt den gespeicherten Rohwert entgegen: Alt-Daten können einen Status
+ * tragen, der nicht mehr im Enum liegt (z.B. 'paid' vor Migration 0018).
+ * Solche Einträge werden sichtbar, aber nicht blockierend markiert.
+ */
+export function TriggerStatusBadge({ status }: { status: string }) {
+  const label = (ORDER_STATUS_LABELS as Record<string, string | undefined>)[status];
+  if (!label) {
+    return (
+      <Badge
+        variant="outline"
+        className="whitespace-nowrap border-amber-300 bg-amber-100 text-amber-800"
+        title={`Der gespeicherte Trigger-Status „${status}“ existiert nicht mehr. Playbook bearbeiten und einen neuen Status wählen.`}
+        data-testid="trigger-status-invalid"
+      >
+        Veralteter Trigger – bitte neu wählen
+      </Badge>
+    );
+  }
   return (
-    <Badge variant="outline" className="whitespace-nowrap border-blue-300 bg-blue-100 text-blue-700">
-      {ORDER_STATUS_LABELS[status]}
+    <Badge
+      variant="outline"
+      className="whitespace-nowrap border-blue-300 bg-blue-100 text-blue-700"
+    >
+      {label}
     </Badge>
   );
 }

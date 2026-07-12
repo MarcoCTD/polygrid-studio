@@ -2,12 +2,14 @@ import { getDatabase } from '@/services/database';
 import {
   actionResultSchema,
   playbookCreateSchema,
+  playbookListItemSchema,
   playbookRunSchema,
   playbookSchema,
   playbookUpdateSchema,
   type ActionResult,
   type Playbook,
   type PlaybookCreate,
+  type PlaybookListItem,
   type PlaybookRun,
   type PlaybookUpdate,
 } from '../schemas';
@@ -28,8 +30,8 @@ function parseJsonColumn(value: unknown): unknown {
   }
 }
 
-export function rowToPlaybook(row: Row): Playbook {
-  return playbookSchema.parse({
+function playbookRowInput(row: Row): Record<string, unknown> {
+  return {
     id: row.id,
     name: row.name,
     enabled: Boolean(row.enabled),
@@ -39,7 +41,28 @@ export function rowToPlaybook(row: Row): Playbook {
     created_at: row.created_at,
     updated_at: row.updated_at,
     deleted_at: row.deleted_at ?? null,
-  });
+  };
+}
+
+/** Strenge Variante für die Engine: trigger_status muss im aktuellen Enum liegen. */
+export function rowToPlaybook(row: Row): Playbook {
+  return playbookSchema.parse(playbookRowInput(row));
+}
+
+/** Tolerante Variante für Listen/Anzeige: unbekannter trigger_status wird markiert statt geworfen. */
+export function rowToPlaybookListItem(row: Row): PlaybookListItem {
+  return playbookListItemSchema.parse(playbookRowInput(row));
+}
+
+/**
+ * Streng geparste Fassung eines Listen-Eintrags – null, wenn der Eintrag
+ * (z.B. wegen veraltetem trigger_status) kein gültiges Playbook mehr ist.
+ * Für Pfade, die ein echtes Playbook brauchen (Dry-Run).
+ */
+export function playbookFromListItem(item: PlaybookListItem): Playbook | null {
+  const { trigger_status_valid: _valid, ...candidate } = item;
+  const parsed = playbookSchema.safeParse(candidate);
+  return parsed.success ? parsed.data : null;
 }
 
 export function rowToPlaybookRun(row: Row): PlaybookRun {
@@ -54,14 +77,27 @@ export function rowToPlaybookRun(row: Row): PlaybookRun {
   });
 }
 
-export async function listPlaybooks(includeDeleted = false): Promise<Playbook[]> {
+export async function listPlaybooks(includeDeleted = false): Promise<PlaybookListItem[]> {
   try {
     const rows = await getDatabase().select<Row[]>(
       `SELECT * FROM playbooks
        ${includeDeleted ? '' : 'WHERE deleted_at IS NULL'}
        ORDER BY name COLLATE NOCASE ASC`,
     );
-    return rows.map(rowToPlaybook);
+    // Pro Zeile parsen: ein einzelner defekter Eintrag (z.B. kaputtes
+    // actions-JSON) darf die restliche Liste nicht blockieren.
+    const items: PlaybookListItem[] = [];
+    for (const row of rows) {
+      try {
+        items.push(rowToPlaybookListItem(row));
+      } catch (error) {
+        console.error('[Playbooks] Defekter Playbook-Eintrag übersprungen', {
+          playbookId: row.id,
+          error,
+        });
+      }
+    }
+    return items;
   } catch (error) {
     throw new Error(
       `Playbooks konnten nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`,
@@ -69,12 +105,13 @@ export async function listPlaybooks(includeDeleted = false): Promise<Playbook[]>
   }
 }
 
-export async function getPlaybookById(id: string): Promise<Playbook | null> {
+export async function getPlaybookById(id: string): Promise<PlaybookListItem | null> {
   try {
-    const rows = await getDatabase().select<Row[]>('SELECT * FROM playbooks WHERE id = $1 LIMIT 1', [
-      id,
-    ]);
-    return rows[0] ? rowToPlaybook(rows[0]) : null;
+    const rows = await getDatabase().select<Row[]>(
+      'SELECT * FROM playbooks WHERE id = $1 LIMIT 1',
+      [id],
+    );
+    return rows[0] ? rowToPlaybookListItem(rows[0]) : null;
   } catch (error) {
     throw new Error(
       `Playbook konnte nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`,
@@ -108,7 +145,9 @@ export async function createPlaybook(data: PlaybookCreate): Promise<Playbook> {
       ],
     );
 
-    const playbook = await getPlaybookById(id);
+    const item = await getPlaybookById(id);
+    // Frisch angelegte Playbooks sind durch playbookCreateSchema immer strikt gültig.
+    const playbook = item ? playbookFromListItem(item) : null;
     if (!playbook) throw new Error(`Playbook ${id} wurde nach Erstellung nicht gefunden.`);
     return playbook;
   } catch (error) {
@@ -118,7 +157,7 @@ export async function createPlaybook(data: PlaybookCreate): Promise<Playbook> {
   }
 }
 
-export async function updatePlaybook(id: string, data: PlaybookUpdate): Promise<Playbook> {
+export async function updatePlaybook(id: string, data: PlaybookUpdate): Promise<PlaybookListItem> {
   try {
     const input = playbookUpdateSchema.parse(data);
     const existing = await getPlaybookById(id);
@@ -202,11 +241,20 @@ export async function getRecentRuns(limit = 50): Promise<PlaybookRunListItem[]> 
        LIMIT $1`,
       [limit],
     );
-    return rows.map((row) => ({
-      ...rowToPlaybookRun(row),
-      playbook_name: (row.playbook_name as string | null | undefined) ?? null,
-      order_receipt_number: (row.order_receipt_number as string | null | undefined) ?? null,
-    }));
+    // Pro Zeile parsen: ein defekter Alt-Eintrag darf das Log nicht blockieren.
+    const items: PlaybookRunListItem[] = [];
+    for (const row of rows) {
+      try {
+        items.push({
+          ...rowToPlaybookRun(row),
+          playbook_name: (row.playbook_name as string | null | undefined) ?? null,
+          order_receipt_number: (row.order_receipt_number as string | null | undefined) ?? null,
+        });
+      } catch (error) {
+        console.error('[Playbooks] Defekter Log-Eintrag übersprungen', { runId: row.id, error });
+      }
+    }
+    return items;
   } catch (error) {
     throw new Error(
       `Playbook-Log konnte nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`,
@@ -254,7 +302,17 @@ export async function getOpenTemplateSuggestions(orderId: string): Promise<Templ
 
     const suggestions: TemplateSuggestion[] = [];
     for (const row of rows) {
-      const run = rowToPlaybookRun(row);
+      let run: PlaybookRun;
+      try {
+        run = rowToPlaybookRun(row);
+      } catch (error) {
+        // Ein defekter Alt-Run darf die Vorschläge der übrigen nicht blockieren.
+        console.error('[Playbooks] Defekter Run bei Vorschlags-Suche übersprungen', {
+          runId: row.id,
+          error,
+        });
+        continue;
+      }
       run.results.forEach((result, index) => {
         if (
           result.action_type === 'suggest_template' &&
@@ -281,10 +339,7 @@ export async function getOpenTemplateSuggestions(orderId: string): Promise<Templ
 }
 
 /** Markiert einen suggest_template-Vorschlag im Run-Result als verworfen. */
-export async function dismissTemplateSuggestion(
-  runId: string,
-  resultIndex: number,
-): Promise<void> {
+export async function dismissTemplateSuggestion(runId: string, resultIndex: number): Promise<void> {
   try {
     const db = getDatabase();
     const rows = await db.select<Row[]>('SELECT * FROM playbook_runs WHERE id = $1 LIMIT 1', [

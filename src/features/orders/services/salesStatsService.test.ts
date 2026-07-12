@@ -202,7 +202,7 @@ describe('salesStatsService', () => {
     });
 
     it('zählt bezahlte Aufträge unabhängig vom Auftragsstatus (außer cancelled)', async () => {
-      seedOrder(db, { status: 'paid' });
+      seedOrder(db, { status: 'confirmed' });
       seedOrder(db, { status: 'in_production' });
       seedOrder(db, { status: 'shipped' });
       seedOrder(db, { status: 'issue' });

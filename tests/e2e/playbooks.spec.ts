@@ -558,3 +558,100 @@ test('Dry-Run: schreibt keine Entitäten, zeigt Vorschau und loggt mit status=dr
   await dialog.getByRole('button', { name: 'Schließen' }).click();
   await expect(page.getByTestId('playbook-run-log').getByText('Dry-Run')).toBeVisible();
 });
+
+// ------------------------------------------------------------
+// Regression Status-Trennung (Migration 0017/0018): Alt-Daten mit
+// trigger_status='paid' dürfen weder Liste noch Log blockieren.
+// Seeding erst NACH dem ersten Laden – die Migrationen sind dann durch,
+// die Zeilen simulieren Reste, die 0018 nicht erreichen konnte
+// (z.B. Kollision am Idempotenz-Index).
+// ------------------------------------------------------------
+
+test('Veralteter trigger_status blockiert weder Liste noch Log; Anlegen und Reparatur funktionieren', async ({
+  page,
+  tauri,
+}) => {
+  const crashes: string[] = [];
+  page.on('pageerror', (err) => crashes.push(err.message));
+
+  await gotoAndWaitReady(page, '/settings/automation');
+
+  const legacyPlaybookId = seedPlaybook(tauri, {
+    name: 'Alt-Playbook Zahlungseingang',
+    trigger_status: 'paid',
+    actions: [CREATE_TASK_ACTION],
+  });
+  const order = seedOrder(tauri, { customer_name: 'Legacy Kunde' });
+  tauri.execute(
+    `INSERT INTO playbook_runs (id, playbook_id, order_id, trigger_status, status, results, executed_at)
+     VALUES ($1, $2, $3, 'paid', 'success', '[]', $4)`,
+    [uuid(), legacyPlaybookId, order.id, nowISO()],
+  );
+
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Dashboard' })).toBeVisible();
+
+  // Keine Total-Blockade: Liste lädt mit allen Einträgen, kein Fehler-Toast.
+  await expect(page.getByTestId('playbook-list-item')).toHaveCount(3);
+  await expect(page.getByText('konnte nicht geladen werden')).toHaveCount(0);
+
+  // Alt-Playbook ist sichtbar markiert, Testen ist gesperrt.
+  const legacyRow = page
+    .getByTestId('playbook-list-item')
+    .filter({ hasText: 'Alt-Playbook Zahlungseingang' });
+  await expect(legacyRow.getByTestId('trigger-status-invalid')).toBeVisible();
+  await expect(legacyRow.getByRole('button', { name: 'Testen' })).toBeDisabled();
+
+  // Log zeigt den Alt-Run trotz veraltetem trigger_status.
+  await expect(
+    page.getByTestId('playbook-run-log').getByText('Alt-Playbook Zahlungseingang'),
+  ).toBeVisible();
+
+  // Anlegen funktioniert wieder.
+  await page.getByRole('button', { name: 'Neues Playbook' }).click();
+  const createDialog = page.getByRole('dialog');
+  await createDialog.getByLabel('Name').fill('Frisches Playbook');
+  await createDialog.getByLabel('Aufgaben-Titel').fill('Neue Aufgabe');
+  await createDialog.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByText('Playbook angelegt')).toBeVisible();
+  await expect(page.getByText('Frisches Playbook')).toBeVisible();
+
+  // Reparatur-Pfad: Bearbeiten zeigt den Hinweis, neuer Status heilt den Eintrag.
+  await legacyRow.getByRole('button', { name: 'Bearbeiten' }).click();
+  const editDialog = page.getByRole('dialog');
+  await expect(editDialog.getByTestId('trigger-status-outdated-hint')).toBeVisible();
+
+  // Speichern ohne neuen Status wird mit klarer Meldung abgelehnt.
+  await editDialog.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByText('Trigger-Status dieses Playbooks ist veraltet')).toBeVisible();
+
+  await editDialog.getByLabel('Trigger-Status').click();
+  await page.getByRole('option', { name: 'Angenommen', exact: true }).click();
+  await expect(editDialog.getByTestId('trigger-status-outdated-hint')).toHaveCount(0);
+  await editDialog.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByText('Playbook aktualisiert')).toBeVisible();
+  await expect(legacyRow.getByTestId('trigger-status-invalid')).toHaveCount(0);
+  await expect(legacyRow.getByRole('button', { name: 'Testen' })).toBeEnabled();
+
+  const repaired = tauri.select('SELECT trigger_status FROM playbooks WHERE id = $1', [
+    legacyPlaybookId,
+  ]);
+  expect(repaired[0].trigger_status).toBe('confirmed');
+  expect(crashes).toEqual([]);
+});
+
+test('Migration 0018: Alt-Runs mit paid sind nach App-Start auf confirmed umgezogen', async ({
+  page,
+  tauri,
+}) => {
+  await gotoAndWaitReady(page, '/settings/automation');
+
+  // Nach den App-Migrationen existiert kein 'paid' mehr in playbooks;
+  // die Seeds aus 0013 sind auf confirmed/shipped umgezogen.
+  const playbooks = tauri.select('SELECT trigger_status FROM playbooks');
+  expect(playbooks.length).toBeGreaterThan(0);
+  expect(playbooks.every((row) => row.trigger_status !== 'paid')).toBe(true);
+  expect(
+    tauri.select("SELECT tag FROM _migrations WHERE tag = '0018_fix_playbook_trigger_paid'"),
+  ).toHaveLength(1);
+});

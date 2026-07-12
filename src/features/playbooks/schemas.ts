@@ -9,11 +9,7 @@ const uuid = z.string().uuid();
 // Aktionen (discriminated union auf "type")
 // ============================================================
 
-export const playbookActionTypeEnum = z.enum([
-  'create_task',
-  'create_expense',
-  'suggest_template',
-]);
+export const playbookActionTypeEnum = z.enum(['create_task', 'create_expense', 'suggest_template']);
 
 export const createTaskActionSchema = z.object({
   type: z.literal('create_task'),
@@ -81,6 +77,19 @@ export const playbookSchema = z.object({
   deleted_at: z.string().nullable(),
 });
 
+/**
+ * Anzeige-Variante für Listen: trigger_status bleibt Rohtext, damit
+ * Alt-Daten mit einem inzwischen entfernten Status (z.B. 'paid' vor
+ * Migration 0017/0018) die Liste nicht komplett blockieren. Ob der
+ * Trigger noch gültig ist, sagt trigger_status_valid.
+ */
+export const playbookListItemSchema = playbookSchema
+  .extend({ trigger_status: z.string().min(1) })
+  .transform((playbook) => ({
+    ...playbook,
+    trigger_status_valid: OrderStatusEnum.safeParse(playbook.trigger_status).success,
+  }));
+
 export const playbookCreateSchema = playbookSchema
   .omit({ id: true, created_at: true, updated_at: true, deleted_at: true })
   .extend({
@@ -117,7 +126,12 @@ export const playbookRunSchema = z.object({
   id: uuid,
   playbook_id: uuid,
   order_id: uuid,
-  trigger_status: OrderStatusEnum,
+  /**
+   * Bewusst Rohtext statt OrderStatusEnum: Runs sind Historie und können
+   * Status-Werte tragen, die es im Enum nicht mehr gibt (z.B. 'paid' aus
+   * der Zeit vor Migration 0017). Das Log darf daran nicht scheitern.
+   */
+  trigger_status: z.string().min(1),
   status: playbookRunStatusEnum,
   results: z.array(actionResultSchema),
   executed_at: z.string().min(1),
@@ -133,6 +147,7 @@ export type CreateExpenseAction = z.infer<typeof createExpenseActionSchema>;
 export type SuggestTemplateAction = z.infer<typeof suggestTemplateActionSchema>;
 export type PlaybookAction = z.infer<typeof playbookActionSchema>;
 export type Playbook = z.infer<typeof playbookSchema>;
+export type PlaybookListItem = z.infer<typeof playbookListItemSchema>;
 /** Input-Typen: Felder mit Zod-Default dürfen beim Aufruf fehlen. */
 export type PlaybookCreate = z.input<typeof playbookCreateSchema>;
 export type PlaybookUpdate = z.input<typeof playbookUpdateSchema>;

@@ -50,15 +50,11 @@ import {
   EXPENSE_SUBCATEGORY_LABELS,
 } from '@/features/expenses/constants';
 import type { ExpenseCategory, ExpenseSubcategory } from '@/features/expenses/schemas';
-import { OrderPlatformEnum, OrderStatusEnum, type OrderPlatform, type OrderStatus } from '@/features/orders/types';
+import { OrderPlatformEnum, OrderStatusEnum, type OrderPlatform } from '@/features/orders/types';
 import type { TaskPriority } from '@/features/tasks/schemas';
 import { getAllTemplates } from '@/features/templates/services/templateService';
 import type { Template } from '@/features/templates/schemas';
-import {
-  playbookCreateSchema,
-  type Playbook,
-  type PlaybookActionType,
-} from '../schemas';
+import { playbookCreateSchema, type PlaybookActionType, type PlaybookListItem } from '../schemas';
 import { createPlaybook, updatePlaybook } from '../services/playbookService';
 import { ACTION_TYPE_LABELS, ORDER_STATUS_LABELS, PLATFORM_LABELS } from './shared';
 
@@ -103,7 +99,12 @@ export interface ActionFormValues {
 interface PlaybookFormValues {
   name: string;
   enabled: boolean;
-  trigger_status: OrderStatus;
+  /**
+   * Rohtext statt OrderStatus: Beim Bearbeiten eines Alt-Playbooks kann hier
+   * ein entfernter Status (z.B. 'paid') stehen. Die Zod-Validierung beim
+   * Speichern erzwingt einen gültigen Enum-Wert.
+   */
+  trigger_status: string;
   platform_filter: OrderPlatform[];
   actions: ActionFormValues[];
 }
@@ -133,7 +134,7 @@ function defaultAction(type: PlaybookActionType): ActionFormValues {
   }
 }
 
-function playbookToFormValues(playbook: Playbook | null): PlaybookFormValues {
+function playbookToFormValues(playbook: PlaybookListItem | null): PlaybookFormValues {
   if (!playbook) {
     return {
       name: '',
@@ -304,7 +305,11 @@ function SortableActionCard({
             <div className="space-y-1.5">
               <Label>Betrag</Label>
               <Select
-                value={action.amount_source !== null && action.amount_source !== undefined ? 'source' : 'fixed'}
+                value={
+                  action.amount_source !== null && action.amount_source !== undefined
+                    ? 'source'
+                    : 'fixed'
+                }
                 onValueChange={(value) => {
                   if (value === 'fixed') {
                     form.setValue(`actions.${index}.amount_source`, null, { shouldDirty: true });
@@ -471,7 +476,7 @@ interface PlaybookFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** null = neues Playbook anlegen */
-  playbook: Playbook | null;
+  playbook: PlaybookListItem | null;
   onSaved: () => void;
 }
 
@@ -539,6 +544,12 @@ export function PlaybookFormDialog({
   }
 
   async function onSubmit(values: PlaybookFormValues) {
+    if (!OrderStatusEnum.safeParse(values.trigger_status).success) {
+      toast.error(
+        'Der Trigger-Status dieses Playbooks ist veraltet – bitte einen neuen Status wählen.',
+      );
+      return;
+    }
     const parsed = playbookCreateSchema.safeParse({
       ...values,
       platform_filter: values.platform_filter.length > 0 ? values.platform_filter : null,
@@ -562,7 +573,9 @@ export function PlaybookFormDialog({
       onSaved();
       onOpenChange(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Playbook konnte nicht gespeichert werden');
+      toast.error(
+        error instanceof Error ? error.message : 'Playbook konnte nicht gespeichert werden',
+      );
     } finally {
       setIsSaving(false);
     }
@@ -574,8 +587,8 @@ export function PlaybookFormDialog({
         <DialogHeader>
           <DialogTitle>{playbook ? 'Playbook bearbeiten' : 'Neues Playbook'}</DialogTitle>
           <DialogDescription>
-            Wenn ein Auftrag den Trigger-Status erreicht, laufen die Aktionen in der
-            angegebenen Reihenfolge.
+            Wenn ein Auftrag den Trigger-Status erreicht, laufen die Aktionen in der angegebenen
+            Reihenfolge.
           </DialogDescription>
         </DialogHeader>
 
@@ -598,9 +611,9 @@ export function PlaybookFormDialog({
               <Label>Trigger-Status</Label>
               <Select
                 value={triggerStatus}
-                onValueChange={(value) =>
-                  form.setValue('trigger_status', value as OrderStatus, { shouldDirty: true })
-                }
+                onValueChange={(value) => {
+                  if (value) form.setValue('trigger_status', value, { shouldDirty: true });
+                }}
               >
                 <SelectTrigger aria-label="Trigger-Status">
                   <SelectValue />
@@ -613,6 +626,12 @@ export function PlaybookFormDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {!OrderStatusEnum.safeParse(triggerStatus).success ? (
+                <p className="text-xs text-amber-700" data-testid="trigger-status-outdated-hint">
+                  Der gespeicherte Trigger-Status „{triggerStatus}“ existiert nicht mehr – bitte
+                  einen neuen Status wählen.
+                </p>
+              ) : null}
             </div>
             <div className="space-y-1.5">
               <Label>Plattform-Filter (leer = alle)</Label>

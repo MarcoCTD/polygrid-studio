@@ -97,3 +97,54 @@ Warnbanner im Detail-Panel und Smart-Action `order_invoice_mismatch` (danger).
 `status IN ('ordered','paid','in_production','ready')`. `paid → confirmed`, damit
 angenommene Aufträge weiter als "offen" gezählt werden (sonst Unterzählung).
 `ready` bleibt unangetastet (vorbestehender toter Wert, außerhalb des Scopes).
+
+## E-08: Bug-Fix Migration 0018 – Revision von E-03 für `playbook_runs`
+
+E-03 ließ `playbook_runs.trigger_status` bewusst als Historie stehen. Das hatte
+zwei übersehene Folgen, die nach dem Update auf 0017 real aufgetreten sind:
+
+1. **Total-Blockade des Automatisierungs-Tabs:** `playbookRunSchema` validierte
+   `trigger_status` streng gegen das neue Order-Status-Enum. Ein einziger
+   Alt-Run mit `paid` ließ `getRecentRuns` (und damit über das gebündelte
+   `Promise.all` auch Playbook-Liste und Anlegen) mit einem Zod-Fehler
+   scheitern: „Playbook-Log konnte nicht geladen werden … invalid_value …".
+2. **Verlorene Idempotenz:** `hasExistingRun` sucht nach dem NEUEN Status.
+   Ein Alt-Run mit `trigger_status='paid'` zählt für `confirmed` nicht mehr –
+   erreicht der Auftrag erneut `confirmed`, feuert das Playbook doppelt.
+
+**Entscheidung (Migration 0018, append-only, idempotent):**
+
+- `playbook_runs.trigger_status` wird doch migriert (`paid → confirmed`) –
+  fachlich ist das dieselbe Entsprechung wie bei den Playbooks selbst und
+  stellt die Idempotenz über den Rename hinweg wieder her.
+- **Kollisionsschutz:** Existiert für dasselbe Paar (playbook_id, order_id)
+  bereits ein echter `confirmed`-Run, würde das Umziehen am partiellen
+  Unique-Index `idx_playbook_runs_idempotency` scheitern. Solche Zeilen
+  behalten `paid` (NOT-EXISTS-Filter in der Migration); Dry-Runs sind vom
+  Index ausgenommen und werden immer umgezogen.
+- `playbooks` wird als Sicherheitsnetz erneut mitgenommen (no-op, wenn 0017
+  sauber lief).
+
+**Robustheit gegen künftige Enum-Änderungen (Verteidigung in der Tiefe):**
+
+- `playbookRunSchema.trigger_status` ist jetzt bewusst `string` statt Enum –
+  Runs sind Historie und dürfen entfernte Status tragen. Das Log zeigt den
+  Trigger-Status ohnehin nicht an.
+- `listPlaybooks`/`getRecentRuns`/`getOpenTemplateSuggestions` parsen pro
+  Zeile: ein defekter Eintrag wird übersprungen bzw. markiert, statt die
+  ganze Ansicht zu blockieren.
+- Playbooks mit unbekanntem Trigger werden in der Liste sichtbar markiert
+  („Veralteter Trigger – bitte neu wählen", `trigger_status_valid=false`),
+  „Testen" ist gesperrt, der Bearbeiten-Dialog erzwingt beim Speichern die
+  Wahl eines gültigen Status.
+- `AutomationSettingsTab` lädt Liste/Log/Letzte-Läufe entkoppelt
+  (`Promise.allSettled`) – scheitert ein Teil, bleiben die anderen benutzbar.
+
+**Geprüft und NICHT betroffen** (gleiches Muster „gespeicherter Status-Wert
+nach Enum-Änderung"): Smart-Action-Snoozes (speichern nur ruleId/until/count),
+gespeicherte Filter (Order-Filter werden nicht persistiert; Produkt-Filter
+nutzen das Produkt-Enum), Recurring-Engine (schreibt nur `ordered`/`pending`),
+`order_events` (Schema ist bewusst Freitext, Anzeige mit Label-Fallback),
+E2E-Fixtures (kein Auftrags-`status='paid'` mehr). Einzige Nachbesserung:
+Unit-Fixture in `salesStatsService.test.ts` seedete noch `status='paid'`
+(→ `confirmed`).

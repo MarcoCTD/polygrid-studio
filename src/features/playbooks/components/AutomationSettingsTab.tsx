@@ -14,11 +14,12 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { Playbook } from '../schemas';
+import type { Playbook, PlaybookListItem } from '../schemas';
 import {
   getLastRunPerPlaybook,
   getRecentRuns,
   listPlaybooks,
+  playbookFromListItem,
   softDeletePlaybook,
   updatePlaybook,
   type PlaybookRunListItem,
@@ -64,34 +65,40 @@ function EnabledToggle({
 }
 
 export function AutomationSettingsTab() {
-  const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
+  const [playbooks, setPlaybooks] = useState<PlaybookListItem[]>([]);
   const [runs, setRuns] = useState<PlaybookRunListItem[]>([]);
   const [lastRuns, setLastRuns] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
-  const [formState, setFormState] = useState<{ open: boolean; playbook: Playbook | null }>({
+  const [formState, setFormState] = useState<{ open: boolean; playbook: PlaybookListItem | null }>({
     open: false,
     playbook: null,
   });
   const [dryRunPlaybook, setDryRunPlaybook] = useState<Playbook | null>(null);
-  const [deleteCandidate, setDeleteCandidate] = useState<Playbook | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<PlaybookListItem | null>(null);
 
   const load = useCallback(async () => {
-    try {
-      const [playbookRows, runRows, lastRunMap] = await Promise.all([
-        listPlaybooks(),
-        getRecentRuns(50),
-        getLastRunPerPlaybook(),
-      ]);
-      setPlaybooks(playbookRows);
-      setRuns(runRows);
-      setLastRuns(lastRunMap);
-    } catch (error) {
+    // Entkoppelt: Scheitert eine Teilabfrage (z.B. das Log), bleiben Liste
+    // und Anlegen trotzdem benutzbar – nur der betroffene Teil meldet sich.
+    const [playbookResult, runResult, lastRunResult] = await Promise.allSettled([
+      listPlaybooks(),
+      getRecentRuns(50),
+      getLastRunPerPlaybook(),
+    ]);
+
+    if (playbookResult.status === 'fulfilled') setPlaybooks(playbookResult.value);
+    if (runResult.status === 'fulfilled') setRuns(runResult.value);
+    if (lastRunResult.status === 'fulfilled') setLastRuns(lastRunResult.value);
+
+    const firstError = [playbookResult, runResult, lastRunResult].find(
+      (result): result is PromiseRejectedResult => result.status === 'rejected',
+    );
+    if (firstError) {
+      const reason: unknown = firstError.reason;
       toast.error(
-        error instanceof Error ? error.message : 'Automatisierung konnte nicht geladen werden',
+        reason instanceof Error ? reason.message : 'Automatisierung konnte nicht geladen werden',
       );
-    } finally {
-      setIsLoading(false);
     }
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -100,7 +107,7 @@ export function AutomationSettingsTab() {
     void load();
   }, [load]);
 
-  async function handleToggleEnabled(playbook: Playbook, enabled: boolean) {
+  async function handleToggleEnabled(playbook: PlaybookListItem, enabled: boolean) {
     try {
       await updatePlaybook(playbook.id, { enabled });
       toast.success(enabled ? `„${playbook.name}“ aktiviert` : `„${playbook.name}“ deaktiviert`);
@@ -147,7 +154,10 @@ export function AutomationSettingsTab() {
             Vorlagen-Vorschläge zu automatisieren.
           </div>
         ) : (
-          <ul className="divide-y divide-border-subtle rounded-lg border border-border" data-testid="playbook-list">
+          <ul
+            className="divide-y divide-border-subtle rounded-lg border border-border"
+            data-testid="playbook-list"
+          >
             {playbooks.map((playbook) => {
               const lastRun = lastRuns.get(playbook.id);
               return (
@@ -189,7 +199,13 @@ export function AutomationSettingsTab() {
                       variant="ghost"
                       size="sm"
                       className="gap-1.5"
-                      onClick={() => setDryRunPlaybook(playbook)}
+                      disabled={!playbook.trigger_status_valid}
+                      title={
+                        playbook.trigger_status_valid
+                          ? undefined
+                          : 'Dieses Playbook hat einen veralteten Trigger-Status. Erst bearbeiten und einen neuen Status wählen.'
+                      }
+                      onClick={() => setDryRunPlaybook(playbookFromListItem(playbook))}
                     >
                       <FlaskConical className="size-4" />
                       Testen
