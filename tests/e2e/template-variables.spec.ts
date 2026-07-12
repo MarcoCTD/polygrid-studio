@@ -45,7 +45,7 @@ function seedAll(tauri: TauriMock) {
   tauri.execute(
     `INSERT INTO orders (id, receipt_number, external_order_id, customer_name, platform, quantity,
                          sale_price, status, payment_status, tracking_number, order_date, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, 1, 19.99, 'paid', 'paid', $6, $7, $8, $9)`,
+     VALUES ($1, $2, $3, $4, $5, 1, 19.99, 'confirmed', 'paid', $6, $7, $8, $9)`,
     [ORDER_ID, '2026-0042', 'ETSY-12345', 'Max Mustermann', 'etsy', 'DHL-777', now, now, now],
   );
 

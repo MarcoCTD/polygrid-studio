@@ -179,14 +179,16 @@ test('orders_stuck: Aufträge >5 Tage in Produktion, Klick öffnet gefiltertes K
   await expect(column.getByText(receipt)).toBeVisible();
 });
 
-test('orders_unshipped: bezahlt und >2 Tage nicht versendet, Klick öffnet Kanban (Bezahlt)', async ({
+test('orders_unshipped: bezahlt und >2 Tage nicht versendet, Klick öffnet Kanban', async ({
   page,
   tauri,
 }) => {
   await bootApp(page);
   silenceBackupRule(tauri);
+  // "Bezahlt" hängt seit Modul 08 am payment_status; der Ablauf-Status ist
+  // unabhängig (hier: angenommen, noch nicht versendet).
   const { receipt } = seedOrder(tauri, {
-    status: 'paid',
+    status: 'confirmed',
     paymentStatus: 'paid',
     shippingStatus: 'not_shipped',
     updatedDaysAgo: 3,
@@ -199,9 +201,11 @@ test('orders_unshipped: bezahlt und >2 Tage nicht versendet, Klick öffnet Kanba
   await expect(card).toContainText('nicht versendet');
 
   await clickSmartAction(page, 'orders_unshipped');
-  await expect(page).toHaveURL(/\/orders\?.*status=paid/);
+  await expect(page).toHaveURL(/\/orders\?.*view=kanban/);
 
-  const column = page.locator('section', { has: page.getByRole('heading', { name: 'Bezahlt' }) });
+  const column = page.locator('section', {
+    has: page.getByRole('heading', { name: 'Angenommen' }),
+  });
   await expect(column.getByText(receipt)).toBeVisible();
 });
 

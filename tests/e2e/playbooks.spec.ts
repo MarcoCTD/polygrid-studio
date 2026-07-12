@@ -351,13 +351,13 @@ test('Detail-Panel-Statusänderung löst Playbook aus; Idempotenz bei erneutem E
   const order = seedOrder(tauri, { customer_name: 'Bernd Kunde' });
   seedPlaybook(tauri, {
     name: 'Zahlungsaufgabe',
-    trigger_status: 'paid',
+    trigger_status: 'confirmed',
     actions: [{ ...CREATE_TASK_ACTION, title_template: 'Verpacken für {{kundenname}}' }],
   });
   await page.reload();
 
-  // Status im Detail-Panel auf Bezahlt setzen
-  await setStatusInDetailPanel(page, order.receipt_number, 'Bezahlt');
+  // Status im Detail-Panel auf Angenommen setzen
+  await setStatusInDetailPanel(page, order.receipt_number, 'Angenommen');
   await expect
     .poll(() => tauri.select('SELECT COUNT(*) AS c FROM tasks')[0]?.c, { timeout: 5000 })
     .toBe(1);
@@ -365,7 +365,7 @@ test('Detail-Panel-Statusänderung löst Playbook aus; Idempotenz bei erneutem E
 
   // Zurückschieben und erneut vorschieben: kein zweiter Run, keine zweite Aufgabe
   await setStatusInDetailPanel(page, order.receipt_number, 'Bestellt');
-  await setStatusInDetailPanel(page, order.receipt_number, 'Bezahlt');
+  await setStatusInDetailPanel(page, order.receipt_number, 'Angenommen');
 
   expect(tauri.select('SELECT COUNT(*) AS c FROM tasks')[0]?.c).toBe(1);
   expect(
@@ -454,12 +454,12 @@ test('suggest_template: Banner im Detail-Panel, vorbefüllter Kopieren-Dialog, v
   });
   seedPlaybook(tauri, {
     name: 'Vorlagen-Vorschlag',
-    trigger_status: 'paid',
+    trigger_status: 'confirmed',
     actions: [{ type: 'suggest_template', template_id: templateId }],
   });
   await page.reload();
 
-  await setStatusInDetailPanel(page, order.receipt_number, 'Bezahlt');
+  await setStatusInDetailPanel(page, order.receipt_number, 'Angenommen');
 
   // Banner erscheint im geöffneten Detail-Panel
   const banner = page.getByTestId('template-suggestion-banner');
@@ -499,16 +499,16 @@ test('Playbook-Fehler blockiert die Statusänderung nicht', async ({ page, tauri
   // suggest_template auf eine nicht existierende Vorlage -> alle Aktionen schlagen fehl
   seedPlaybook(tauri, {
     name: 'Defektes Playbook',
-    trigger_status: 'paid',
+    trigger_status: 'confirmed',
     actions: [{ type: 'suggest_template', template_id: uuid() }],
   });
   await page.reload();
 
-  await setStatusInDetailPanel(page, order.receipt_number, 'Bezahlt');
+  await setStatusInDetailPanel(page, order.receipt_number, 'Angenommen');
 
   // Status ist trotz fehlgeschlagenem Playbook persistiert
   expect(tauri.select('SELECT status FROM orders WHERE id = $1', [order.id])[0]?.status).toBe(
-    'paid',
+    'confirmed',
   );
   // Fehler-Toast weist auf das Log hin
   await expect(page.getByText(/Playbook „Defektes Playbook“ fehlgeschlagen/)).toBeVisible();
