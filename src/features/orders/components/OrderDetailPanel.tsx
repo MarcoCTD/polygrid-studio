@@ -19,7 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { formatEUR } from '@/features/products/utils';
 import { numberOrNull } from '@/utils';
 import { TemplateSuggestionBanner } from '@/features/playbooks/components';
-import { ManualBankMatchDialog, StatusUpdateSuggestionDialog } from '@/features/finance/components';
+import { ManualBankMatchDialog } from '@/features/finance/components';
 import type { ConfirmMatchResult } from '@/features/finance/services';
 import { cn } from '@/lib/utils';
 import {
@@ -119,7 +119,6 @@ export function OrderDetailPanel({ order, onClose, onChanged }: OrderDetailPanel
   const [events, setEvents] = useState<OrderEvent[]>([]);
   const [bankMatch, setBankMatch] = useState<BankTransactionMatch | null>(null);
   const [manualMatchOpen, setManualMatchOpen] = useState(false);
-  const [pendingStatus, setPendingStatus] = useState<ConfirmMatchResult | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const form = useForm<UpdateOrderInput>({
@@ -245,9 +244,6 @@ export function OrderDetailPanel({ order, onClose, onChanged }: OrderDetailPanel
     });
     setBankMatch(refreshed);
     onChanged();
-    if (result.suggestPaidStatus) {
-      setPendingStatus(result);
-    }
     toast.success('Banktransaktion verknüpft');
   }
 
@@ -342,27 +338,6 @@ export function OrderDetailPanel({ order, onClose, onChanged }: OrderDetailPanel
               error instanceof Error ? error.message : 'Bank-Match konnte nicht geladen werden',
             );
           });
-        }}
-      />
-      <StatusUpdateSuggestionDialog
-        open={pendingStatus !== null}
-        receiptNumber={pendingStatus?.receiptNumber ?? null}
-        onOpenChange={(open) => {
-          if (!open) setPendingStatus(null);
-        }}
-        onDecline={() => setPendingStatus(null)}
-        onConfirm={() => {
-          if (!pendingStatus?.orderId) return;
-          void updateOrder(pendingStatus.orderId, { payment_status: 'paid' })
-            .then((updated) => {
-              setCurrentOrder({ ...updated, product_name: currentOrder.product_name });
-              setPendingStatus(null);
-              onChanged();
-              toast.success('Auftrag auf bezahlt gesetzt');
-            })
-            .catch((error) => {
-              toast.error(error instanceof Error ? error.message : 'Status konnte nicht gesetzt werden');
-            });
         }}
       />
     </div>

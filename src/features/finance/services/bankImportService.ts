@@ -96,7 +96,6 @@ export interface ConfirmMatchResult {
   orderId: string | null;
   expenseId: string | null;
   payoutOrderCount: number;
-  suggestPaidStatus: boolean;
   receiptNumber: string | null;
 }
 
@@ -703,7 +702,6 @@ export async function confirmMatch(
       orderId: target.orderId,
       expenseId: null,
       payoutOrderCount: 0,
-      suggestPaidStatus: order.status === 'ordered',
       receiptNumber: order.receipt_number as string,
     };
   }
@@ -725,7 +723,6 @@ export async function confirmMatch(
       orderId: null,
       expenseId: target.expenseId,
       payoutOrderCount: 0,
-      suggestPaidStatus: false,
       receiptNumber: null,
     };
   }
@@ -772,7 +769,6 @@ export async function confirmPayoutMatch(
     orderId: null,
     expenseId: null,
     payoutOrderCount: allocations.length,
-    suggestPaidStatus: false,
     receiptNumber: null,
   };
 }

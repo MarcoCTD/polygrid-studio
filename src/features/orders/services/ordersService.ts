@@ -17,6 +17,7 @@ import {
   type OrderListItem,
   type OrderPlatform,
   type OrderStatus,
+  type PaymentStatus,
   type UpdateOrderInput,
 } from '../types';
 import { generateReceiptNumber } from './receiptNumber';
@@ -71,8 +72,28 @@ function dateYear(isoDate: string): number {
   return Number.parseInt(isoDate.slice(0, 4), 10);
 }
 
-function statusSetsPaymentDate(status: OrderStatus | undefined): boolean {
-  return status === 'completed';
+/**
+ * Zahlungsdatum folgt ausschließlich dem payment_status (Modul 08, Status/
+ * Payment-Trennung) – nicht mehr dem Ablauf-Status. Regel, identisch für Create
+ * und Update:
+ * - Ein vom Aufrufer explizit übergebenes Datum hat immer Vorrang.
+ * - Wechsel AUF 'paid' (und noch kein Datum vorhanden): heute setzen.
+ * - Wechsel VON 'paid' auf einen anderen Zahlungsstatus: Datum leeren.
+ * - Sonst: Datum unverändert lassen (`undefined`).
+ *
+ * `previous = null` steht für den Create-Fall (kein Vorzustand).
+ */
+function derivePaymentReceivedDate(args: {
+  previous: PaymentStatus | null;
+  next: PaymentStatus;
+  provided: string | null | undefined;
+  existing: string | null;
+}): string | null | undefined {
+  const { previous, next, provided, existing } = args;
+  if (provided !== undefined) return provided;
+  if (next === 'paid' && previous !== 'paid') return existing ?? todayISODate();
+  if (next !== 'paid' && previous === 'paid') return null;
+  return undefined;
 }
 
 /**
@@ -283,11 +304,18 @@ export async function createOrder(data: NewOrderInput): Promise<Order> {
     const db = getDatabase();
     const id = crypto.randomUUID();
     const timestamp = now();
-    const status = input.status ?? (input.payment_received_date ? 'confirmed' : 'ordered');
+    // Ablauf-Status und Zahlungsstatus sind unabhängig (Modul 08): der Status
+    // wird nicht mehr aus payment_received_date abgeleitet, der Zahlungsstatus
+    // nicht aus dem Status. Das Zahlungsdatum hängt allein am payment_status.
+    const status = input.status ?? 'ordered';
+    const paymentStatus = input.payment_status ?? 'pending';
     const paymentReceivedDate =
-      input.payment_received_date ?? (statusSetsPaymentDate(status) ? todayISODate() : null);
-    const paymentStatus =
-      input.payment_status ?? (paymentReceivedDate ? 'paid' : 'pending');
+      derivePaymentReceivedDate({
+        previous: null,
+        next: paymentStatus,
+        provided: input.payment_received_date,
+        existing: null,
+      }) ?? null;
     const shippingStatus = input.shipping_status ?? 'not_shipped';
     const materialCost = input.material_cost ?? (await getProductMaterialCost(input.product_id));
     const platformFee = input.platform_fee ?? (await getPlatformFee(input.platform, input.sale_price));
@@ -366,12 +394,18 @@ export async function updateOrder(id: string, data: UpdateOrderInput): Promise<O
     if (!existing) throw new Error(`Auftrag ${id} nicht gefunden.`);
 
     const normalizedData: UpdateOrderInput = { ...data };
-    if (
-      statusSetsPaymentDate(normalizedData.status) &&
-      existing.payment_received_date === null &&
-      normalizedData.payment_received_date === undefined
-    ) {
-      normalizedData.payment_received_date = todayISODate();
+    // Zahlungsdatum ausschließlich am payment_status ausrichten (Modul 08),
+    // nicht mehr am Ablauf-Status. Nur wenn der payment_status im Update steckt.
+    if (normalizedData.payment_status !== undefined) {
+      const derived = derivePaymentReceivedDate({
+        previous: existing.payment_status,
+        next: normalizedData.payment_status,
+        provided: normalizedData.payment_received_date,
+        existing: existing.payment_received_date,
+      });
+      if (derived !== undefined) {
+        normalizedData.payment_received_date = derived;
+      }
     }
 
     UpdateOrderSchema.parse({ ...normalizedData, id, tax_locked: existing.tax_locked });

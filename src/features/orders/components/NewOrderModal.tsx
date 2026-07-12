@@ -115,12 +115,17 @@ export function NewOrderModal({ open, onOpenChange, onCreated }: NewOrderModalPr
   async function handleSubmit(values: NewOrderInput) {
     setIsSubmitting(true);
     try {
+      const paymentReceivedDate = values.payment_received_date || null;
       const cleaned: NewOrderInput = {
         ...values,
         receipt_number: backfillMode ? values.receipt_number : undefined,
         product_id: values.product_id || null,
         variant: values.product_id ? values.variant || null : null,
-        payment_received_date: values.payment_received_date || null,
+        payment_received_date: paymentReceivedDate,
+        // Status und Zahlung sind entkoppelt (Modul 08): der Service leitet den
+        // Zahlungsstatus nicht mehr aus dem Datum ab. Ein im Modal eingetragenes
+        // Zahlungseingangs-Datum ist die bewusste Aussage "bezahlt".
+        payment_status: values.payment_status ?? (paymentReceivedDate ? 'paid' : 'pending'),
         shipping_revenue: values.shipping_revenue ?? null,
         notes: values.notes ?? null,
       };

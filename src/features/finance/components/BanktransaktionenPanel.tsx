@@ -28,7 +28,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { formatEUR } from '@/features/products/utils';
-import { updateOrder } from '@/features/orders/services';
 import {
   autoMapBankColumns,
   confirmMatch,
@@ -51,11 +50,9 @@ import {
   type BankImportResult,
   type BankTransaction,
   type BankTransactionFilter,
-  type ConfirmMatchResult,
   type MatchSuggestion,
   type PayoutAllocation,
 } from '../services';
-import { StatusUpdateSuggestionDialog } from './StatusUpdateSuggestionDialog';
 
 const FIELD_LABELS: Record<BankField, string> = {
   transaction_date: 'Buchungsdatum',
@@ -137,7 +134,6 @@ export function BanktransaktionenPanel() {
   const [batches, setBatches] = useState<BankImportBatch[]>([]);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<MatchSuggestion[]>([]);
-  const [pendingStatus, setPendingStatus] = useState<ConfirmMatchResult | null>(null);
   const [payoutDialog, setPayoutDialog] = useState<{
     transaction: BankTransaction;
     allocations: PayoutAllocation[];
@@ -260,11 +256,12 @@ export function BanktransaktionenPanel() {
     }
 
     try {
-      const result = await confirmMatch(selectedTransaction.id, {
+      await confirmMatch(selectedTransaction.id, {
         orderId: suggestion.type === 'order' ? suggestion.id : undefined,
         expenseId: suggestion.type === 'expense' ? suggestion.id : undefined,
       });
-      if (result.suggestPaidStatus) setPendingStatus(result);
+      // payment_status='paid' + Zahlungsdatum werden bereits in confirmMatch
+      // gesetzt; eine separate Status-Empfehlung entfällt seit der Trennung.
       toast.success('Match bestätigt');
       await loadData();
     } catch (error) {
@@ -548,26 +545,6 @@ export function BanktransaktionenPanel() {
           toast.success(`${result.payoutOrderCount} Aufträge verknüpft`);
           setPayoutDialog(null);
           await loadData();
-        }}
-      />
-
-      <StatusUpdateSuggestionDialog
-        open={pendingStatus !== null}
-        receiptNumber={pendingStatus?.receiptNumber ?? null}
-        onOpenChange={(open) => {
-          if (!open) setPendingStatus(null);
-        }}
-        onDecline={() => setPendingStatus(null)}
-        onConfirm={() => {
-          if (!pendingStatus?.orderId) return;
-          void updateOrder(pendingStatus.orderId, { payment_status: 'paid' })
-            .then(() => {
-              toast.success('Auftrag auf bezahlt gesetzt');
-              setPendingStatus(null);
-            })
-            .catch((error) => {
-              toast.error(error instanceof Error ? error.message : 'Status konnte nicht gesetzt werden');
-            });
         }}
       />
     </div>

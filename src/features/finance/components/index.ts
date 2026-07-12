@@ -4,4 +4,3 @@ export { SteuerExportTab } from './SteuerExportTab';
 export { BeleguebersichtPanel } from './BelegübersichtPanel';
 export { EuerExportPanel } from './EuerExportPanel';
 export { ManualBankMatchDialog } from './ManualBankMatchDialog';
-export { StatusUpdateSuggestionDialog } from './StatusUpdateSuggestionDialog';
